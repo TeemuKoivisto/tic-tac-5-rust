@@ -48,7 +48,6 @@ pub struct GameState {
     pub options: GameOptions,
     pub players: HashMap<u32, Player>, // TODO: use PlayerNumber type
     pub player_in_turn: u32,
-    // pub symbols: HashMap<u32, PlayerSymbol>,
     pub board: Board,
     pub rng: StdRng,
 }
