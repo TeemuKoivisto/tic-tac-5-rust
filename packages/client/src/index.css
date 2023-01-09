@@ -1,0 +1,53 @@
+:root {
+  --black: #000;
+  --dark-gray: #232226;
+  --confirm-color: #00af30;
+  --text-color: #eee;
+  --overlay-1: rgba(255, 255, 255, 0.1);
+  --overlay-2: rgba(255, 255, 255, 0.2);
+  --focus-outline: rgba(255, 255, 255, 0.4);
+  --border-radius: 4px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  background: var(--dark-gray);
+  color: var(--text-color);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+}
+
+input,
+button {
+  background: var(--overlay-1);
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+*:focus {
+  outline: 1px solid var(--focus-outline);
+  border-radius: var(--border-radius);
+}
+
+button:active {
+  background: var(--overlay-2);
+}
+
+label {
+  margin-bottom: 0.3rem;
+}
+.hidden {
+  display: none;
+  visibility: hidden;
+}

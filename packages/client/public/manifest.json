@@ -1,0 +1,12 @@
+{
+  "name": "Tic tac 5",
+  "lang": "en-us",
+  "short_name": "tic-tac-5.com",
+  "description": "Tic tac toe variation that's actually playable",
+  "start_url": "/",
+  "scope": "/",
+  "theme_color": "#000",
+  "background_color": "#000",
+  "orientation": "landscape-primary",
+  "icons": []
+}

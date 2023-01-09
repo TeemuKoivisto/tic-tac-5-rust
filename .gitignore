@@ -40,5 +40,11 @@ tmp/
 .cache
 .netrc
 
+# Ansible
+.ansible/**/hosts
+
 # Rust
 target
+/test-results/
+/playwright-report/
+/playwright/.cache/

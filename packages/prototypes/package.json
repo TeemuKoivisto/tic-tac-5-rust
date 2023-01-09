@@ -1,0 +1,39 @@
+{
+  "name": "@tt5/prototypes",
+  "version": "0.0.1",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "gen": "ts-node --esm ./scripts/build.ts",
+    "build": "rimraf dist && rollup -c",
+    "watch": "rimraf dist && rollup -cw"
+  },
+  "devDependencies": {
+    "@types/node": "18.7.3",
+    "fast-glob": "^3.2.12",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.74.0",
+    "rollup-plugin-typescript2": "^0.31.2",
+    "ts-node": "^10.9.1",
+    "ts-proto": "^1.126.1",
+    "typescript": "4.7.4"
+  },
+  "dependencies": {
+    "protobufjs": "^7.1.2"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

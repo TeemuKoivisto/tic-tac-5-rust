@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package proto_all;
+
+enum ClientMsgType {
+    // lobby
+    join_lobby = 0;
+    lobby_msg = 1;
+    create_lobby_game = 2;
+    join_lobby_game = 3;
+    leave_lobby_game = 4;
+    // game
+    player_move = 5;
+    leave_game = 6;
+}
+enum ServerMsgType {
+    // lobby
+    lobby_state = 0;
+    player_msg = 1;
+    player_join_lobby = 2;
+    player_leave_lobby = 3;
+    lobby_game_updated = 4;
+    // game
+    player_join = 5;
+    game_start = 6;
+    game_end = 7;
+    tick = 8;
+    player_left = 9;
+}
+
+message Player {
+    uint32 id = 1;
+    uint32 client_id = 2;
+    uint32 player_number = 3;
+    string name = 4;
+    uint32 color = 5;
+    Cursor cursor = 6;
+    bool dead = 7;
+}
+
+message Cursor {
+    uint32 player = 1;
+    uint32 x = 2;
+    uint32 y = 3;
+}
+
+message BallOwner {
+    uint32 player = 1;
+    float percentage = 2;
+}
+
+message Ball {
+    uint32 player = 1;
+    uint32 color = 2;
+    float x = 3;
+    float y = 4;
+    float radius = 5;
+    repeated BallOwner owners = 6;
+}
+
+message Rect {
+    // uint32 color = 1;
+    float x = 2;
+    float y = 3;
+    float width = 4;
+    float height = 5;
+    float rotation = 6;
+}
+
+message LobbyGame {
+    string game_id = 1;
+    uint32 players = 2;
+    uint32 max_players = 3;
+}
+
+enum GameStatus {
+    WAITING = 0;
+    RUNNING = 1;
+    PLAYER_WON = 2;
+    AI_WON = 3;
+    TIE = 4;
+}
+
+// Server messages
+
+message LobbyPlayer {
+    uint32 player_id = 2;
+    string name = 3;
+}
+
+message LobbyState {
+    repeated LobbyGame games = 1;
+    repeated LobbyPlayer players = 2;
+}
+
+message GameStart {
+    string game_id = 1;
+    repeated Player players = 2;
+    repeated Ball balls = 3;
+    repeated Rect rects = 4;
+}
+
+message GameEnd {
+    string game_id = 1;
+    GameStatus result = 2;
+    optional Player winner = 3;
+}
+
+message Move {
+    uint32 x = 1;
+    uint32 y = 2;
+    uint32 target_x = 3;
+    uint32 target_y = 4;
+}
+
+message Tick {
+    string game_id = 1;
+    repeated Cursor cursors = 2;
+    repeated Ball balls = 3;
+}
+
+// Client messages
+
+// Values are zero if not specified.
+message GameOptions {
+    uint32 server_tick_rate = 1;
+    uint32 liquid_per_player = 2;
+    uint32 cursor_speed = 3;
+    uint32 players = 4;
+}
+
+message PlayerJoinLobby {
+    uint32 player_id = 1;
+    string name = 2;
+}
+
+message PlayerCreateGame {
+    uint32 player_id = 1;
+    string name = 2;
+    string color = 3;
+    GameOptions options = 4;
+}
+
+message PlayerJoinGame {
+    optional string game_id = 1;
+    uint32 player_id = 2;
+    string name = 3;
+    string color = 4;
+    GameOptions options = 5;
+}
+
+message PlayerMove {
+    string game_id = 1;
+    uint32 player_number = 2;
+    uint32 mouse_x = 3;
+    uint32 mouse_y = 4;
+}
+
+message PlayerLeave {
+    string game_id = 1;
+    uint32 player_id = 2;
+}
