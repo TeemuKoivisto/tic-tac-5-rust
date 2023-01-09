@@ -1,53 +1,25 @@
-:root {
-  --black: #000;
-  --dark-gray: #232226;
-  --confirm-color: #00af30;
-  --text-color: #eee;
-  --overlay-1: rgba(255, 255, 255, 0.1);
-  --overlay-2: rgba(255, 255, 255, 0.2);
-  --focus-outline: rgba(255, 255, 255, 0.4);
-  --border-radius: 4px;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 * {
-  box-sizing: border-box;
-}
-
-html {
-  height: 100%;
-  background: var(--dark-gray);
-  color: var(--text-color);
-  font-family: "Segoe UI", system-ui, sans-serif;
-  color-scheme: dark;
+  @apply text-white;
 }
 
 body {
-  height: 100%;
-  margin: 0;
+  @apply bg-zinc-900;
 }
 
-input,
-button {
-  background: var(--overlay-1);
-  border: none;
-  border-radius: var(--border-radius);
-  color: var(--text-color);
-  font-size: 1rem;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  @apply text-white;
 }
 
-*:focus {
-  outline: 1px solid var(--focus-outline);
-  border-radius: var(--border-radius);
-}
-
-button:active {
-  background: var(--overlay-2);
-}
-
-label {
-  margin-bottom: 0.3rem;
-}
-.hidden {
-  display: none;
-  visibility: hidden;
+.btn {
+  @apply w-52 px-5 py-2 font-bold text-white bg-primary-dark rounded shadow text-center transition duration-500 ease-in-out transform;
 }

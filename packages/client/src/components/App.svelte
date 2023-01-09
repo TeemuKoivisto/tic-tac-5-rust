@@ -1,10 +1,9 @@
 <script lang="ts">
+  import Lobby from './Lobby.svelte'
 </script>
 
 <main>
-  <div class="container">
-    <h1>Tic tac 5</h1>
-  </div>
+  <Lobby />
 </main>
 
 <style lang="scss">
