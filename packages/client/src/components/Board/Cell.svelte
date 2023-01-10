@@ -32,7 +32,7 @@
     <div class="h-full w-full flex items-center text-base justify-center p-0.5 text-black">
       {#if cell?.cellType === CellType.EMPTY}
         &nbsp;
-      {:else if cell?.player === 0}
+      {:else if cell?.player === 1}
         X
         <!-- <svg
           stroke="currentColor"
@@ -44,7 +44,7 @@
           xmlns="http://www.w3.org/2000/svg"
           ><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg
         > -->
-      {:else if cell?.player === 1}
+      {:else if cell?.player === 2}
         O
         <!-- <svg
           stroke="currentColor"

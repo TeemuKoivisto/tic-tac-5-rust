@@ -37,15 +37,13 @@ impl Game {
     }
     pub fn get_player_in_turn(&self) -> &Player {
         &self.state.players[(self.state.player_in_turn - 1) as usize]
-        // self.state.players.get(&self.state.player_in_turn).unwrap()
     }
 
     pub fn is_valid_move(&mut self, payload: &PlayerSelectCell) -> Option<String> {
-        let in_turn = self.get_player_in_turn();
-        if payload.player_number != in_turn.player_number {
+        if payload.player_number != self.state.player_in_turn {
             return Some(format!(
                 "Player {} tried to move when it was {} turn",
-                payload.player_number, in_turn.player_number
+                payload.player_number, self.state.player_in_turn
             ));
         } else if !self.is_running() {
             return Some("Game has already ended".to_string());
@@ -70,7 +68,11 @@ impl Game {
         self.state
             .board
             .update_cell_owner(payload.x, payload.y, payload.player_number);
-        self.state.player_in_turn = payload.player_number;
+        if payload.player_number == self.state.options.players {
+            self.state.player_in_turn = 1
+        } else {
+            self.state.player_in_turn = payload.player_number + 1;
+        }
         None
     }
 

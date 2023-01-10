@@ -42,8 +42,8 @@ pub struct Board {
 struct Adjancies {
     hor: u32,
     ver: u32,
-    leftDiag: u32,
-    rightDiag: u32,
+    left_diag: u32,
+    right_diag: u32,
 }
 
 impl Index<Adjacency> for Adjancies {
@@ -53,8 +53,8 @@ impl Index<Adjacency> for Adjancies {
         match dir {
             Adjacency::Horizontal => &self.hor,
             Adjacency::Vertical => &self.ver,
-            Adjacency::LeftToRightDiagonal => &self.leftDiag,
-            Adjacency::RightToLeftDiagonal => &self.rightDiag,
+            Adjacency::LeftToRightDiagonal => &self.left_diag,
+            Adjacency::RightToLeftDiagonal => &self.right_diag,
         }
     }
 }
@@ -64,8 +64,8 @@ impl IndexMut<Adjacency> for Adjancies {
         match dir {
             Adjacency::Horizontal => &mut self.hor,
             Adjacency::Vertical => &mut self.ver,
-            Adjacency::LeftToRightDiagonal => &mut self.leftDiag,
-            Adjacency::RightToLeftDiagonal => &mut self.rightDiag,
+            Adjacency::LeftToRightDiagonal => &mut self.left_diag,
+            Adjacency::RightToLeftDiagonal => &mut self.right_diag,
         }
     }
 }
@@ -84,8 +84,8 @@ impl Board {
                         adjacency: Adjancies {
                             hor: 0,
                             ver: 0,
-                            leftDiag: 0,
-                            rightDiag: 0,
+                            left_diag: 0,
+                            right_diag: 0,
                         },
                     },
                 );
@@ -109,8 +109,8 @@ impl Board {
         dir: Adjacency,
         topside: bool,
     ) -> Option<&BoardCell> {
-        let mut xx = x;
-        let mut yy = y;
+        let mut xx = 1000 as u32;
+        let mut yy = 1000 as u32;
         match dir {
             Adjacency::Horizontal => {
                 if topside {
@@ -128,20 +128,20 @@ impl Board {
             }
             Adjacency::LeftToRightDiagonal => {
                 if topside {
-                    xx = x - 1;
-                    yy = y + 1;
-                } else {
                     xx = x + 1;
                     yy = y - 1;
+                } else {
+                    xx = x - 1;
+                    yy = y + 1;
                 }
             }
             Adjacency::RightToLeftDiagonal => {
                 if topside {
-                    xx = x + 1;
-                    yy = y + 1;
-                } else {
                     xx = x - 1;
                     yy = y - 1;
+                } else {
+                    xx = x + 1;
+                    yy = y + 1;
                 }
             }
         }
@@ -160,13 +160,13 @@ impl Board {
         loop {
             let mut cell = self.get_adjacent_in_direction(now_x, now_y, dir, topside);
             if iters > 20 {
-                // println!("cell is {}", cell.unwrap_or("none".to_string()));
+                println!("hey cell {:?} in dir {:?}", cell, dir);
                 println!("player {}", player);
                 println!("topSide {}", topside);
                 panic!("infinite loop");
             }
             if cell.is_some() && cell.unwrap().owner == player {
-                adjacent.insert(0, cell.unwrap());
+                adjacent.push(cell.unwrap());
                 now_x = cell.unwrap().x;
                 now_y = cell.unwrap().y;
             } else if topside {
@@ -194,7 +194,7 @@ impl Board {
             })
             .collect::<Vec<BoardCell>>();
         for cell in cells2 {
-            self.cells.insert(x + y * self.size, cell);
+            self.cells.insert(cell.x + cell.y * self.size, cell);
         }
         adjacent_count as u32
     }
@@ -202,15 +202,17 @@ impl Board {
     pub fn update_cell_owner(&mut self, x: u32, y: u32, player: u32) {
         let mut cell = self.cells.get_mut(&(y * self.size + x)).unwrap();
         cell.owner = player;
-        let mut adjancies = Adjancies {
-            hor: 0,
-            ver: 0,
-            leftDiag: 0,
-            rightDiag: 0,
+        let adjancies = Adjancies {
+            hor: self.update_cells_in_direction(x, y, player, Adjacency::Horizontal),
+            ver: self.update_cells_in_direction(x, y, player, Adjacency::Vertical),
+            left_diag: self.update_cells_in_direction(x, y, player, Adjacency::LeftToRightDiagonal),
+            right_diag: self.update_cells_in_direction(
+                x,
+                y,
+                player,
+                Adjacency::RightToLeftDiagonal,
+            ),
         };
-        for dir in Adjacency::iterator() {
-            adjancies[*dir] = self.update_cells_in_direction(x, y, player, dir.clone());
-        }
         let mut cell = self.cells.get_mut(&(y * self.size + x)).unwrap();
         cell.adjacency = adjancies;
     }

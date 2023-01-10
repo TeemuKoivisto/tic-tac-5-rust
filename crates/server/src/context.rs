@@ -198,13 +198,9 @@ impl Context {
         // });
     }
 
-    pub async fn handle_player_select_cell(
-        &self,
-        payload: PlayerSelectCell,
-        game_mut: Arc<Mutex<Game>>,
-    ) {
-        // let game_id = game_mut.lock().await.id;
-        // let game_manager = self.game_manager_mutex.lock().await;
+    pub async fn handle_player_select_cell(&self, payload: PlayerSelectCell) {
+        let game_id = payload.game_id.clone();
+        let game_mut = self.find_game(game_id).await;
         let mut game = game_mut.lock().await;
         let moved = game.handle_player_move(&payload);
         let game_id = &payload.game_id;
@@ -212,7 +208,6 @@ impl Context {
             println!("Incorrect move: {}", moved.unwrap());
             return;
         }
-        println!("send move!");
         let mut conn_manager = self.conn_manager_mutex.lock().await;
         conn_manager
             .broadcast(

@@ -82,9 +82,9 @@ impl ConnectionManager {
         }
     }
     pub async fn broadcast(&mut self, msg: Message, room: String) {
-        debug!("hello broadcast to room {:?}", room);
+        // debug!("hello broadcast to room {:?}", room);
         for conn in self.connections.iter_mut() {
-            debug!("broadcasting to conn {:?}", conn);
+            // debug!("broadcasting to conn {:?}", conn);
             if conn.is_in_room(&room) {
                 let _ = conn.send(msg.clone()).await;
             }
