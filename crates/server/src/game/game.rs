@@ -122,4 +122,33 @@ impl Game {
             }
         }
     }
+
+    pub fn get_game_start(&self) -> GameStart {
+        GameStart {
+            game_id: self.id.to_string(),
+            players: self.state.players.clone(),
+            cells: self.state.get_cells(),
+        }
+    }
+
+    pub fn get_game_end(&self, winner: Option<Player>) -> GameEnd {
+        GameEnd {
+            game_id: self.id.to_string(),
+            result: self.state.status,
+            winner,
+        }
+    }
+
+    // pub fn get_tick(&self) -> Tick {
+    //     Tick {
+    //         game_id: self.id.to_string(),
+    //         cursors: self
+    //             .state
+    //             .players
+    //             .iter()
+    //             .map(|p| p.cursor.as_ref().unwrap().clone())
+    //             .collect(),
+    //         balls: self.state.get_balls(),
+    //     }
+    // }
 }

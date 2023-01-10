@@ -2,7 +2,7 @@ use crate::connection::ConnectionManager;
 use log::debug;
 use quick_protobuf::{MessageWrite, Writer};
 use std::sync::Arc;
-use tic_tac_5::{events::ServerEvent, proto::proto_all::ServerMsgType};
+use tic_tac_5::{events::ServerEvent, proto::proto_all::*};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -45,14 +45,14 @@ pub async fn write_server_msg(
                 )
                 .await;
         }
-        ServerEvent::Tick(state) => {
-            conn_manager
-                .broadcast(
-                    serialize_server_event(ServerMsgType::tick, &state),
-                    state.game_id,
-                )
-                .await;
-        }
+        // ServerEvent::Tick(state) => {
+        //     conn_manager
+        //         .broadcast(
+        //             serialize_server_event(ServerMsgType::tick, &state),
+        //             state.game_id,
+        //         )
+        //         .await;
+        // }
         ServerEvent::Quit(payload) => {
             debug!("ServerEvents::Quit");
             conn_manager
@@ -70,8 +70,8 @@ pub fn serialize_server_event<M: MessageWrite>(header: ServerMsgType, payload: &
     let mut out = Vec::new();
     let mut writer = Writer::new(&mut out);
     writer.write_u8(header.try_into().unwrap()).unwrap();
-    writer
-        .write_message(payload)
-        .expect("Cannot serialize state");
+    payload
+        .write_message(&mut writer)
+        .expect("Unable to serialize message!");
     Message::Binary(out)
 }

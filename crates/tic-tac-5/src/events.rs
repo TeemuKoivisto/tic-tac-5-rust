@@ -40,7 +40,7 @@ pub enum ServerEvent {
     PlayerJoin(PlayerJoinGame),
     GameStart(GameStart),
     GameEnd(GameEnd),
-    Tick(Tick),
+    // Tick(Tick),
     Quit(PlayerLeave),
 }
 
@@ -56,8 +56,8 @@ impl TryInto<u8> for ServerMsgType {
             Self::player_join => Ok(5),
             Self::game_start => Ok(6),
             Self::game_end => Ok(7),
-            Self::tick => Ok(8),
-            Self::player_left => Ok(9),
+            // Self::tick => Ok(8),
+            Self::player_left => Ok(8),
         }
     }
 }

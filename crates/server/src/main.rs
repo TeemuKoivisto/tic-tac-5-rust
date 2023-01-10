@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    let port = std::env::var("PORT").unwrap_or_else(|_| "7634".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "6634".to_string());
     let addr = format!("0.0.0.0:{}", port);
 
     let listener = TcpListener::bind(&addr)

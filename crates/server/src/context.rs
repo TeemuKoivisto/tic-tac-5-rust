@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::connection::Connection;
 use crate::connection::ConnectionManager;
+use crate::game::game::Game;
 use crate::game::game_manager::GameManager;
 use crate::game::write_server_msg::serialize_server_event;
 
@@ -27,26 +28,6 @@ impl Context {
             game_manager_mutex: g,
             conn_manager_mutex: c,
         }
-    }
-
-    pub async fn handle_join_lobby(&self, socket_id: u32, player_join: PlayerJoinLobby) {
-        let mut game_manager = self.game_manager_mutex.lock().await;
-        game_manager.player_join_lobby(player_join);
-        let mut conn_manager = self.conn_manager_mutex.lock().await;
-        conn_manager.join_conn_to_room(socket_id, "lobby".to_string());
-        let games = game_manager.lobby_state().await;
-        conn_manager
-            .send(
-                serialize_server_event(
-                    ServerMsgType::lobby_state,
-                    &LobbyState {
-                        games,
-                        players: game_manager.lobby_players.clone(),
-                    },
-                ),
-                socket_id,
-            )
-            .await;
     }
 
     pub async fn handle_player_connect(
@@ -99,5 +80,121 @@ impl Context {
             game_manager.remove_game(game_id);
         }
         self.conn_manager_mutex.lock().await.remove(socket_id);
+    }
+
+    pub async fn handle_join_lobby(&self, socket_id: u32, player_join: PlayerJoinLobby) {
+        let mut game_manager = self.game_manager_mutex.lock().await;
+        game_manager.player_join_lobby(player_join);
+        let mut conn_manager = self.conn_manager_mutex.lock().await;
+        conn_manager.join_conn_to_room(socket_id, "lobby".to_string());
+        let games = game_manager.lobby_state().await;
+        conn_manager
+            .send(
+                serialize_server_event(
+                    ServerMsgType::lobby_state,
+                    &LobbyState {
+                        games,
+                        players: game_manager.lobby_players.clone(),
+                    },
+                ),
+                socket_id,
+            )
+            .await;
+    }
+
+    pub async fn create_lobby_game(
+        &self,
+        socket_id: u32,
+        create_game: PlayerCreateGame,
+    ) -> (bool, Arc<tokio::sync::Mutex<Game>>) {
+        let mut game_manager = self.game_manager_mutex.lock().await;
+        let mut conn_manager = self.conn_manager_mutex.lock().await;
+        let game_mut = game_manager
+            .find_or_create_game(create_game.options.as_ref().unwrap())
+            .await;
+        let game_id = game_mut.lock().await.id;
+        let mut started = false;
+        {
+            let mut game = game_mut.lock().await;
+            conn_manager.join_conn_to_room(socket_id, game_id.to_string());
+            conn_manager.remove_conn_from_room(socket_id, "lobby".to_string());
+            game_manager.player_leave_lobby(create_game.player_id);
+            let player_join = PlayerJoinGame {
+                game_id: game.id.to_string(),
+                player_id: create_game.player_id,
+                name: create_game.name,
+            };
+            started = game.handle_player_join(&player_join, socket_id);
+            let _ = game_manager
+                .broadcast
+                .send(ServerEvent::PlayerJoin(player_join));
+            if started {
+                let _ = game_manager
+                    .broadcast
+                    .send(ServerEvent::GameStart(game.get_game_start()));
+            }
+        }
+        let games = game_manager.lobby_state().await;
+        conn_manager
+            .broadcast(
+                serialize_server_event(
+                    ServerMsgType::lobby_state,
+                    &LobbyState {
+                        games,
+                        players: game_manager.lobby_players.clone(),
+                    },
+                ),
+                "lobby".to_string(),
+            )
+            .await;
+        (started, game_mut)
+    }
+
+    pub async fn find_game(&self, game_id: String) -> Arc<Mutex<Game>> {
+        let id = Uuid::parse_str(game_id.as_str());
+        if id.is_err() {
+            panic!("Non uuid value for game {}", game_id);
+        }
+        let game_manager = self.game_manager_mutex.lock().await;
+        game_manager.get_game(&id.unwrap()).unwrap().clone()
+    }
+
+    pub async fn join_lobby_game(
+        &self,
+        socket_id: u32,
+        game_mut: Arc<Mutex<Game>>,
+        payload: PlayerJoinGame,
+    ) -> bool {
+        let mut game_manager = self.game_manager_mutex.lock().await;
+        let mut conn_manager = self.conn_manager_mutex.lock().await;
+        let mut started = false;
+        let mut game = game_mut.lock().await;
+        conn_manager.join_conn_to_room(socket_id, game.id.to_string());
+        conn_manager.remove_conn_from_room(socket_id, "lobby".to_string());
+        game_manager.player_leave_lobby(payload.player_id);
+        started = game.handle_player_join(&payload, socket_id);
+        let _ = game_manager
+            .broadcast
+            .send(ServerEvent::PlayerJoin(payload));
+        if started {
+            let _ = game_manager
+                .broadcast
+                .send(ServerEvent::GameStart(game.get_game_start()));
+        }
+        started
+    }
+
+    pub async fn start_game(&self, game_mut: Arc<Mutex<Game>>) {
+        let game_id = game_mut.lock().await.id;
+        let mut game_manager = self.game_manager_mutex.lock().await;
+        let game_receiver = game_manager.start_game(game_id).await;
+        let broadcast = game_manager.broadcast.clone();
+        let gm = self.game_manager_mutex.clone();
+        // tokio::spawn(async move {
+        //     let res = game_loop(game_mut, broadcast, game_receiver).await;
+        //     let mut game_manager = gm.lock().await;
+        //     let game_id = Uuid::parse_str(&res.unwrap().game_id).unwrap();
+        //     game_manager.remove_game(game_id);
+        // });
     }
 }

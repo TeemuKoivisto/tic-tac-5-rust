@@ -77,8 +77,8 @@ export enum ServerMsgType {
   player_join = 5,
   game_start = 6,
   game_end = 7,
-  tick = 8,
-  player_left = 9,
+  /** player_left - tick = 8; */
+  player_left = 8,
   UNRECOGNIZED = -1,
 }
 
@@ -109,9 +109,6 @@ export function serverMsgTypeFromJSON(object: any): ServerMsgType {
     case "game_end":
       return ServerMsgType.game_end;
     case 8:
-    case "tick":
-      return ServerMsgType.tick;
-    case 9:
     case "player_left":
       return ServerMsgType.player_left;
     case -1:
@@ -139,11 +136,42 @@ export function serverMsgTypeToJSON(object: ServerMsgType): string {
       return "game_start";
     case ServerMsgType.game_end:
       return "game_end";
-    case ServerMsgType.tick:
-      return "tick";
     case ServerMsgType.player_left:
       return "player_left";
     case ServerMsgType.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+export enum CellType {
+  EMPTY = 0,
+  PLAYER_CELL = 1,
+  UNRECOGNIZED = -1,
+}
+
+export function cellTypeFromJSON(object: any): CellType {
+  switch (object) {
+    case 0:
+    case "EMPTY":
+      return CellType.EMPTY;
+    case 1:
+    case "PLAYER_CELL":
+      return CellType.PLAYER_CELL;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return CellType.UNRECOGNIZED;
+  }
+}
+
+export function cellTypeToJSON(object: CellType): string {
+  switch (object) {
+    case CellType.EMPTY:
+      return "EMPTY";
+    case CellType.PLAYER_CELL:
+      return "PLAYER_CELL";
+    case CellType.UNRECOGNIZED:
     default:
       return "UNRECOGNIZED";
   }
@@ -215,33 +243,11 @@ export interface Player {
   dead: boolean;
 }
 
-export interface Cursor {
-  player: number;
+export interface Cell {
   x: number;
   y: number;
-}
-
-export interface BallOwner {
+  cellType: CellType;
   player: number;
-  percentage: number;
-}
-
-export interface Ball {
-  player: number;
-  color: number;
-  x: number;
-  y: number;
-  radius: number;
-  owners: BallOwner[];
-}
-
-export interface Rect {
-  /** uint32 color = 1; */
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
 }
 
 export interface LobbyGame {
@@ -263,8 +269,7 @@ export interface LobbyState {
 export interface GameStart {
   gameId: string;
   players: Player[];
-  balls: Ball[];
-  rects: Rect[];
+  cells: Cell[];
 }
 
 export interface GameEnd {
@@ -274,16 +279,9 @@ export interface GameEnd {
 }
 
 export interface Move {
+  player: number;
   x: number;
   y: number;
-  targetX: number;
-  targetY: number;
-}
-
-export interface Tick {
-  gameId: string;
-  cursors: Cursor[];
-  balls: Ball[];
 }
 
 /** Values are zero if not specified. */
@@ -300,7 +298,7 @@ export interface PlayerJoinLobby {
 export interface PlayerCreateGame {
   playerId: number;
   name: string;
-  color: string;
+  preferredSymbol: string;
   options: GameOptions | undefined;
 }
 
@@ -308,8 +306,6 @@ export interface PlayerJoinGame {
   gameId?: string | undefined;
   playerId: number;
   name: string;
-  color: string;
-  options: GameOptions | undefined;
 }
 
 export interface PlayerMove {
@@ -418,40 +414,46 @@ export const Player = {
   },
 };
 
-function createBaseCursor(): Cursor {
-  return { player: 0, x: 0, y: 0 };
+function createBaseCell(): Cell {
+  return { x: 0, y: 0, cellType: 0, player: 0 };
 }
 
-export const Cursor = {
-  encode(message: Cursor, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.player !== 0) {
-      writer.uint32(8).uint32(message.player);
-    }
+export const Cell = {
+  encode(message: Cell, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.x !== 0) {
-      writer.uint32(16).uint32(message.x);
+      writer.uint32(8).uint32(message.x);
     }
     if (message.y !== 0) {
-      writer.uint32(24).uint32(message.y);
+      writer.uint32(16).uint32(message.y);
+    }
+    if (message.cellType !== 0) {
+      writer.uint32(24).int32(message.cellType);
+    }
+    if (message.player !== 0) {
+      writer.uint32(32).uint32(message.player);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): Cursor {
+  decode(input: _m0.Reader | Uint8Array, length?: number): Cell {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCursor();
+    const message = createBaseCell();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.player = reader.uint32();
-          break;
-        case 2:
           message.x = reader.uint32();
           break;
-        case 3:
+        case 2:
           message.y = reader.uint32();
           break;
+        case 3:
+          message.cellType = reader.int32() as any;
+          break;
+        case 4:
+          message.player = reader.uint32();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -460,268 +462,30 @@ export const Cursor = {
     return message;
   },
 
-  fromJSON(object: any): Cursor {
+  fromJSON(object: any): Cell {
     return {
-      player: isSet(object.player) ? Number(object.player) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
       y: isSet(object.y) ? Number(object.y) : 0,
+      cellType: isSet(object.cellType) ? cellTypeFromJSON(object.cellType) : 0,
+      player: isSet(object.player) ? Number(object.player) : 0,
     };
   },
 
-  toJSON(message: Cursor): unknown {
+  toJSON(message: Cell): unknown {
     const obj: any = {};
-    message.player !== undefined && (obj.player = Math.round(message.player));
     message.x !== undefined && (obj.x = Math.round(message.x));
     message.y !== undefined && (obj.y = Math.round(message.y));
-    return obj;
-  },
-
-  fromPartial<I extends Exact<DeepPartial<Cursor>, I>>(object: I): Cursor {
-    const message = createBaseCursor();
-    message.player = object.player ?? 0;
-    message.x = object.x ?? 0;
-    message.y = object.y ?? 0;
-    return message;
-  },
-};
-
-function createBaseBallOwner(): BallOwner {
-  return { player: 0, percentage: 0 };
-}
-
-export const BallOwner = {
-  encode(message: BallOwner, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.player !== 0) {
-      writer.uint32(8).uint32(message.player);
-    }
-    if (message.percentage !== 0) {
-      writer.uint32(21).float(message.percentage);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): BallOwner {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseBallOwner();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.player = reader.uint32();
-          break;
-        case 2:
-          message.percentage = reader.float();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): BallOwner {
-    return {
-      player: isSet(object.player) ? Number(object.player) : 0,
-      percentage: isSet(object.percentage) ? Number(object.percentage) : 0,
-    };
-  },
-
-  toJSON(message: BallOwner): unknown {
-    const obj: any = {};
+    message.cellType !== undefined && (obj.cellType = cellTypeToJSON(message.cellType));
     message.player !== undefined && (obj.player = Math.round(message.player));
-    message.percentage !== undefined && (obj.percentage = message.percentage);
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<BallOwner>, I>>(object: I): BallOwner {
-    const message = createBaseBallOwner();
-    message.player = object.player ?? 0;
-    message.percentage = object.percentage ?? 0;
-    return message;
-  },
-};
-
-function createBaseBall(): Ball {
-  return { player: 0, color: 0, x: 0, y: 0, radius: 0, owners: [] };
-}
-
-export const Ball = {
-  encode(message: Ball, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.player !== 0) {
-      writer.uint32(8).uint32(message.player);
-    }
-    if (message.color !== 0) {
-      writer.uint32(16).uint32(message.color);
-    }
-    if (message.x !== 0) {
-      writer.uint32(29).float(message.x);
-    }
-    if (message.y !== 0) {
-      writer.uint32(37).float(message.y);
-    }
-    if (message.radius !== 0) {
-      writer.uint32(45).float(message.radius);
-    }
-    for (const v of message.owners) {
-      BallOwner.encode(v!, writer.uint32(50).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): Ball {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseBall();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.player = reader.uint32();
-          break;
-        case 2:
-          message.color = reader.uint32();
-          break;
-        case 3:
-          message.x = reader.float();
-          break;
-        case 4:
-          message.y = reader.float();
-          break;
-        case 5:
-          message.radius = reader.float();
-          break;
-        case 6:
-          message.owners.push(BallOwner.decode(reader, reader.uint32()));
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): Ball {
-    return {
-      player: isSet(object.player) ? Number(object.player) : 0,
-      color: isSet(object.color) ? Number(object.color) : 0,
-      x: isSet(object.x) ? Number(object.x) : 0,
-      y: isSet(object.y) ? Number(object.y) : 0,
-      radius: isSet(object.radius) ? Number(object.radius) : 0,
-      owners: Array.isArray(object?.owners) ? object.owners.map((e: any) => BallOwner.fromJSON(e)) : [],
-    };
-  },
-
-  toJSON(message: Ball): unknown {
-    const obj: any = {};
-    message.player !== undefined && (obj.player = Math.round(message.player));
-    message.color !== undefined && (obj.color = Math.round(message.color));
-    message.x !== undefined && (obj.x = message.x);
-    message.y !== undefined && (obj.y = message.y);
-    message.radius !== undefined && (obj.radius = message.radius);
-    if (message.owners) {
-      obj.owners = message.owners.map((e) => e ? BallOwner.toJSON(e) : undefined);
-    } else {
-      obj.owners = [];
-    }
-    return obj;
-  },
-
-  fromPartial<I extends Exact<DeepPartial<Ball>, I>>(object: I): Ball {
-    const message = createBaseBall();
-    message.player = object.player ?? 0;
-    message.color = object.color ?? 0;
+  fromPartial<I extends Exact<DeepPartial<Cell>, I>>(object: I): Cell {
+    const message = createBaseCell();
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
-    message.radius = object.radius ?? 0;
-    message.owners = object.owners?.map((e) => BallOwner.fromPartial(e)) || [];
-    return message;
-  },
-};
-
-function createBaseRect(): Rect {
-  return { x: 0, y: 0, width: 0, height: 0, rotation: 0 };
-}
-
-export const Rect = {
-  encode(message: Rect, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.x !== 0) {
-      writer.uint32(21).float(message.x);
-    }
-    if (message.y !== 0) {
-      writer.uint32(29).float(message.y);
-    }
-    if (message.width !== 0) {
-      writer.uint32(37).float(message.width);
-    }
-    if (message.height !== 0) {
-      writer.uint32(45).float(message.height);
-    }
-    if (message.rotation !== 0) {
-      writer.uint32(53).float(message.rotation);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): Rect {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseRect();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 2:
-          message.x = reader.float();
-          break;
-        case 3:
-          message.y = reader.float();
-          break;
-        case 4:
-          message.width = reader.float();
-          break;
-        case 5:
-          message.height = reader.float();
-          break;
-        case 6:
-          message.rotation = reader.float();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): Rect {
-    return {
-      x: isSet(object.x) ? Number(object.x) : 0,
-      y: isSet(object.y) ? Number(object.y) : 0,
-      width: isSet(object.width) ? Number(object.width) : 0,
-      height: isSet(object.height) ? Number(object.height) : 0,
-      rotation: isSet(object.rotation) ? Number(object.rotation) : 0,
-    };
-  },
-
-  toJSON(message: Rect): unknown {
-    const obj: any = {};
-    message.x !== undefined && (obj.x = message.x);
-    message.y !== undefined && (obj.y = message.y);
-    message.width !== undefined && (obj.width = message.width);
-    message.height !== undefined && (obj.height = message.height);
-    message.rotation !== undefined && (obj.rotation = message.rotation);
-    return obj;
-  },
-
-  fromPartial<I extends Exact<DeepPartial<Rect>, I>>(object: I): Rect {
-    const message = createBaseRect();
-    message.x = object.x ?? 0;
-    message.y = object.y ?? 0;
-    message.width = object.width ?? 0;
-    message.height = object.height ?? 0;
-    message.rotation = object.rotation ?? 0;
+    message.cellType = object.cellType ?? 0;
+    message.player = object.player ?? 0;
     return message;
   },
 };
@@ -918,7 +682,7 @@ export const LobbyState = {
 };
 
 function createBaseGameStart(): GameStart {
-  return { gameId: "", players: [], balls: [], rects: [] };
+  return { gameId: "", players: [], cells: [] };
 }
 
 export const GameStart = {
@@ -929,11 +693,8 @@ export const GameStart = {
     for (const v of message.players) {
       Player.encode(v!, writer.uint32(18).fork()).ldelim();
     }
-    for (const v of message.balls) {
-      Ball.encode(v!, writer.uint32(26).fork()).ldelim();
-    }
-    for (const v of message.rects) {
-      Rect.encode(v!, writer.uint32(34).fork()).ldelim();
+    for (const v of message.cells) {
+      Cell.encode(v!, writer.uint32(26).fork()).ldelim();
     }
     return writer;
   },
@@ -952,10 +713,7 @@ export const GameStart = {
           message.players.push(Player.decode(reader, reader.uint32()));
           break;
         case 3:
-          message.balls.push(Ball.decode(reader, reader.uint32()));
-          break;
-        case 4:
-          message.rects.push(Rect.decode(reader, reader.uint32()));
+          message.cells.push(Cell.decode(reader, reader.uint32()));
           break;
         default:
           reader.skipType(tag & 7);
@@ -969,8 +727,7 @@ export const GameStart = {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : "",
       players: Array.isArray(object?.players) ? object.players.map((e: any) => Player.fromJSON(e)) : [],
-      balls: Array.isArray(object?.balls) ? object.balls.map((e: any) => Ball.fromJSON(e)) : [],
-      rects: Array.isArray(object?.rects) ? object.rects.map((e: any) => Rect.fromJSON(e)) : [],
+      cells: Array.isArray(object?.cells) ? object.cells.map((e: any) => Cell.fromJSON(e)) : [],
     };
   },
 
@@ -982,15 +739,10 @@ export const GameStart = {
     } else {
       obj.players = [];
     }
-    if (message.balls) {
-      obj.balls = message.balls.map((e) => e ? Ball.toJSON(e) : undefined);
+    if (message.cells) {
+      obj.cells = message.cells.map((e) => e ? Cell.toJSON(e) : undefined);
     } else {
-      obj.balls = [];
-    }
-    if (message.rects) {
-      obj.rects = message.rects.map((e) => e ? Rect.toJSON(e) : undefined);
-    } else {
-      obj.rects = [];
+      obj.cells = [];
     }
     return obj;
   },
@@ -999,8 +751,7 @@ export const GameStart = {
     const message = createBaseGameStart();
     message.gameId = object.gameId ?? "";
     message.players = object.players?.map((e) => Player.fromPartial(e)) || [];
-    message.balls = object.balls?.map((e) => Ball.fromPartial(e)) || [];
-    message.rects = object.rects?.map((e) => Rect.fromPartial(e)) || [];
+    message.cells = object.cells?.map((e) => Cell.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1075,22 +826,19 @@ export const GameEnd = {
 };
 
 function createBaseMove(): Move {
-  return { x: 0, y: 0, targetX: 0, targetY: 0 };
+  return { player: 0, x: 0, y: 0 };
 }
 
 export const Move = {
   encode(message: Move, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.player !== 0) {
+      writer.uint32(8).uint32(message.player);
+    }
     if (message.x !== 0) {
-      writer.uint32(8).uint32(message.x);
+      writer.uint32(16).uint32(message.x);
     }
     if (message.y !== 0) {
-      writer.uint32(16).uint32(message.y);
-    }
-    if (message.targetX !== 0) {
-      writer.uint32(24).uint32(message.targetX);
-    }
-    if (message.targetY !== 0) {
-      writer.uint32(32).uint32(message.targetY);
+      writer.uint32(24).uint32(message.y);
     }
     return writer;
   },
@@ -1103,16 +851,13 @@ export const Move = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.x = reader.uint32();
+          message.player = reader.uint32();
           break;
         case 2:
-          message.y = reader.uint32();
+          message.x = reader.uint32();
           break;
         case 3:
-          message.targetX = reader.uint32();
-          break;
-        case 4:
-          message.targetY = reader.uint32();
+          message.y = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1124,103 +869,25 @@ export const Move = {
 
   fromJSON(object: any): Move {
     return {
+      player: isSet(object.player) ? Number(object.player) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
       y: isSet(object.y) ? Number(object.y) : 0,
-      targetX: isSet(object.targetX) ? Number(object.targetX) : 0,
-      targetY: isSet(object.targetY) ? Number(object.targetY) : 0,
     };
   },
 
   toJSON(message: Move): unknown {
     const obj: any = {};
+    message.player !== undefined && (obj.player = Math.round(message.player));
     message.x !== undefined && (obj.x = Math.round(message.x));
     message.y !== undefined && (obj.y = Math.round(message.y));
-    message.targetX !== undefined && (obj.targetX = Math.round(message.targetX));
-    message.targetY !== undefined && (obj.targetY = Math.round(message.targetY));
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<Move>, I>>(object: I): Move {
     const message = createBaseMove();
+    message.player = object.player ?? 0;
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
-    message.targetX = object.targetX ?? 0;
-    message.targetY = object.targetY ?? 0;
-    return message;
-  },
-};
-
-function createBaseTick(): Tick {
-  return { gameId: "", cursors: [], balls: [] };
-}
-
-export const Tick = {
-  encode(message: Tick, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.gameId !== "") {
-      writer.uint32(10).string(message.gameId);
-    }
-    for (const v of message.cursors) {
-      Cursor.encode(v!, writer.uint32(18).fork()).ldelim();
-    }
-    for (const v of message.balls) {
-      Ball.encode(v!, writer.uint32(26).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): Tick {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseTick();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.gameId = reader.string();
-          break;
-        case 2:
-          message.cursors.push(Cursor.decode(reader, reader.uint32()));
-          break;
-        case 3:
-          message.balls.push(Ball.decode(reader, reader.uint32()));
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): Tick {
-    return {
-      gameId: isSet(object.gameId) ? String(object.gameId) : "",
-      cursors: Array.isArray(object?.cursors) ? object.cursors.map((e: any) => Cursor.fromJSON(e)) : [],
-      balls: Array.isArray(object?.balls) ? object.balls.map((e: any) => Ball.fromJSON(e)) : [],
-    };
-  },
-
-  toJSON(message: Tick): unknown {
-    const obj: any = {};
-    message.gameId !== undefined && (obj.gameId = message.gameId);
-    if (message.cursors) {
-      obj.cursors = message.cursors.map((e) => e ? Cursor.toJSON(e) : undefined);
-    } else {
-      obj.cursors = [];
-    }
-    if (message.balls) {
-      obj.balls = message.balls.map((e) => e ? Ball.toJSON(e) : undefined);
-    } else {
-      obj.balls = [];
-    }
-    return obj;
-  },
-
-  fromPartial<I extends Exact<DeepPartial<Tick>, I>>(object: I): Tick {
-    const message = createBaseTick();
-    message.gameId = object.gameId ?? "";
-    message.cursors = object.cursors?.map((e) => Cursor.fromPartial(e)) || [];
-    message.balls = object.balls?.map((e) => Ball.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1342,7 +1009,7 @@ export const PlayerJoinLobby = {
 };
 
 function createBasePlayerCreateGame(): PlayerCreateGame {
-  return { playerId: 0, name: "", color: "", options: undefined };
+  return { playerId: 0, name: "", preferredSymbol: "", options: undefined };
 }
 
 export const PlayerCreateGame = {
@@ -1353,8 +1020,8 @@ export const PlayerCreateGame = {
     if (message.name !== "") {
       writer.uint32(18).string(message.name);
     }
-    if (message.color !== "") {
-      writer.uint32(26).string(message.color);
+    if (message.preferredSymbol !== "") {
+      writer.uint32(26).string(message.preferredSymbol);
     }
     if (message.options !== undefined) {
       GameOptions.encode(message.options, writer.uint32(34).fork()).ldelim();
@@ -1376,7 +1043,7 @@ export const PlayerCreateGame = {
           message.name = reader.string();
           break;
         case 3:
-          message.color = reader.string();
+          message.preferredSymbol = reader.string();
           break;
         case 4:
           message.options = GameOptions.decode(reader, reader.uint32());
@@ -1393,7 +1060,7 @@ export const PlayerCreateGame = {
     return {
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
       name: isSet(object.name) ? String(object.name) : "",
-      color: isSet(object.color) ? String(object.color) : "",
+      preferredSymbol: isSet(object.preferredSymbol) ? String(object.preferredSymbol) : "",
       options: isSet(object.options) ? GameOptions.fromJSON(object.options) : undefined,
     };
   },
@@ -1402,7 +1069,7 @@ export const PlayerCreateGame = {
     const obj: any = {};
     message.playerId !== undefined && (obj.playerId = Math.round(message.playerId));
     message.name !== undefined && (obj.name = message.name);
-    message.color !== undefined && (obj.color = message.color);
+    message.preferredSymbol !== undefined && (obj.preferredSymbol = message.preferredSymbol);
     message.options !== undefined && (obj.options = message.options ? GameOptions.toJSON(message.options) : undefined);
     return obj;
   },
@@ -1411,7 +1078,7 @@ export const PlayerCreateGame = {
     const message = createBasePlayerCreateGame();
     message.playerId = object.playerId ?? 0;
     message.name = object.name ?? "";
-    message.color = object.color ?? "";
+    message.preferredSymbol = object.preferredSymbol ?? "";
     message.options = (object.options !== undefined && object.options !== null)
       ? GameOptions.fromPartial(object.options)
       : undefined;
@@ -1420,7 +1087,7 @@ export const PlayerCreateGame = {
 };
 
 function createBasePlayerJoinGame(): PlayerJoinGame {
-  return { gameId: undefined, playerId: 0, name: "", color: "", options: undefined };
+  return { gameId: undefined, playerId: 0, name: "" };
 }
 
 export const PlayerJoinGame = {
@@ -1433,12 +1100,6 @@ export const PlayerJoinGame = {
     }
     if (message.name !== "") {
       writer.uint32(26).string(message.name);
-    }
-    if (message.color !== "") {
-      writer.uint32(34).string(message.color);
-    }
-    if (message.options !== undefined) {
-      GameOptions.encode(message.options, writer.uint32(42).fork()).ldelim();
     }
     return writer;
   },
@@ -1459,12 +1120,6 @@ export const PlayerJoinGame = {
         case 3:
           message.name = reader.string();
           break;
-        case 4:
-          message.color = reader.string();
-          break;
-        case 5:
-          message.options = GameOptions.decode(reader, reader.uint32());
-          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1478,8 +1133,6 @@ export const PlayerJoinGame = {
       gameId: isSet(object.gameId) ? String(object.gameId) : undefined,
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
       name: isSet(object.name) ? String(object.name) : "",
-      color: isSet(object.color) ? String(object.color) : "",
-      options: isSet(object.options) ? GameOptions.fromJSON(object.options) : undefined,
     };
   },
 
@@ -1488,8 +1141,6 @@ export const PlayerJoinGame = {
     message.gameId !== undefined && (obj.gameId = message.gameId);
     message.playerId !== undefined && (obj.playerId = Math.round(message.playerId));
     message.name !== undefined && (obj.name = message.name);
-    message.color !== undefined && (obj.color = message.color);
-    message.options !== undefined && (obj.options = message.options ? GameOptions.toJSON(message.options) : undefined);
     return obj;
   },
 
@@ -1498,10 +1149,6 @@ export const PlayerJoinGame = {
     message.gameId = object.gameId ?? undefined;
     message.playerId = object.playerId ?? 0;
     message.name = object.name ?? "";
-    message.color = object.color ?? "";
-    message.options = (object.options !== undefined && object.options !== null)
-      ? GameOptions.fromPartial(object.options)
-      : undefined;
     return message;
   },
 };

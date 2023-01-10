@@ -72,4 +72,16 @@ impl GameState {
     pub fn remove_player(&mut self, player_number: u32) {
         self.players[player_number as usize].dead = true;
     }
+    pub fn get_cells(&self) -> Vec<Cell> {
+        self.board
+            .cells
+            .iter()
+            .map(|c| Cell {
+                x: c.1.x,
+                y: c.1.y,
+                cell_type: CellType::EMPTY,
+                player: c.1.owner,
+            })
+            .collect::<Vec<Cell>>()
+    }
 }

@@ -70,8 +70,7 @@ pub enum ServerMsgType {
     player_join = 5,
     game_start = 6,
     game_end = 7,
-    tick = 8,
-    player_left = 9,
+    player_left = 8,
 }
 
 impl Default for ServerMsgType {
@@ -91,8 +90,7 @@ impl From<i32> for ServerMsgType {
             5 => ServerMsgType::player_join,
             6 => ServerMsgType::game_start,
             7 => ServerMsgType::game_end,
-            8 => ServerMsgType::tick,
-            9 => ServerMsgType::player_left,
+            8 => ServerMsgType::player_left,
             _ => Self::default(),
         }
     }
@@ -109,8 +107,39 @@ impl<'a> From<&'a str> for ServerMsgType {
             "player_join" => ServerMsgType::player_join,
             "game_start" => ServerMsgType::game_start,
             "game_end" => ServerMsgType::game_end,
-            "tick" => ServerMsgType::tick,
             "player_left" => ServerMsgType::player_left,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum CellType {
+    EMPTY = 0,
+    PLAYER_CELL = 1,
+}
+
+impl Default for CellType {
+    fn default() -> Self {
+        CellType::EMPTY
+    }
+}
+
+impl From<i32> for CellType {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => CellType::EMPTY,
+            1 => CellType::PLAYER_CELL,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for CellType {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "EMPTY" => CellType::EMPTY,
+            "PLAYER_CELL" => CellType::PLAYER_CELL,
             _ => Self::default(),
         }
     }
@@ -212,20 +241,22 @@ impl MessageWrite for Player {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct Cursor {
-    pub player: u32,
+pub struct Cell {
     pub x: u32,
     pub y: u32,
+    pub cell_type: proto_all::CellType,
+    pub player: u32,
 }
 
-impl<'a> MessageRead<'a> for Cursor {
+impl<'a> MessageRead<'a> for Cell {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
             match r.next_tag(bytes) {
-                Ok(8) => msg.player = r.read_uint32(bytes)?,
-                Ok(16) => msg.x = r.read_uint32(bytes)?,
-                Ok(24) => msg.y = r.read_uint32(bytes)?,
+                Ok(8) => msg.x = r.read_uint32(bytes)?,
+                Ok(16) => msg.y = r.read_uint32(bytes)?,
+                Ok(24) => msg.cell_type = r.read_enum(bytes)?,
+                Ok(32) => msg.player = r.read_uint32(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -234,151 +265,20 @@ impl<'a> MessageRead<'a> for Cursor {
     }
 }
 
-impl MessageWrite for Cursor {
+impl MessageWrite for Cell {
     fn get_size(&self) -> usize {
         0
-        + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
         + if self.x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.x) as u64) }
         + if self.y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.y) as u64) }
-    }
-
-    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.player != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player))?; }
-        if self.x != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.x))?; }
-        if self.y != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.y))?; }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Clone)]
-pub struct BallOwner {
-    pub player: u32,
-    pub percentage: f32,
-}
-
-impl<'a> MessageRead<'a> for BallOwner {
-    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
-        let mut msg = Self::default();
-        while !r.is_eof() {
-            match r.next_tag(bytes) {
-                Ok(8) => msg.player = r.read_uint32(bytes)?,
-                Ok(21) => msg.percentage = r.read_float(bytes)?,
-                Ok(t) => { r.read_unknown(bytes, t)?; }
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(msg)
-    }
-}
-
-impl MessageWrite for BallOwner {
-    fn get_size(&self) -> usize {
-        0
+        + if self.cell_type == proto_all::CellType::EMPTY { 0 } else { 1 + sizeof_varint(*(&self.cell_type) as u64) }
         + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
-        + if self.percentage == 0f32 { 0 } else { 1 + 4 }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.player != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player))?; }
-        if self.percentage != 0f32 { w.write_with_tag(21, |w| w.write_float(*&self.percentage))?; }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Clone)]
-pub struct Ball {
-    pub player: u32,
-    pub color: u32,
-    pub x: f32,
-    pub y: f32,
-    pub radius: f32,
-    pub owners: Vec<proto_all::BallOwner>,
-}
-
-impl<'a> MessageRead<'a> for Ball {
-    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
-        let mut msg = Self::default();
-        while !r.is_eof() {
-            match r.next_tag(bytes) {
-                Ok(8) => msg.player = r.read_uint32(bytes)?,
-                Ok(16) => msg.color = r.read_uint32(bytes)?,
-                Ok(29) => msg.x = r.read_float(bytes)?,
-                Ok(37) => msg.y = r.read_float(bytes)?,
-                Ok(45) => msg.radius = r.read_float(bytes)?,
-                Ok(50) => msg.owners.push(r.read_message::<proto_all::BallOwner>(bytes)?),
-                Ok(t) => { r.read_unknown(bytes, t)?; }
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(msg)
-    }
-}
-
-impl MessageWrite for Ball {
-    fn get_size(&self) -> usize {
-        0
-        + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
-        + if self.color == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.color) as u64) }
-        + if self.x == 0f32 { 0 } else { 1 + 4 }
-        + if self.y == 0f32 { 0 } else { 1 + 4 }
-        + if self.radius == 0f32 { 0 } else { 1 + 4 }
-        + self.owners.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
-    }
-
-    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.player != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player))?; }
-        if self.color != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.color))?; }
-        if self.x != 0f32 { w.write_with_tag(29, |w| w.write_float(*&self.x))?; }
-        if self.y != 0f32 { w.write_with_tag(37, |w| w.write_float(*&self.y))?; }
-        if self.radius != 0f32 { w.write_with_tag(45, |w| w.write_float(*&self.radius))?; }
-        for s in &self.owners { w.write_with_tag(50, |w| w.write_message(s))?; }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Clone)]
-pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub rotation: f32,
-}
-
-impl<'a> MessageRead<'a> for Rect {
-    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
-        let mut msg = Self::default();
-        while !r.is_eof() {
-            match r.next_tag(bytes) {
-                Ok(21) => msg.x = r.read_float(bytes)?,
-                Ok(29) => msg.y = r.read_float(bytes)?,
-                Ok(37) => msg.width = r.read_float(bytes)?,
-                Ok(45) => msg.height = r.read_float(bytes)?,
-                Ok(53) => msg.rotation = r.read_float(bytes)?,
-                Ok(t) => { r.read_unknown(bytes, t)?; }
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(msg)
-    }
-}
-
-impl MessageWrite for Rect {
-    fn get_size(&self) -> usize {
-        0
-        + if self.x == 0f32 { 0 } else { 1 + 4 }
-        + if self.y == 0f32 { 0 } else { 1 + 4 }
-        + if self.width == 0f32 { 0 } else { 1 + 4 }
-        + if self.height == 0f32 { 0 } else { 1 + 4 }
-        + if self.rotation == 0f32 { 0 } else { 1 + 4 }
-    }
-
-    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.x != 0f32 { w.write_with_tag(21, |w| w.write_float(*&self.x))?; }
-        if self.y != 0f32 { w.write_with_tag(29, |w| w.write_float(*&self.y))?; }
-        if self.width != 0f32 { w.write_with_tag(37, |w| w.write_float(*&self.width))?; }
-        if self.height != 0f32 { w.write_with_tag(45, |w| w.write_float(*&self.height))?; }
-        if self.rotation != 0f32 { w.write_with_tag(53, |w| w.write_float(*&self.rotation))?; }
+        if self.x != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.x))?; }
+        if self.y != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.y))?; }
+        if self.cell_type != proto_all::CellType::EMPTY { w.write_with_tag(24, |w| w.write_enum(*&self.cell_type as i32))?; }
+        if self.player != 0u32 { w.write_with_tag(32, |w| w.write_uint32(*&self.player))?; }
         Ok(())
     }
 }
@@ -496,8 +396,7 @@ impl MessageWrite for LobbyState {
 pub struct GameStart {
     pub game_id: String,
     pub players: Vec<proto_all::Player>,
-    pub balls: Vec<proto_all::Ball>,
-    pub rects: Vec<proto_all::Rect>,
+    pub cells: Vec<proto_all::Cell>,
 }
 
 impl<'a> MessageRead<'a> for GameStart {
@@ -507,8 +406,7 @@ impl<'a> MessageRead<'a> for GameStart {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(18) => msg.players.push(r.read_message::<proto_all::Player>(bytes)?),
-                Ok(26) => msg.balls.push(r.read_message::<proto_all::Ball>(bytes)?),
-                Ok(34) => msg.rects.push(r.read_message::<proto_all::Rect>(bytes)?),
+                Ok(26) => msg.cells.push(r.read_message::<proto_all::Cell>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -522,15 +420,13 @@ impl MessageWrite for GameStart {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
-        + self.balls.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
-        + self.rects.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+        + self.cells.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         for s in &self.players { w.write_with_tag(18, |w| w.write_message(s))?; }
-        for s in &self.balls { w.write_with_tag(26, |w| w.write_message(s))?; }
-        for s in &self.rects { w.write_with_tag(34, |w| w.write_message(s))?; }
+        for s in &self.cells { w.write_with_tag(26, |w| w.write_message(s))?; }
         Ok(())
     }
 }
@@ -576,10 +472,9 @@ impl MessageWrite for GameEnd {
 
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct Move {
+    pub player: u32,
     pub x: u32,
     pub y: u32,
-    pub target_x: u32,
-    pub target_y: u32,
 }
 
 impl<'a> MessageRead<'a> for Move {
@@ -587,10 +482,9 @@ impl<'a> MessageRead<'a> for Move {
         let mut msg = Self::default();
         while !r.is_eof() {
             match r.next_tag(bytes) {
-                Ok(8) => msg.x = r.read_uint32(bytes)?,
-                Ok(16) => msg.y = r.read_uint32(bytes)?,
-                Ok(24) => msg.target_x = r.read_uint32(bytes)?,
-                Ok(32) => msg.target_y = r.read_uint32(bytes)?,
+                Ok(8) => msg.player = r.read_uint32(bytes)?,
+                Ok(16) => msg.x = r.read_uint32(bytes)?,
+                Ok(24) => msg.y = r.read_uint32(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -602,56 +496,15 @@ impl<'a> MessageRead<'a> for Move {
 impl MessageWrite for Move {
     fn get_size(&self) -> usize {
         0
+        + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
         + if self.x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.x) as u64) }
         + if self.y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.y) as u64) }
-        + if self.target_x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.target_x) as u64) }
-        + if self.target_y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.target_y) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.x != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.x))?; }
-        if self.y != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.y))?; }
-        if self.target_x != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.target_x))?; }
-        if self.target_y != 0u32 { w.write_with_tag(32, |w| w.write_uint32(*&self.target_y))?; }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Clone)]
-pub struct Tick {
-    pub game_id: String,
-    pub cursors: Vec<proto_all::Cursor>,
-    pub balls: Vec<proto_all::Ball>,
-}
-
-impl<'a> MessageRead<'a> for Tick {
-    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
-        let mut msg = Self::default();
-        while !r.is_eof() {
-            match r.next_tag(bytes) {
-                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
-                Ok(18) => msg.cursors.push(r.read_message::<proto_all::Cursor>(bytes)?),
-                Ok(26) => msg.balls.push(r.read_message::<proto_all::Ball>(bytes)?),
-                Ok(t) => { r.read_unknown(bytes, t)?; }
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(msg)
-    }
-}
-
-impl MessageWrite for Tick {
-    fn get_size(&self) -> usize {
-        0
-        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
-        + self.cursors.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
-        + self.balls.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
-    }
-
-    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
-        for s in &self.cursors { w.write_with_tag(18, |w| w.write_message(s))?; }
-        for s in &self.balls { w.write_with_tag(26, |w| w.write_message(s))?; }
+        if self.player != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player))?; }
+        if self.x != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.x))?; }
+        if self.y != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.y))?; }
         Ok(())
     }
 }
@@ -730,7 +583,7 @@ impl MessageWrite for PlayerJoinLobby {
 pub struct PlayerCreateGame {
     pub player_id: u32,
     pub name: String,
-    pub color: String,
+    pub preferred_symbol: String,
     pub options: Option<proto_all::GameOptions>,
 }
 
@@ -741,7 +594,7 @@ impl<'a> MessageRead<'a> for PlayerCreateGame {
             match r.next_tag(bytes) {
                 Ok(8) => msg.player_id = r.read_uint32(bytes)?,
                 Ok(18) => msg.name = r.read_string(bytes)?.to_owned(),
-                Ok(26) => msg.color = r.read_string(bytes)?.to_owned(),
+                Ok(26) => msg.preferred_symbol = r.read_string(bytes)?.to_owned(),
                 Ok(34) => msg.options = Some(r.read_message::<proto_all::GameOptions>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
@@ -756,14 +609,14 @@ impl MessageWrite for PlayerCreateGame {
         0
         + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
         + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
-        + if self.color == String::default() { 0 } else { 1 + sizeof_len((&self.color).len()) }
+        + if self.preferred_symbol == String::default() { 0 } else { 1 + sizeof_len((&self.preferred_symbol).len()) }
         + self.options.as_ref().map_or(0, |m| 1 + sizeof_len((m).get_size()))
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.player_id != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player_id))?; }
         if self.name != String::default() { w.write_with_tag(18, |w| w.write_string(&**&self.name))?; }
-        if self.color != String::default() { w.write_with_tag(26, |w| w.write_string(&**&self.color))?; }
+        if self.preferred_symbol != String::default() { w.write_with_tag(26, |w| w.write_string(&**&self.preferred_symbol))?; }
         if let Some(ref s) = self.options { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())
     }
@@ -774,8 +627,6 @@ pub struct PlayerJoinGame {
     pub game_id: String,
     pub player_id: u32,
     pub name: String,
-    pub color: String,
-    pub options: Option<proto_all::GameOptions>,
 }
 
 impl<'a> MessageRead<'a> for PlayerJoinGame {
@@ -786,8 +637,6 @@ impl<'a> MessageRead<'a> for PlayerJoinGame {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_id = r.read_uint32(bytes)?,
                 Ok(26) => msg.name = r.read_string(bytes)?.to_owned(),
-                Ok(34) => msg.color = r.read_string(bytes)?.to_owned(),
-                Ok(42) => msg.options = Some(r.read_message::<proto_all::GameOptions>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -802,16 +651,12 @@ impl MessageWrite for PlayerJoinGame {
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
         + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
-        + if self.color == String::default() { 0 } else { 1 + sizeof_len((&self.color).len()) }
-        + self.options.as_ref().map_or(0, |m| 1 + sizeof_len((m).get_size()))
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
         if self.name != String::default() { w.write_with_tag(26, |w| w.write_string(&**&self.name))?; }
-        if self.color != String::default() { w.write_with_tag(34, |w| w.write_string(&**&self.color))?; }
-        if let Some(ref s) = self.options { w.write_with_tag(42, |w| w.write_message(s))?; }
         Ok(())
     }
 }
