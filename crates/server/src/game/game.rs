@@ -36,16 +36,11 @@ impl Game {
         self.state.status == GameStatus::WAITING && self.joined_players.len() == 0
     }
     pub fn get_player_in_turn(&self) -> &Player {
-        &self.state.players[self.state.player_in_turn as usize]
+        &self.state.players[(self.state.player_in_turn - 1) as usize]
         // self.state.players.get(&self.state.player_in_turn).unwrap()
     }
-    pub fn start_game(&mut self) {
-        self.state.status = GameStatus::X_TURN;
-    }
-    pub fn end_game() {}
-    pub fn handle_player_turn() {}
 
-    pub fn is_valid_move(&mut self, payload: &PlayerMove) -> Option<String> {
+    pub fn is_valid_move(&mut self, payload: &PlayerSelectCell) -> Option<String> {
         let in_turn = self.get_player_in_turn();
         if payload.player_number != in_turn.player_number {
             return Some(format!(
@@ -67,7 +62,7 @@ impl Game {
         None
     }
 
-    pub fn handle_player_move(&mut self, payload: &PlayerMove) -> Option<String> {
+    pub fn handle_player_move(&mut self, payload: &PlayerSelectCell) -> Option<String> {
         let err = self.is_valid_move(payload);
         if err.is_some() {
             return err;
@@ -75,11 +70,7 @@ impl Game {
         self.state
             .board
             .update_cell_owner(payload.x, payload.y, payload.player_number);
-        if self.state.player_in_turn == self.state.players.len() as u32 {
-            self.state.player_in_turn = 1;
-        } else {
-            self.state.player_in_turn = self.state.player_in_turn + 1;
-        }
+        self.state.player_in_turn = payload.player_number;
         None
     }
 
@@ -98,6 +89,7 @@ impl Game {
         }
         false
     }
+
     pub fn handle_game_start(&mut self) {
         for player in &self.joined_players {
             self.state

@@ -12,7 +12,9 @@ impl TryFrom<u8> for ClientMsgType {
             }
             x if x == ClientMsgType::join_lobby_game as u8 => Ok(ClientMsgType::join_lobby_game),
             x if x == ClientMsgType::leave_lobby_game as u8 => Ok(ClientMsgType::leave_lobby_game),
-            x if x == ClientMsgType::player_move as u8 => Ok(ClientMsgType::player_move),
+            x if x == ClientMsgType::player_select_cell as u8 => {
+                Ok(ClientMsgType::player_select_cell)
+            }
             x if x == ClientMsgType::leave_game as u8 => Ok(ClientMsgType::leave_game),
             _ => Err(()),
         }
@@ -21,7 +23,7 @@ impl TryFrom<u8> for ClientMsgType {
 
 #[derive(Debug)]
 pub enum GameEvent {
-    Move(PlayerMove),
+    Move(PlayerSelectCell),
 }
 
 // NOTE: must match packages/prototypes/protos/proto_all.proto ServerMsgType
@@ -54,10 +56,10 @@ impl TryInto<u8> for ServerMsgType {
             Self::player_leave_lobby => Ok(3),
             Self::lobby_game_updated => Ok(4),
             Self::player_join => Ok(5),
-            Self::game_start => Ok(6),
-            Self::game_end => Ok(7),
-            // Self::tick => Ok(8),
-            Self::player_left => Ok(8),
+            Self::player_left => Ok(6),
+            Self::game_start => Ok(7),
+            Self::game_end => Ok(8),
+            Self::game_player_move => Ok(9),
         }
     }
 }

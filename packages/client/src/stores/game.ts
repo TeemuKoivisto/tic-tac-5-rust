@@ -1,6 +1,6 @@
-import { get, writable } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 import {
-  Ball,
+  Cell,
   GameEnd,
   Player,
   ServerMsgType,
@@ -11,6 +11,8 @@ import {
   PlayerCreateGame,
   PlayerJoinGame,
   PlayerJoinLobby,
+  PlayerSelectCell,
+  CellType,
 } from '@tt5/prototypes'
 
 import { socketActions } from './ws'
@@ -27,13 +29,15 @@ export const gameState = writable<GameState>('connecting')
 export const gameEnd = writable<GameEnd | undefined>(undefined)
 export const gameId = writable<string>('')
 export const players = writable<Player[]>([])
-export const balls = writable<Ball[]>([])
+export const cells = writable<Map<string, Cell>>(new Map())
+export const gridSize = derived(cells, cells => Math.sqrt(cells.size))
 export const playerId = Math.ceil(Math.random() * 100000) // TODO: remove client-side id generation
 export const localPlayer = writable<Player | undefined>(undefined)
 export const retryConnectTimeout = writable<ReturnType<typeof setTimeout> | undefined>()
 
 function handleMessages(evt: SocketEvent) {
   log.debug('Event:', evt)
+  console.log('event', evt)
   switch (evt.e) {
     case 'connected':
       socketActions.emitJoinLobby({
@@ -57,39 +61,29 @@ function handleMessages(evt: SocketEvent) {
     case ServerMsgType.game_start:
       gameId.set(evt.data.gameId)
       players.set(evt.data.players)
-      balls.set(evt.data.balls)
+      cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
       localPlayer.set(evt.data.players.find(p => p.id === playerId))
-      // gfxActions.initGame(evt.data.players, evt.data.balls, evt.data.rects)
       gameState.set('game-running')
       break
     case ServerMsgType.game_end:
       gameEnd.set(evt.data)
-      // gfxActions.destroy()
       gameState.set('game-ended')
       break
-    case ServerMsgType.tick:
-      // const tick = evt.data
-      // players.update(plrs => {
-      //   tick.cursors.forEach((cursor, i) => {
-      //     plrs[i].cursor = cursor
-      //   })
-      //   return plrs
-      // })
-      // const mouz = get(mouse)
-      // socketActions.emitMove({
-      //   gameId: tick.gameId,
-      //   playerNumber: get(localPlayer)?.playerNumber || 0,
-      //   mouseX: mouz.x,
-      //   mouseY: mouz.y,
-      // })
-      // // const cursors = get(globalCursors)
-      // // for (let i = 0; i < tick.cursors.length; i++) {
-      // //   const serverCursor = tick.cursors[i]
-      // //   const clientCursor = cursors.find(c => c.player === serverCursor.player)!
-      // //   clientCursor.targetX = serverCursor.x
-      // //   clientCursor.targetY = serverCursor.y
-      // // }
-      // gfxActions.updateBalls(tick.balls)
+    case ServerMsgType.game_player_move:
+      const key = `${evt.data.x}:${evt.data.y}`
+      cells.update(cells => {
+        const old = cells.get(key)
+        if (!old) {
+          throw Error(`Unable to find cell at coords: ${key}`)
+        }
+        cells.set(key, {
+          cellType: CellType.PLAYER_CELL,
+          player: evt.data.player,
+          x: old.x,
+          y: old.y,
+        })
+        return cells
+      })
       break
   }
 }
@@ -132,5 +126,14 @@ export const gameActions = {
     }
     socketActions.emit(ClientMsgType.join_lobby_game, PlayerJoinGame.encode(payload).finish())
     gameState.set('waiting-game-start')
+  },
+  playerSelectCell(x: number, y: number) {
+    const payload = {
+      gameId: get(gameId),
+      playerNumber: get(localPlayer)?.playerNumber || 0,
+      x,
+      y,
+    }
+    socketActions.emit(ClientMsgType.player_select_cell, PlayerSelectCell.encode(payload).finish())
   },
 }

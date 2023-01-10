@@ -4,9 +4,9 @@ import {
   LobbyState,
   PlayerJoinGame,
   PlayerJoinLobby,
-  PlayerMove,
   GameStart,
   GameEnd,
+  GameMove,
 } from '@tt5/prototypes'
 import { WS_URL } from '../config'
 import { log } from '../logger'
@@ -55,10 +55,10 @@ export const socketActions = {
           cb({ e: ServerMsgType.game_end, data: GameEnd.decode(payload) })
           break
         }
-        // case ServerMsgType.tick: {
-        //   cb({ e: ServerMsgType.tick, data: Tick.decode(payload) })
-        //   break
-        // }
+        case ServerMsgType.game_player_move: {
+          cb({ e: ServerMsgType.game_player_move, data: GameMove.decode(payload) })
+          break
+        }
         default:
           log.error(`Unknown message type: ${messageType}`)
       }
@@ -82,14 +82,6 @@ export const socketActions = {
     const data = PlayerJoinGame.encode(payload).finish()
     const poop = new Uint8Array(data.length + 1)
     poop.set([ClientMsgType.join_lobby_game], 0)
-    poop.set(data, 1)
-    socket?.send(poop)
-  },
-  emitMove(payload: PlayerMove) {
-    // console.log('emitMove: ', payload)
-    const data = PlayerMove.encode(payload).finish()
-    const poop = new Uint8Array(data.length + 1)
-    poop.set([ClientMsgType.player_move], 0)
     poop.set(data, 1)
     socket?.send(poop)
   },

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  // import Board from './Board/Board.svelte'
+  import Board from './Board/Board.svelte'
   import Loading from './Loading.svelte'
   import Lobby from './Lobby.svelte'
   import { GameStatus } from '@tt5/prototypes'
@@ -48,19 +48,18 @@
       <button on:click={handlePlayAgain}>Play again</button>
     </div>
   {:else if $gameState === 'game-running'}
-    Should be board
-    <!-- <Board /> -->
+    <Board />
   {:else if $gameState === 'connecting'}
     <Loading />
   {/if}
 </main>
 
 <style lang="scss">
-  main {
-    display: flex;
-    justify-content: center;
-    width: 100vw;
-  }
+  // main {
+  //   display: flex;
+  //   justify-content: center;
+  //   width: 100vw;
+  // }
   h1 {
     text-align: center;
   }

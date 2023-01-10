@@ -19,7 +19,7 @@ enum ClientMsgType {
     join_lobby_game = 3;
     leave_lobby_game = 4;
     // game
-    player_move = 5;
+    player_select_cell = 5;
     leave_game = 6;
 }
 enum ServerMsgType {
@@ -31,10 +31,10 @@ enum ServerMsgType {
     lobby_game_updated = 4;
     // game
     player_join = 5;
-    game_start = 6;
-    game_end = 7;
-    // tick = 8;
-    player_left = 8;
+    player_left = 6;
+    game_start = 7;
+    game_end = 8;
+    game_player_move = 9;
 }
 
 message Player {
@@ -97,10 +97,11 @@ message GameEnd {
     optional Player winner = 3;
 }
 
-message Move {
+message GameMove {
     uint32 player = 1;
     uint32 x = 2;
     uint32 y = 3;
+    // string symbol = 4;
 }
 
 /* #### Client messages #### */
@@ -129,7 +130,7 @@ message PlayerJoinGame {
     string name = 3;
 }
 
-message PlayerMove {
+message PlayerSelectCell {
     string game_id = 1;
     uint32 player_number = 2;
     uint32 x = 3;

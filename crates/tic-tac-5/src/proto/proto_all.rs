@@ -20,7 +20,7 @@ pub enum ClientMsgType {
     create_lobby_game = 2,
     join_lobby_game = 3,
     leave_lobby_game = 4,
-    player_move = 5,
+    player_select_cell = 5,
     leave_game = 6,
 }
 
@@ -38,7 +38,7 @@ impl From<i32> for ClientMsgType {
             2 => ClientMsgType::create_lobby_game,
             3 => ClientMsgType::join_lobby_game,
             4 => ClientMsgType::leave_lobby_game,
-            5 => ClientMsgType::player_move,
+            5 => ClientMsgType::player_select_cell,
             6 => ClientMsgType::leave_game,
             _ => Self::default(),
         }
@@ -53,7 +53,7 @@ impl<'a> From<&'a str> for ClientMsgType {
             "create_lobby_game" => ClientMsgType::create_lobby_game,
             "join_lobby_game" => ClientMsgType::join_lobby_game,
             "leave_lobby_game" => ClientMsgType::leave_lobby_game,
-            "player_move" => ClientMsgType::player_move,
+            "player_select_cell" => ClientMsgType::player_select_cell,
             "leave_game" => ClientMsgType::leave_game,
             _ => Self::default(),
         }
@@ -68,9 +68,10 @@ pub enum ServerMsgType {
     player_leave_lobby = 3,
     lobby_game_updated = 4,
     player_join = 5,
-    game_start = 6,
-    game_end = 7,
-    player_left = 8,
+    player_left = 6,
+    game_start = 7,
+    game_end = 8,
+    game_player_move = 9,
 }
 
 impl Default for ServerMsgType {
@@ -88,9 +89,10 @@ impl From<i32> for ServerMsgType {
             3 => ServerMsgType::player_leave_lobby,
             4 => ServerMsgType::lobby_game_updated,
             5 => ServerMsgType::player_join,
-            6 => ServerMsgType::game_start,
-            7 => ServerMsgType::game_end,
-            8 => ServerMsgType::player_left,
+            6 => ServerMsgType::player_left,
+            7 => ServerMsgType::game_start,
+            8 => ServerMsgType::game_end,
+            9 => ServerMsgType::game_player_move,
             _ => Self::default(),
         }
     }
@@ -105,9 +107,10 @@ impl<'a> From<&'a str> for ServerMsgType {
             "player_leave_lobby" => ServerMsgType::player_leave_lobby,
             "lobby_game_updated" => ServerMsgType::lobby_game_updated,
             "player_join" => ServerMsgType::player_join,
+            "player_left" => ServerMsgType::player_left,
             "game_start" => ServerMsgType::game_start,
             "game_end" => ServerMsgType::game_end,
-            "player_left" => ServerMsgType::player_left,
+            "game_player_move" => ServerMsgType::game_player_move,
             _ => Self::default(),
         }
     }
@@ -471,13 +474,13 @@ impl MessageWrite for GameEnd {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct Move {
+pub struct GameMove {
     pub player: u32,
     pub x: u32,
     pub y: u32,
 }
 
-impl<'a> MessageRead<'a> for Move {
+impl<'a> MessageRead<'a> for GameMove {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
@@ -493,7 +496,7 @@ impl<'a> MessageRead<'a> for Move {
     }
 }
 
-impl MessageWrite for Move {
+impl MessageWrite for GameMove {
     fn get_size(&self) -> usize {
         0
         + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
@@ -662,14 +665,14 @@ impl MessageWrite for PlayerJoinGame {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct PlayerMove {
+pub struct PlayerSelectCell {
     pub game_id: String,
     pub player_number: u32,
     pub x: u32,
     pub y: u32,
 }
 
-impl<'a> MessageRead<'a> for PlayerMove {
+impl<'a> MessageRead<'a> for PlayerSelectCell {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
@@ -686,7 +689,7 @@ impl<'a> MessageRead<'a> for PlayerMove {
     }
 }
 
-impl MessageWrite for PlayerMove {
+impl MessageWrite for PlayerSelectCell {
     fn get_size(&self) -> usize {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }

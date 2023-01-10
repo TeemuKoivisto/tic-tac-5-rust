@@ -1,4 +1,4 @@
-import { GameStart, Tick as GameTick, GameEnd, LobbyGames, ServerMsgType } from '@tt5/prototypes'
+import { GameStart, GameEnd, LobbyGames, GameMove, ServerMsgType } from '@tt5/prototypes'
 
 export type SocketEvent =
   | {
@@ -20,8 +20,8 @@ export type SocketEvent =
       data: GameEnd
     }
   | {
-      e: ServerMsgType.tick
-      data: GameTick
+      e: ServerMsgType.game_player_move
+      data: GameMove
     }
   | {
       e: 'error'

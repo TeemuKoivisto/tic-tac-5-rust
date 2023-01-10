@@ -1,5 +1,6 @@
 use log::{debug, error};
 use quick_protobuf::{BytesReader, MessageRead};
+use uuid::Uuid;
 
 use crate::connection::ConnectionManager;
 use crate::context::Context;
@@ -68,7 +69,14 @@ pub async fn listen(ctx: Arc<Context>, ws_stream: WebSocketStream<TcpStream>, so
                             }
                         }
                     }
-                    Ok(ClientMsgType::player_move) => {}
+                    Ok(ClientMsgType::player_select_cell) => {
+                        if let Ok(player_move) = PlayerSelectCell::from_reader(&mut reader, &msg) {
+                            debug!("ClientMsgType::player_select_cell {:#?}", player_move);
+                            let game_id = player_move.game_id.clone();
+                            let game_mut = ctx.find_game(game_id).await;
+                            ctx.handle_player_select_cell(player_move, game_mut).await;
+                        }
+                    }
                     _ => error!("Unknown header: {}", message_type),
                 }
             } else if msg.is_close() {

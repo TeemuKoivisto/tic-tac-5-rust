@@ -8,8 +8,8 @@ export enum ClientMsgType {
   create_lobby_game = 2,
   join_lobby_game = 3,
   leave_lobby_game = 4,
-  /** player_move - game */
-  player_move = 5,
+  /** player_select_cell - game */
+  player_select_cell = 5,
   leave_game = 6,
   UNRECOGNIZED = -1,
 }
@@ -32,8 +32,8 @@ export function clientMsgTypeFromJSON(object: any): ClientMsgType {
     case "leave_lobby_game":
       return ClientMsgType.leave_lobby_game;
     case 5:
-    case "player_move":
-      return ClientMsgType.player_move;
+    case "player_select_cell":
+      return ClientMsgType.player_select_cell;
     case 6:
     case "leave_game":
       return ClientMsgType.leave_game;
@@ -56,8 +56,8 @@ export function clientMsgTypeToJSON(object: ClientMsgType): string {
       return "join_lobby_game";
     case ClientMsgType.leave_lobby_game:
       return "leave_lobby_game";
-    case ClientMsgType.player_move:
-      return "player_move";
+    case ClientMsgType.player_select_cell:
+      return "player_select_cell";
     case ClientMsgType.leave_game:
       return "leave_game";
     case ClientMsgType.UNRECOGNIZED:
@@ -75,10 +75,10 @@ export enum ServerMsgType {
   lobby_game_updated = 4,
   /** player_join - game */
   player_join = 5,
-  game_start = 6,
-  game_end = 7,
-  /** player_left - tick = 8; */
-  player_left = 8,
+  player_left = 6,
+  game_start = 7,
+  game_end = 8,
+  game_player_move = 9,
   UNRECOGNIZED = -1,
 }
 
@@ -103,14 +103,17 @@ export function serverMsgTypeFromJSON(object: any): ServerMsgType {
     case "player_join":
       return ServerMsgType.player_join;
     case 6:
-    case "game_start":
-      return ServerMsgType.game_start;
-    case 7:
-    case "game_end":
-      return ServerMsgType.game_end;
-    case 8:
     case "player_left":
       return ServerMsgType.player_left;
+    case 7:
+    case "game_start":
+      return ServerMsgType.game_start;
+    case 8:
+    case "game_end":
+      return ServerMsgType.game_end;
+    case 9:
+    case "game_player_move":
+      return ServerMsgType.game_player_move;
     case -1:
     case "UNRECOGNIZED":
     default:
@@ -132,12 +135,14 @@ export function serverMsgTypeToJSON(object: ServerMsgType): string {
       return "lobby_game_updated";
     case ServerMsgType.player_join:
       return "player_join";
+    case ServerMsgType.player_left:
+      return "player_left";
     case ServerMsgType.game_start:
       return "game_start";
     case ServerMsgType.game_end:
       return "game_end";
-    case ServerMsgType.player_left:
-      return "player_left";
+    case ServerMsgType.game_player_move:
+      return "game_player_move";
     case ServerMsgType.UNRECOGNIZED:
     default:
       return "UNRECOGNIZED";
@@ -278,9 +283,10 @@ export interface GameEnd {
   winner?: Player | undefined;
 }
 
-export interface Move {
+export interface GameMove {
   player: number;
   x: number;
+  /** string symbol = 4; */
   y: number;
 }
 
@@ -308,7 +314,7 @@ export interface PlayerJoinGame {
   name: string;
 }
 
-export interface PlayerMove {
+export interface PlayerSelectCell {
   gameId: string;
   playerNumber: number;
   x: number;
@@ -825,12 +831,12 @@ export const GameEnd = {
   },
 };
 
-function createBaseMove(): Move {
+function createBaseGameMove(): GameMove {
   return { player: 0, x: 0, y: 0 };
 }
 
-export const Move = {
-  encode(message: Move, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const GameMove = {
+  encode(message: GameMove, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.player !== 0) {
       writer.uint32(8).uint32(message.player);
     }
@@ -843,10 +849,10 @@ export const Move = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): Move {
+  decode(input: _m0.Reader | Uint8Array, length?: number): GameMove {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseMove();
+    const message = createBaseGameMove();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -867,7 +873,7 @@ export const Move = {
     return message;
   },
 
-  fromJSON(object: any): Move {
+  fromJSON(object: any): GameMove {
     return {
       player: isSet(object.player) ? Number(object.player) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
@@ -875,7 +881,7 @@ export const Move = {
     };
   },
 
-  toJSON(message: Move): unknown {
+  toJSON(message: GameMove): unknown {
     const obj: any = {};
     message.player !== undefined && (obj.player = Math.round(message.player));
     message.x !== undefined && (obj.x = Math.round(message.x));
@@ -883,8 +889,8 @@ export const Move = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<Move>, I>>(object: I): Move {
-    const message = createBaseMove();
+  fromPartial<I extends Exact<DeepPartial<GameMove>, I>>(object: I): GameMove {
+    const message = createBaseGameMove();
     message.player = object.player ?? 0;
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
@@ -1153,12 +1159,12 @@ export const PlayerJoinGame = {
   },
 };
 
-function createBasePlayerMove(): PlayerMove {
+function createBasePlayerSelectCell(): PlayerSelectCell {
   return { gameId: "", playerNumber: 0, x: 0, y: 0 };
 }
 
-export const PlayerMove = {
-  encode(message: PlayerMove, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const PlayerSelectCell = {
+  encode(message: PlayerSelectCell, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.gameId !== "") {
       writer.uint32(10).string(message.gameId);
     }
@@ -1174,10 +1180,10 @@ export const PlayerMove = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerMove {
+  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerSelectCell {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBasePlayerMove();
+    const message = createBasePlayerSelectCell();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1201,7 +1207,7 @@ export const PlayerMove = {
     return message;
   },
 
-  fromJSON(object: any): PlayerMove {
+  fromJSON(object: any): PlayerSelectCell {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : "",
       playerNumber: isSet(object.playerNumber) ? Number(object.playerNumber) : 0,
@@ -1210,7 +1216,7 @@ export const PlayerMove = {
     };
   },
 
-  toJSON(message: PlayerMove): unknown {
+  toJSON(message: PlayerSelectCell): unknown {
     const obj: any = {};
     message.gameId !== undefined && (obj.gameId = message.gameId);
     message.playerNumber !== undefined && (obj.playerNumber = Math.round(message.playerNumber));
@@ -1219,8 +1225,8 @@ export const PlayerMove = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<PlayerMove>, I>>(object: I): PlayerMove {
-    const message = createBasePlayerMove();
+  fromPartial<I extends Exact<DeepPartial<PlayerSelectCell>, I>>(object: I): PlayerSelectCell {
+    const message = createBasePlayerSelectCell();
     message.gameId = object.gameId ?? "";
     message.playerNumber = object.playerNumber ?? 0;
     message.x = object.x ?? 0;

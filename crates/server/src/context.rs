@@ -185,16 +185,47 @@ impl Context {
     }
 
     pub async fn start_game(&self, game_mut: Arc<Mutex<Game>>) {
-        let game_id = game_mut.lock().await.id;
-        let mut game_manager = self.game_manager_mutex.lock().await;
-        let game_receiver = game_manager.start_game(game_id).await;
-        let broadcast = game_manager.broadcast.clone();
-        let gm = self.game_manager_mutex.clone();
+        // let game_id = game_mut.lock().await.id;
+        // let mut game_manager = self.game_manager_mutex.lock().await;
+        // let game_receiver = game_manager.start_game(game_id).await;
+        // let broadcast = game_manager.broadcast.clone();
+        // let gm = self.game_manager_mutex.clone();
         // tokio::spawn(async move {
         //     let res = game_loop(game_mut, broadcast, game_receiver).await;
         //     let mut game_manager = gm.lock().await;
         //     let game_id = Uuid::parse_str(&res.unwrap().game_id).unwrap();
         //     game_manager.remove_game(game_id);
         // });
+    }
+
+    pub async fn handle_player_select_cell(
+        &self,
+        payload: PlayerSelectCell,
+        game_mut: Arc<Mutex<Game>>,
+    ) {
+        // let game_id = game_mut.lock().await.id;
+        // let game_manager = self.game_manager_mutex.lock().await;
+        let mut game = game_mut.lock().await;
+        let moved = game.handle_player_move(&payload);
+        let game_id = &payload.game_id;
+        if moved.is_some() {
+            println!("Incorrect move: {}", moved.unwrap());
+            return;
+        }
+        println!("send move!");
+        let mut conn_manager = self.conn_manager_mutex.lock().await;
+        conn_manager
+            .broadcast(
+                serialize_server_event(
+                    ServerMsgType::game_player_move,
+                    &GameMove {
+                        player: payload.player_number,
+                        x: payload.x,
+                        y: payload.y,
+                    },
+                ),
+                game_id.to_string(),
+            )
+            .await;
     }
 }

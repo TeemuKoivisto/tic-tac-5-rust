@@ -14,9 +14,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedSender};
 use tokio::sync::Mutex;
 
 pub struct GameManager {
-    // TODO: Only `games` should be Arc<Mutex<>>, not the whole `GameManager`.
     pub broadcast: UnboundedSender<ServerEvent>,
-    pub game_channels: HashMap<Uuid, Sender<GameEvent>>,
     pub games: HashMap<Uuid, Arc<Mutex<Game>>>,
     pub lobby_players: Vec<LobbyPlayer>,
     pub lobby_chat: Vec<String>,
@@ -26,7 +24,6 @@ impl GameManager {
     pub fn new(broadcast: UnboundedSender<ServerEvent>) -> GameManager {
         Self {
             broadcast,
-            game_channels: HashMap::new(),
             games: HashMap::new(),
             lobby_players: Vec::new(),
             lobby_chat: Vec::new(),
@@ -63,24 +60,8 @@ impl GameManager {
         self.lobby_players.retain(|p| p.player_id != player_id);
     }
 
-    pub async fn send_game_event(
-        &self,
-        game_id: Uuid,
-        event: GameEvent,
-    ) -> Result<(), SendError<GameEvent>> {
-        // TODO BUG
-        self.game_channels.get(&game_id).unwrap().send(event).await
-    }
-
     pub fn remove_game(&mut self, game_id: Uuid) {
         self.games.remove(&game_id);
-        self.game_channels.remove(&game_id);
-    }
-
-    pub async fn start_game(&mut self, game_id: Uuid) -> Receiver<GameEvent> {
-        let (game_sender, game_receiver) = mpsc::channel::<GameEvent>(512);
-        self.game_channels.insert(game_id, game_sender);
-        game_receiver
     }
 
     pub fn get_game(&self, game_id: &Uuid) -> Option<&Arc<Mutex<Game>>> {
