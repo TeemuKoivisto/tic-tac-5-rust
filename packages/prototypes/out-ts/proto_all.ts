@@ -151,10 +151,11 @@ export function serverMsgTypeToJSON(object: ServerMsgType): string {
 
 export enum GameStatus {
   WAITING = 0,
-  RUNNING = 1,
-  PLAYER_WON = 2,
-  AI_WON = 3,
-  TIE = 4,
+  X_TURN = 1,
+  O_TURN = 2,
+  X_WON = 3,
+  O_WON = 4,
+  TIE = 5,
   UNRECOGNIZED = -1,
 }
 
@@ -164,15 +165,18 @@ export function gameStatusFromJSON(object: any): GameStatus {
     case "WAITING":
       return GameStatus.WAITING;
     case 1:
-    case "RUNNING":
-      return GameStatus.RUNNING;
+    case "X_TURN":
+      return GameStatus.X_TURN;
     case 2:
-    case "PLAYER_WON":
-      return GameStatus.PLAYER_WON;
+    case "O_TURN":
+      return GameStatus.O_TURN;
     case 3:
-    case "AI_WON":
-      return GameStatus.AI_WON;
+    case "X_WON":
+      return GameStatus.X_WON;
     case 4:
+    case "O_WON":
+      return GameStatus.O_WON;
+    case 5:
     case "TIE":
       return GameStatus.TIE;
     case -1:
@@ -186,12 +190,14 @@ export function gameStatusToJSON(object: GameStatus): string {
   switch (object) {
     case GameStatus.WAITING:
       return "WAITING";
-    case GameStatus.RUNNING:
-      return "RUNNING";
-    case GameStatus.PLAYER_WON:
-      return "PLAYER_WON";
-    case GameStatus.AI_WON:
-      return "AI_WON";
+    case GameStatus.X_TURN:
+      return "X_TURN";
+    case GameStatus.O_TURN:
+      return "O_TURN";
+    case GameStatus.X_WON:
+      return "X_WON";
+    case GameStatus.O_WON:
+      return "O_WON";
     case GameStatus.TIE:
       return "TIE";
     case GameStatus.UNRECOGNIZED:
@@ -202,11 +208,10 @@ export function gameStatusToJSON(object: GameStatus): string {
 
 export interface Player {
   id: number;
-  clientId: number;
+  socketId: number;
   playerNumber: number;
+  symbol: string;
   name: string;
-  color: number;
-  cursor: Cursor | undefined;
   dead: boolean;
 }
 
@@ -283,9 +288,7 @@ export interface Tick {
 
 /** Values are zero if not specified. */
 export interface GameOptions {
-  serverTickRate: number;
-  liquidPerPlayer: number;
-  cursorSpeed: number;
+  size: number;
   players: number;
 }
 
@@ -312,8 +315,8 @@ export interface PlayerJoinGame {
 export interface PlayerMove {
   gameId: string;
   playerNumber: number;
-  mouseX: number;
-  mouseY: number;
+  x: number;
+  y: number;
 }
 
 export interface PlayerLeave {
@@ -322,7 +325,7 @@ export interface PlayerLeave {
 }
 
 function createBasePlayer(): Player {
-  return { id: 0, clientId: 0, playerNumber: 0, name: "", color: 0, cursor: undefined, dead: false };
+  return { id: 0, socketId: 0, playerNumber: 0, symbol: "", name: "", dead: false };
 }
 
 export const Player = {
@@ -330,23 +333,20 @@ export const Player = {
     if (message.id !== 0) {
       writer.uint32(8).uint32(message.id);
     }
-    if (message.clientId !== 0) {
-      writer.uint32(16).uint32(message.clientId);
+    if (message.socketId !== 0) {
+      writer.uint32(16).uint32(message.socketId);
     }
     if (message.playerNumber !== 0) {
       writer.uint32(24).uint32(message.playerNumber);
     }
+    if (message.symbol !== "") {
+      writer.uint32(34).string(message.symbol);
+    }
     if (message.name !== "") {
-      writer.uint32(34).string(message.name);
-    }
-    if (message.color !== 0) {
-      writer.uint32(40).uint32(message.color);
-    }
-    if (message.cursor !== undefined) {
-      Cursor.encode(message.cursor, writer.uint32(50).fork()).ldelim();
+      writer.uint32(42).string(message.name);
     }
     if (message.dead === true) {
-      writer.uint32(56).bool(message.dead);
+      writer.uint32(48).bool(message.dead);
     }
     return writer;
   },
@@ -362,21 +362,18 @@ export const Player = {
           message.id = reader.uint32();
           break;
         case 2:
-          message.clientId = reader.uint32();
+          message.socketId = reader.uint32();
           break;
         case 3:
           message.playerNumber = reader.uint32();
           break;
         case 4:
-          message.name = reader.string();
+          message.symbol = reader.string();
           break;
         case 5:
-          message.color = reader.uint32();
+          message.name = reader.string();
           break;
         case 6:
-          message.cursor = Cursor.decode(reader, reader.uint32());
-          break;
-        case 7:
           message.dead = reader.bool();
           break;
         default:
@@ -390,11 +387,10 @@ export const Player = {
   fromJSON(object: any): Player {
     return {
       id: isSet(object.id) ? Number(object.id) : 0,
-      clientId: isSet(object.clientId) ? Number(object.clientId) : 0,
+      socketId: isSet(object.socketId) ? Number(object.socketId) : 0,
       playerNumber: isSet(object.playerNumber) ? Number(object.playerNumber) : 0,
+      symbol: isSet(object.symbol) ? String(object.symbol) : "",
       name: isSet(object.name) ? String(object.name) : "",
-      color: isSet(object.color) ? Number(object.color) : 0,
-      cursor: isSet(object.cursor) ? Cursor.fromJSON(object.cursor) : undefined,
       dead: isSet(object.dead) ? Boolean(object.dead) : false,
     };
   },
@@ -402,11 +398,10 @@ export const Player = {
   toJSON(message: Player): unknown {
     const obj: any = {};
     message.id !== undefined && (obj.id = Math.round(message.id));
-    message.clientId !== undefined && (obj.clientId = Math.round(message.clientId));
+    message.socketId !== undefined && (obj.socketId = Math.round(message.socketId));
     message.playerNumber !== undefined && (obj.playerNumber = Math.round(message.playerNumber));
+    message.symbol !== undefined && (obj.symbol = message.symbol);
     message.name !== undefined && (obj.name = message.name);
-    message.color !== undefined && (obj.color = Math.round(message.color));
-    message.cursor !== undefined && (obj.cursor = message.cursor ? Cursor.toJSON(message.cursor) : undefined);
     message.dead !== undefined && (obj.dead = message.dead);
     return obj;
   },
@@ -414,13 +409,10 @@ export const Player = {
   fromPartial<I extends Exact<DeepPartial<Player>, I>>(object: I): Player {
     const message = createBasePlayer();
     message.id = object.id ?? 0;
-    message.clientId = object.clientId ?? 0;
+    message.socketId = object.socketId ?? 0;
     message.playerNumber = object.playerNumber ?? 0;
+    message.symbol = object.symbol ?? "";
     message.name = object.name ?? "";
-    message.color = object.color ?? 0;
-    message.cursor = (object.cursor !== undefined && object.cursor !== null)
-      ? Cursor.fromPartial(object.cursor)
-      : undefined;
     message.dead = object.dead ?? false;
     return message;
   },
@@ -1234,22 +1226,16 @@ export const Tick = {
 };
 
 function createBaseGameOptions(): GameOptions {
-  return { serverTickRate: 0, liquidPerPlayer: 0, cursorSpeed: 0, players: 0 };
+  return { size: 0, players: 0 };
 }
 
 export const GameOptions = {
   encode(message: GameOptions, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.serverTickRate !== 0) {
-      writer.uint32(8).uint32(message.serverTickRate);
-    }
-    if (message.liquidPerPlayer !== 0) {
-      writer.uint32(16).uint32(message.liquidPerPlayer);
-    }
-    if (message.cursorSpeed !== 0) {
-      writer.uint32(24).uint32(message.cursorSpeed);
+    if (message.size !== 0) {
+      writer.uint32(8).uint32(message.size);
     }
     if (message.players !== 0) {
-      writer.uint32(32).uint32(message.players);
+      writer.uint32(16).uint32(message.players);
     }
     return writer;
   },
@@ -1262,15 +1248,9 @@ export const GameOptions = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.serverTickRate = reader.uint32();
+          message.size = reader.uint32();
           break;
         case 2:
-          message.liquidPerPlayer = reader.uint32();
-          break;
-        case 3:
-          message.cursorSpeed = reader.uint32();
-          break;
-        case 4:
           message.players = reader.uint32();
           break;
         default:
@@ -1283,27 +1263,21 @@ export const GameOptions = {
 
   fromJSON(object: any): GameOptions {
     return {
-      serverTickRate: isSet(object.serverTickRate) ? Number(object.serverTickRate) : 0,
-      liquidPerPlayer: isSet(object.liquidPerPlayer) ? Number(object.liquidPerPlayer) : 0,
-      cursorSpeed: isSet(object.cursorSpeed) ? Number(object.cursorSpeed) : 0,
+      size: isSet(object.size) ? Number(object.size) : 0,
       players: isSet(object.players) ? Number(object.players) : 0,
     };
   },
 
   toJSON(message: GameOptions): unknown {
     const obj: any = {};
-    message.serverTickRate !== undefined && (obj.serverTickRate = Math.round(message.serverTickRate));
-    message.liquidPerPlayer !== undefined && (obj.liquidPerPlayer = Math.round(message.liquidPerPlayer));
-    message.cursorSpeed !== undefined && (obj.cursorSpeed = Math.round(message.cursorSpeed));
+    message.size !== undefined && (obj.size = Math.round(message.size));
     message.players !== undefined && (obj.players = Math.round(message.players));
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<GameOptions>, I>>(object: I): GameOptions {
     const message = createBaseGameOptions();
-    message.serverTickRate = object.serverTickRate ?? 0;
-    message.liquidPerPlayer = object.liquidPerPlayer ?? 0;
-    message.cursorSpeed = object.cursorSpeed ?? 0;
+    message.size = object.size ?? 0;
     message.players = object.players ?? 0;
     return message;
   },
@@ -1533,7 +1507,7 @@ export const PlayerJoinGame = {
 };
 
 function createBasePlayerMove(): PlayerMove {
-  return { gameId: "", playerNumber: 0, mouseX: 0, mouseY: 0 };
+  return { gameId: "", playerNumber: 0, x: 0, y: 0 };
 }
 
 export const PlayerMove = {
@@ -1544,11 +1518,11 @@ export const PlayerMove = {
     if (message.playerNumber !== 0) {
       writer.uint32(16).uint32(message.playerNumber);
     }
-    if (message.mouseX !== 0) {
-      writer.uint32(24).uint32(message.mouseX);
+    if (message.x !== 0) {
+      writer.uint32(24).uint32(message.x);
     }
-    if (message.mouseY !== 0) {
-      writer.uint32(32).uint32(message.mouseY);
+    if (message.y !== 0) {
+      writer.uint32(32).uint32(message.y);
     }
     return writer;
   },
@@ -1567,10 +1541,10 @@ export const PlayerMove = {
           message.playerNumber = reader.uint32();
           break;
         case 3:
-          message.mouseX = reader.uint32();
+          message.x = reader.uint32();
           break;
         case 4:
-          message.mouseY = reader.uint32();
+          message.y = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1584,8 +1558,8 @@ export const PlayerMove = {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : "",
       playerNumber: isSet(object.playerNumber) ? Number(object.playerNumber) : 0,
-      mouseX: isSet(object.mouseX) ? Number(object.mouseX) : 0,
-      mouseY: isSet(object.mouseY) ? Number(object.mouseY) : 0,
+      x: isSet(object.x) ? Number(object.x) : 0,
+      y: isSet(object.y) ? Number(object.y) : 0,
     };
   },
 
@@ -1593,8 +1567,8 @@ export const PlayerMove = {
     const obj: any = {};
     message.gameId !== undefined && (obj.gameId = message.gameId);
     message.playerNumber !== undefined && (obj.playerNumber = Math.round(message.playerNumber));
-    message.mouseX !== undefined && (obj.mouseX = Math.round(message.mouseX));
-    message.mouseY !== undefined && (obj.mouseY = Math.round(message.mouseY));
+    message.x !== undefined && (obj.x = Math.round(message.x));
+    message.y !== undefined && (obj.y = Math.round(message.y));
     return obj;
   },
 
@@ -1602,8 +1576,8 @@ export const PlayerMove = {
     const message = createBasePlayerMove();
     message.gameId = object.gameId ?? "";
     message.playerNumber = object.playerNumber ?? 0;
-    message.mouseX = object.mouseX ?? 0;
-    message.mouseY = object.mouseY ?? 0;
+    message.x = object.x ?? 0;
+    message.y = object.y ?? 0;
     return message;
   },
 };

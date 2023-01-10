@@ -2,6 +2,15 @@ syntax = "proto3";
 
 package proto_all;
 
+// enum GridSize {
+//   NORMAL = 25,
+//   LARGE = 50,
+// }
+// enum PlayerSymbol {
+//   X = 'X',
+//   O = 'O',
+// }
+
 enum ClientMsgType {
     // lobby
     join_lobby = 0;
@@ -30,12 +39,11 @@ enum ServerMsgType {
 
 message Player {
     uint32 id = 1;
-    uint32 client_id = 2;
+    uint32 socket_id = 2;
     uint32 player_number = 3;
-    string name = 4;
-    uint32 color = 5;
-    Cursor cursor = 6;
-    bool dead = 7;
+    string symbol = 4;
+    string name = 5;
+    bool dead = 6;
 }
 
 message Cursor {
@@ -75,10 +83,11 @@ message LobbyGame {
 
 enum GameStatus {
     WAITING = 0;
-    RUNNING = 1;
-    PLAYER_WON = 2;
-    AI_WON = 3;
-    TIE = 4;
+    X_TURN = 1;
+    O_TURN = 2;
+    X_WON = 3;
+    O_WON = 4;
+    TIE = 5;
 }
 
 // Server messages
@@ -123,10 +132,8 @@ message Tick {
 
 // Values are zero if not specified.
 message GameOptions {
-    uint32 server_tick_rate = 1;
-    uint32 liquid_per_player = 2;
-    uint32 cursor_speed = 3;
-    uint32 players = 4;
+    uint32 size = 1;
+    uint32 players = 2;
 }
 
 message PlayerJoinLobby {
@@ -152,8 +159,8 @@ message PlayerJoinGame {
 message PlayerMove {
     string game_id = 1;
     uint32 player_number = 2;
-    uint32 mouse_x = 3;
-    uint32 mouse_y = 4;
+    uint32 x = 3;
+    uint32 y = 4;
 }
 
 message PlayerLeave {

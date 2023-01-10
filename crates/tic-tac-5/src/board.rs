@@ -200,8 +200,8 @@ impl Board {
     }
 
     pub fn update_cell_owner(&mut self, x: u32, y: u32, player: u32) {
-            let mut cell = self.cells.get_mut(&(y * self.size + x)).unwrap();
-            cell.owner = player;
+        let mut cell = self.cells.get_mut(&(y * self.size + x)).unwrap();
+        cell.owner = player;
         let mut adjancies = Adjancies {
             hor: 0,
             ver: 0,

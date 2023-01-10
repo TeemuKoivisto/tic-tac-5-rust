@@ -1,11 +1,17 @@
 [package]
-name = "game"
+name = "server"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tic-tac-5 = { path = "../tic-tac-5" }
+futures-util = { version = "0.3.24" }
+tokio = { version = "1.21.2", features = ["full"] }
+tokio-tungstenite = { version = "0.17.2"}
+quick-protobuf = { version = "0.8.1" }
+rand = "0.8.5"
 uuid = { version = "1.1.2", features = [
     "v4",                # Lets you generate random UUIDs
     "fast-rng",          # Use a faster (but still sufficiently random) RNG
@@ -13,4 +19,4 @@ uuid = { version = "1.1.2", features = [
 ]}
 log = { version = "0.4", features = ["std"] }
 env_logger = { version = "0.9.1" }
-rand = "0.8.5"
+num-traits = "0.2.15"
