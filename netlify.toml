@@ -1,0 +1,8 @@
+[build]
+  command = "pnpm --filter types build && pnpm --filter prototybes build && pnpm --filter client build"
+  publish = "packages/client/dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
