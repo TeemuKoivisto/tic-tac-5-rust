@@ -193,29 +193,22 @@ impl Board {
         adjacent
     }
 
-    pub fn get_updated_adjacent_cells(
+    pub fn clone_adjacent_cells(
         &self,
         x: u32,
         y: u32,
         player: u32,
         dir: Adjacency,
     ) -> Vec<BoardCell> {
-        let cells = self.get_adjacent_cells(x, y, player, dir);
-        let adjacent_count = (cells.len() + 1) as u32;
-        let created = cells
+        self.get_adjacent_cells(x, y, player, dir)
             .into_iter()
-            .map(|c| {
-                let mut adj = c.adjacency.clone();
-                adj[dir] = adjacent_count as u32;
-                BoardCell {
-                    x: c.x,
-                    y: c.y,
-                    owner: c.owner,
-                    adjacency: adj,
-                }
+            .map(|c| BoardCell {
+                x: c.x,
+                y: c.y,
+                owner: c.owner,
+                adjacency: c.adjacency.clone(),
             })
-            .collect::<Vec<BoardCell>>();
-        created
+            .collect::<Vec<BoardCell>>()
     }
 
     pub fn update_cell_owner(&mut self, x: u32, y: u32, player: u32) {
@@ -227,10 +220,10 @@ impl Board {
             right_diag: 0,
         };
         for dir in Adjacency::iterator() {
-            let cells = self.get_updated_adjacent_cells(x, y, player, dir.clone());
+            let cells = self.clone_adjacent_cells(x, y, player, *dir);
             let adjacent_count = (cells.len() + 1) as u32;
             for c in cells {
-                self.set_cell_adjacency(c.x, c.y, dir.clone(), adjacent_count);
+                self.cells[(c.x + c.y * self.size) as usize].adjacency[*dir] = adjacent_count;
             }
             adjancies[*dir] = adjacent_count;
         }

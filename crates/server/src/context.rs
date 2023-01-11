@@ -71,7 +71,7 @@ impl Context {
             };
             game.handle_player_disconnect(&player_id);
             let _ = game_manager.broadcast.send(ServerEvent::Quit(player_leave));
-            if game.is_waiting_and_empty() {
+            if game.is_empty() {
                 ended_games.push(game_id);
             }
         }
@@ -229,5 +229,18 @@ impl Context {
             )
             .await;
         }
+    }
+
+    pub async fn broadcast_lobby_state(&self) {
+        let game_manager = self.game_manager_mutex.lock().await;
+        let games = game_manager.lobby_state().await;
+        write_server_msg(
+            ServerEvent::LobbyGames(LobbyState {
+                games,
+                players: game_manager.lobby_players.clone(),
+            }),
+            self.conn_manager_mutex.clone(),
+        )
+        .await;
     }
 }

@@ -70,7 +70,7 @@ impl GameState {
         self.players.iter().find(|p| p.id == player_id).unwrap()
     }
     pub fn remove_player(&mut self, player_number: u32) {
-        self.players[player_number as usize].dead = true;
+        self.players[(player_number - 1) as usize].dead = true;
     }
     pub fn player_move(&mut self, x: u32, y: u32, player: u32) {
         self.board.update_cell_owner(x, y, player);

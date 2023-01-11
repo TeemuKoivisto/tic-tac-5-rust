@@ -32,6 +32,9 @@ impl Game {
     pub fn is_running(&self) -> bool {
         self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN
     }
+    pub fn is_empty(&self) -> bool {
+        self.joined_players.len() == 0
+    }
     pub fn is_waiting_and_empty(&self) -> bool {
         self.state.status == GameStatus::WAITING && self.joined_players.len() == 0
     }

@@ -87,5 +87,5 @@ pub async fn listen(ctx: Arc<Context>, ws_stream: WebSocketStream<TcpStream>, so
 
     // If we reach here, it means the client quit or disconnected. Send quit event to each room the client was in.
     ctx.handle_player_disconnect(socket_id).await;
-    // ctx.broadcast_lobby_state().await;
+    ctx.broadcast_lobby_state().await;
 }

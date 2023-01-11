@@ -20,7 +20,15 @@ pub async fn write_server_msg(
             debug!("ServerEvents::ClientDisconnected");
             conn_manager.remove(client_id);
         }
-        ServerEvent::LobbyGames(_) => {}
+        ServerEvent::LobbyGames(payload) => {
+            debug!("ServerEvents::LobbyGames");
+            conn_manager
+                .broadcast(
+                    serialize_server_event(ServerMsgType::lobby_state, &payload),
+                    "lobby".to_string(),
+                )
+                .await;
+        }
         ServerEvent::PlayerMsg(_payload) => {}
         ServerEvent::PlayerJoinLobby(_payload) => {}
         ServerEvent::PlayerCreateGame(_payload) => {}
