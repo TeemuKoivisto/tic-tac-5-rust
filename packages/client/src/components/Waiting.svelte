@@ -6,7 +6,7 @@
 >
   <h1 class="my-3 text-5xl font-bold flex items-center">TicTac5</h1>
   <div class="mt-24 flex items-center justify-center">
-    <p class="text-lg">Connecting...</p>
+    <p class="text-lg">Waiting for players...</p>
   </div>
 </section>
 
