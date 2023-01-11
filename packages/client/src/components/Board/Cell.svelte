@@ -22,7 +22,7 @@
   $: borderBottomBold = cellY !== $gridSize && cellY % 3 === 0
 </script>
 
-<div class="cell border-r border-b relative">
+<div class={`${$$props.class || ''} cell`}>
   <button
     class="h-full w-full text-gray-800 absolute inset-0"
     data-cell={`${x}:${y}`}
@@ -62,22 +62,6 @@
 
 <style>
   .cell {
-    @apply h-full w-full row-end-auto col-end-auto;
-  }
-
-  .cell-inner {
-    @apply relative h-full w-full text-gray-800;
-  }
-
-  .cell-btn {
-    @apply absolute inset-0 h-full w-full;
-  }
-
-  .cell-btn:focus {
-    @apply outline-none;
-  }
-
-  .selected {
-    @apply bg-primary text-white;
+    @apply h-full w-full row-end-auto col-end-auto relative;
   }
 </style>

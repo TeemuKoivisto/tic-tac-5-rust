@@ -24,7 +24,7 @@
       {#each Array($gridSize) as _, y}
         <div class="row flex">
           {#each Array($gridSize) as _, x}
-            <Cell {y} {x} {handleCellClick} />
+            <Cell class={`${y < $gridSize - 1 ? 'border-b' : ''}`} {y} {x} {handleCellClick} />
           {/each}
         </div>
       {/each}
@@ -32,7 +32,7 @@
   </div>
 </div>
 
-<style>
+<style lang="scss">
   :root {
     --grid-size: 12;
   }
@@ -41,5 +41,8 @@
   }
   .row {
     height: calc(100% / var(--grid-size));
+  }
+  :global(.cell) + :global(.cell) {
+    @apply border-l;
   }
 </style>
