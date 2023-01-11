@@ -9,8 +9,7 @@ RUN USER=root cargo new app
 WORKDIR /usr/src/app
 
 COPY Cargo.lock Cargo.toml ./
-COPY crates/server/Cargo.toml ./crates/server/Cargo.toml
-COPY crates/server/src ./crates/server/src
+COPY crates ./crates
 
 # Will build all dependent crates in release mode
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
