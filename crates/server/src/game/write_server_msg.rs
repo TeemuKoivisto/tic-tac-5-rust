@@ -45,14 +45,14 @@ pub async fn write_server_msg(
                 )
                 .await;
         }
-        // ServerEvent::Tick(state) => {
-        //     conn_manager
-        //         .broadcast(
-        //             serialize_server_event(ServerMsgType::tick, &state),
-        //             state.game_id,
-        //         )
-        //         .await;
-        // }
+        ServerEvent::GameMove(game_id, payload) => {
+            conn_manager
+                .broadcast(
+                    serialize_server_event(ServerMsgType::game_player_move, &payload),
+                    game_id,
+                )
+                .await;
+        }
         ServerEvent::Quit(payload) => {
             debug!("ServerEvents::Quit");
             conn_manager

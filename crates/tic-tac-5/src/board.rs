@@ -29,17 +29,17 @@ pub struct BoardCell {
     pub x: u32,
     pub y: u32,
     pub owner: u32,
-    adjacency: Adjancies,
+    pub adjacency: Adjancies,
 }
 
 #[derive(Debug, Clone)]
 pub struct Board {
     pub size: u32,
-    pub cells: HashMap<u32, BoardCell>,
+    pub cells: Vec<BoardCell>,
 }
 
 #[derive(Debug, Clone)]
-struct Adjancies {
+pub struct Adjancies {
     hor: u32,
     ver: u32,
     left_diag: u32,
@@ -72,34 +72,39 @@ impl IndexMut<Adjacency> for Adjancies {
 
 impl Board {
     pub fn new(size: u32) -> Self {
-        let mut cells = HashMap::new();
-        for x in 0..size {
-            for y in 0..size {
-                cells.insert(
-                    x + y * size,
-                    BoardCell {
-                        x,
-                        y,
-                        owner: 0,
-                        adjacency: Adjancies {
-                            hor: 0,
-                            ver: 0,
-                            left_diag: 0,
-                            right_diag: 0,
-                        },
+        let mut cells = Vec::new();
+        for y in 0..size {
+            for x in 0..size {
+                cells.push(BoardCell {
+                    x,
+                    y,
+                    owner: 0,
+                    adjacency: Adjancies {
+                        hor: 0,
+                        ver: 0,
+                        left_diag: 0,
+                        right_diag: 0,
                     },
-                );
+                });
             }
         }
         Self { size, cells }
     }
 
-    pub fn is_within_board(&self, x: u32, y: u32) -> bool {
-        x >= 0 && y >= 0 && x < self.size && y < self.size
+    pub fn is_within_board(&self, x: i32, y: i32) -> bool {
+        x >= 0 && y >= 0 && x < self.size as i32 && y < self.size as i32
     }
 
     pub fn get_cell_at(&self, x: u32, y: u32) -> &BoardCell {
-        self.cells.get(&(y * self.size + x)).unwrap()
+        &self.cells[(x + y * self.size) as usize]
+    }
+
+    pub fn set_cell_owner(&mut self, x: u32, y: u32, player: u32) {
+        self.cells[(x + y * self.size) as usize].owner = player;
+    }
+
+    pub fn set_cell_adjacency(&mut self, x: u32, y: u32, dir: Adjacency, count: u32) {
+        self.cells[(x + y * self.size) as usize].adjacency[dir] = count;
     }
 
     fn get_adjacent_in_direction(
@@ -109,49 +114,55 @@ impl Board {
         dir: Adjacency,
         topside: bool,
     ) -> Option<&BoardCell> {
-        let mut xx = 1000 as u32;
-        let mut yy = 1000 as u32;
+        let mut xx = x as i32;
+        let mut yy = y as i32;
         match dir {
             Adjacency::Horizontal => {
                 if topside {
-                    xx = x + 1;
+                    xx += 1;
                 } else {
-                    xx = x - 1;
+                    xx -= 1;
                 }
             }
             Adjacency::Vertical => {
                 if topside {
-                    yy = y + 1;
+                    yy += 1;
                 } else {
-                    yy = y - 1;
+                    yy -= 1;
                 }
             }
             Adjacency::LeftToRightDiagonal => {
                 if topside {
-                    xx = x + 1;
-                    yy = y - 1;
+                    xx += 1;
+                    yy -= 1;
                 } else {
-                    xx = x - 1;
-                    yy = y + 1;
+                    xx -= 1;
+                    yy += 1;
                 }
             }
             Adjacency::RightToLeftDiagonal => {
                 if topside {
-                    xx = x - 1;
-                    yy = y - 1;
+                    xx -= 1;
+                    yy -= 1;
                 } else {
-                    xx = x + 1;
-                    yy = y + 1;
+                    xx += 1;
+                    yy += 1;
                 }
             }
         }
         if !self.is_within_board(xx, yy) {
             return None;
         }
-        Some(self.get_cell_at(xx, yy))
+        Some(self.get_cell_at(xx as u32, yy as u32))
     }
 
-    fn get_adjacent_cells(&self, x: u32, y: u32, player: u32, dir: Adjacency) -> Vec<&BoardCell> {
+    pub fn get_adjacent_cells(
+        &self,
+        x: u32,
+        y: u32,
+        player: u32,
+        dir: Adjacency,
+    ) -> Vec<&BoardCell> {
         let mut adjacent = Vec::new();
         let mut topside = true;
         let mut now_x = x;
@@ -182,38 +193,47 @@ impl Board {
         adjacent
     }
 
-    fn update_cells_in_direction(&mut self, x: u32, y: u32, player: u32, dir: Adjacency) -> u32 {
+    pub fn get_updated_adjacent_cells(
+        &self,
+        x: u32,
+        y: u32,
+        player: u32,
+        dir: Adjacency,
+    ) -> Vec<BoardCell> {
         let cells = self.get_adjacent_cells(x, y, player, dir);
-        let adjacent_count = cells.len() + 1;
-        let cells2 = cells
-            .iter()
+        let adjacent_count = (cells.len() + 1) as u32;
+        let created = cells
+            .into_iter()
             .map(|c| {
-                let mut cc = (*c).clone();
-                cc.adjacency[dir] = adjacent_count as u32;
-                cc
+                let mut adj = c.adjacency.clone();
+                adj[dir] = adjacent_count as u32;
+                BoardCell {
+                    x: c.x,
+                    y: c.y,
+                    owner: c.owner,
+                    adjacency: adj,
+                }
             })
             .collect::<Vec<BoardCell>>();
-        for cell in cells2 {
-            self.cells.insert(cell.x + cell.y * self.size, cell);
-        }
-        adjacent_count as u32
+        created
     }
 
     pub fn update_cell_owner(&mut self, x: u32, y: u32, player: u32) {
-        let mut cell = self.cells.get_mut(&(y * self.size + x)).unwrap();
-        cell.owner = player;
-        let adjancies = Adjancies {
-            hor: self.update_cells_in_direction(x, y, player, Adjacency::Horizontal),
-            ver: self.update_cells_in_direction(x, y, player, Adjacency::Vertical),
-            left_diag: self.update_cells_in_direction(x, y, player, Adjacency::LeftToRightDiagonal),
-            right_diag: self.update_cells_in_direction(
-                x,
-                y,
-                player,
-                Adjacency::RightToLeftDiagonal,
-            ),
+        self.set_cell_owner(x, y, player);
+        let mut adjancies = Adjancies {
+            hor: 0,
+            ver: 0,
+            left_diag: 0,
+            right_diag: 0,
         };
-        let mut cell = self.cells.get_mut(&(y * self.size + x)).unwrap();
-        cell.adjacency = adjancies;
+        for dir in Adjacency::iterator() {
+            let cells = self.get_updated_adjacent_cells(x, y, player, dir.clone());
+            let adjacent_count = (cells.len() + 1) as u32;
+            for c in cells {
+                self.set_cell_adjacency(c.x, c.y, dir.clone(), adjacent_count);
+            }
+            adjancies[*dir] = adjacent_count;
+        }
+        self.cells[(x + y * self.size) as usize].adjacency = adjancies;
     }
 }

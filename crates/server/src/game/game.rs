@@ -35,6 +35,14 @@ impl Game {
     pub fn is_waiting_and_empty(&self) -> bool {
         self.state.status == GameStatus::WAITING && self.joined_players.len() == 0
     }
+    pub fn get_winner(&self) -> Option<&Player> {
+        if self.state.status == GameStatus::X_WON {
+            return Some(&self.state.players[0]);
+        } else if self.state.status == GameStatus::O_WON {
+            return Some(&self.state.players[1]);
+        }
+        None
+    }
     pub fn get_player_in_turn(&self) -> &Player {
         &self.state.players[(self.state.player_in_turn - 1) as usize]
     }
@@ -47,7 +55,11 @@ impl Game {
             ));
         } else if !self.is_running() {
             return Some("Game has already ended".to_string());
-        } else if !self.state.board.is_within_board(payload.x, payload.y) {
+        } else if !self
+            .state
+            .board
+            .is_within_board(payload.x as i32, payload.y as i32)
+        {
             return Some("Move's x, y weren't inside the board".to_string());
         }
         let cell = self.state.board.get_cell_at(payload.x, payload.y);
@@ -60,20 +72,30 @@ impl Game {
         None
     }
 
-    pub fn handle_player_move(&mut self, payload: &PlayerSelectCell) -> Option<String> {
+    pub fn handle_player_move(&mut self, payload: &PlayerSelectCell) -> Result<bool, String> {
         let err = self.is_valid_move(payload);
         if err.is_some() {
-            return err;
+            return Err(err.unwrap());
         }
         self.state
-            .board
-            .update_cell_owner(payload.x, payload.y, payload.player_number);
+            .player_move(payload.x, payload.y, payload.player_number);
+        let did_win = self.state.check_win(payload.x, payload.y);
         if payload.player_number == self.state.options.players {
-            self.state.player_in_turn = 1
+            self.state.player_in_turn = 1;
+            self.state.status = if did_win {
+                GameStatus::O_WON
+            } else {
+                GameStatus::O_TURN
+            };
         } else {
             self.state.player_in_turn = payload.player_number + 1;
+            self.state.status = if did_win {
+                GameStatus::X_WON
+            } else {
+                GameStatus::X_TURN
+            };
         }
-        None
+        Ok(did_win)
     }
 
     pub fn handle_player_join(&mut self, payload: &PlayerJoinGame, socket_id: u32) -> bool {
@@ -125,11 +147,11 @@ impl Game {
         }
     }
 
-    pub fn get_game_end(&self, winner: Option<Player>) -> GameEnd {
+    pub fn get_game_end(&self, winner: Option<&Player>) -> GameEnd {
         GameEnd {
             game_id: self.id.to_string(),
             result: self.state.status,
-            winner,
+            winner: winner.cloned(),
         }
     }
 

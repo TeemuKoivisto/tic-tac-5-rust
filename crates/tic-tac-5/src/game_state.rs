@@ -1,7 +1,7 @@
 use rand::{rngs::OsRng, rngs::StdRng, Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 
-use crate::board::Board;
+use crate::board::{Adjacency, Adjancies, Board};
 use crate::proto::proto_all::*;
 
 // impl std::fmt::Display for PlayerSymbol {
@@ -72,15 +72,26 @@ impl GameState {
     pub fn remove_player(&mut self, player_number: u32) {
         self.players[player_number as usize].dead = true;
     }
+    pub fn player_move(&mut self, x: u32, y: u32, player: u32) {
+        self.board.update_cell_owner(x, y, player);
+    }
+    pub fn check_win(&self, x: u32, y: u32) -> bool {
+        let cell = self.board.get_cell_at(x, y);
+        let mut won = false;
+        for dir in Adjacency::iterator() {
+            won = won || cell.adjacency[*dir] == 5;
+        }
+        won
+    }
     pub fn get_cells(&self) -> Vec<Cell> {
         self.board
             .cells
             .iter()
             .map(|c| Cell {
-                x: c.1.x,
-                y: c.1.y,
+                x: c.x,
+                y: c.y,
                 cell_type: CellType::EMPTY,
-                player: c.1.owner,
+                player: c.owner,
             })
             .collect::<Vec<Cell>>()
     }

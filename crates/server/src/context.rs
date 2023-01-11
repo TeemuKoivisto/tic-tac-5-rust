@@ -15,7 +15,7 @@ use crate::connection::Connection;
 use crate::connection::ConnectionManager;
 use crate::game::game::Game;
 use crate::game::game_manager::GameManager;
-use crate::game::write_server_msg::serialize_server_event;
+use crate::game::write_server_msg::{serialize_server_event, write_server_msg};
 
 pub struct Context {
     pub game_manager_mutex: Arc<Mutex<GameManager>>,
@@ -202,25 +202,32 @@ impl Context {
         let game_id = payload.game_id.clone();
         let game_mut = self.find_game(game_id).await;
         let mut game = game_mut.lock().await;
-        let moved = game.handle_player_move(&payload);
-        let game_id = &payload.game_id;
-        if moved.is_some() {
-            println!("Incorrect move: {}", moved.unwrap());
+        let game_ended = game.handle_player_move(&payload);
+        if game_ended.is_err() {
+            println!("Incorrect move: {}", game_ended.unwrap_err());
             return;
         }
-        let mut conn_manager = self.conn_manager_mutex.lock().await;
-        conn_manager
-            .broadcast(
-                serialize_server_event(
-                    ServerMsgType::game_player_move,
-                    &GameMove {
-                        player: payload.player_number,
-                        x: payload.x,
-                        y: payload.y,
-                    },
-                ),
+        let game_id = &payload.game_id;
+        write_server_msg(
+            ServerEvent::GameMove(
                 game_id.to_string(),
+                GameMove {
+                    player: payload.player_number,
+                    x: payload.x,
+                    y: payload.y,
+                },
+            ),
+            self.conn_manager_mutex.clone(),
+        )
+        .await;
+        if game_ended.unwrap() {
+            let winner = game.get_winner();
+            let game_end = game.get_game_end(winner);
+            write_server_msg(
+                ServerEvent::GameEnd(game_end.clone()),
+                self.conn_manager_mutex.clone(),
             )
             .await;
+        }
     }
 }

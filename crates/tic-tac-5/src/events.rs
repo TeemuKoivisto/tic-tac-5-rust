@@ -42,7 +42,7 @@ pub enum ServerEvent {
     PlayerJoin(PlayerJoinGame),
     GameStart(GameStart),
     GameEnd(GameEnd),
-    // Tick(Tick),
+    GameMove(String, GameMove),
     Quit(PlayerLeave),
 }
 
