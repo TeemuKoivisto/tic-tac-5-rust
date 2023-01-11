@@ -44,6 +44,7 @@ pub async fn listen(ctx: Arc<Context>, ws_stream: WebSocketStream<TcpStream>, so
                         if let Ok(player_join) = PlayerJoinLobby::from_reader(&mut reader, &msg) {
                             debug!("ClientMsgType::join_lobby {:#?}", player_join);
                             ctx.handle_join_lobby(socket_id, player_join).await;
+                            ctx.broadcast_lobby_state().await;
                         }
                     }
                     Ok(ClientMsgType::create_lobby_game) => {
@@ -72,7 +73,10 @@ pub async fn listen(ctx: Arc<Context>, ws_stream: WebSocketStream<TcpStream>, so
                     Ok(ClientMsgType::player_select_cell) => {
                         if let Ok(player_move) = PlayerSelectCell::from_reader(&mut reader, &msg) {
                             debug!("ClientMsgType::player_select_cell {:#?}", player_move);
-                            ctx.handle_player_select_cell(player_move).await;
+                            let ended = ctx.handle_player_select_cell(player_move).await;
+                            if ended {
+                                ctx.broadcast_lobby_state().await;
+                            }
                         }
                     }
                     _ => error!("Unknown header: {}", message_type),

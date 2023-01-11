@@ -87,19 +87,6 @@ impl Context {
         game_manager.player_join_lobby(player_join);
         let mut conn_manager = self.conn_manager_mutex.lock().await;
         conn_manager.join_conn_to_room(socket_id, "lobby".to_string());
-        let games = game_manager.lobby_state().await;
-        conn_manager
-            .send(
-                serialize_server_event(
-                    ServerMsgType::lobby_state,
-                    &LobbyState {
-                        games,
-                        players: game_manager.lobby_players.clone(),
-                    },
-                ),
-                socket_id,
-            )
-            .await;
     }
 
     pub async fn create_lobby_game(
@@ -198,14 +185,14 @@ impl Context {
         // });
     }
 
-    pub async fn handle_player_select_cell(&self, payload: PlayerSelectCell) {
+    pub async fn handle_player_select_cell(&self, payload: PlayerSelectCell) -> bool {
         let game_id = payload.game_id.clone();
         let game_mut = self.find_game(game_id).await;
         let mut game = game_mut.lock().await;
         let game_ended = game.handle_player_move(&payload);
         if game_ended.is_err() {
             println!("Incorrect move: {}", game_ended.unwrap_err());
-            return;
+            return false;
         }
         let game_id = &payload.game_id;
         write_server_msg(
@@ -228,7 +215,17 @@ impl Context {
                 self.conn_manager_mutex.clone(),
             )
             .await;
+            self.game_manager_mutex
+                .lock()
+                .await
+                .remove_game(Uuid::parse_str(&game_id).unwrap());
+            self.conn_manager_mutex
+                .lock()
+                .await
+                .remove_room(game_id.to_string());
+            return true;
         }
+        false
     }
 
     pub async fn broadcast_lobby_state(&self) {

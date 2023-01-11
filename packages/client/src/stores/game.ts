@@ -126,6 +126,8 @@ export const gameActions = {
     }
     socketActions.emit(ClientMsgType.join_lobby_game, PlayerJoinGame.encode(payload).finish())
     gameState.set('waiting-game-start')
+    // Set lobbyGames empty so that old games won't show up when returning to front page
+    lobbyGames.set([])
   },
   playerSelectCell(x: number, y: number) {
     const payload = {

@@ -71,6 +71,13 @@ impl ConnectionManager {
             .unwrap()
             .leave_room(room)
     }
+    pub fn remove_room(&mut self, room: String) {
+        self.connections
+            .iter_mut()
+            .find(|c| c.is_in_room(&room))
+            .unwrap()
+            .leave_room(room)
+    }
     pub fn get(&self, id: u32) -> &Connection {
         self.connections.iter().find(|c| c.id == id).unwrap()
     }
