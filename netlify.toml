@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm --filter types build && pnpm --filter prototybes build && pnpm --filter client build"
+  command = "pnpm --filter types build && pnpm --filter prototypes build && pnpm --filter client build"
   publish = "packages/client/dist"
 
 [[redirects]]
