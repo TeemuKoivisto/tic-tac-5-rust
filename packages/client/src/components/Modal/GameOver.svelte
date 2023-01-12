@@ -33,7 +33,7 @@
   <div class="flex text-black">
     <div class="flex-auto mr-3">
       <svg
-        class="icon-outline"
+        class="w-8 h-8 inline-block"
         xmlns="http://www.w3.org/2000/svg"
         fill="#222"
         viewBox="0 0 24 24"
@@ -59,7 +59,7 @@
   <div class="flex">
     <div class="flex-auto mr-3">
       <svg
-        class="icon-outline"
+        class="w-8 h-8 inline-block"
         xmlns="http://www.w3.org/2000/svg"
         fill="#222"
         viewBox="0 0 24 24"
@@ -94,9 +94,4 @@
 >
 
 <style>
-  .icon-outline {
-    height: 2rem;
-    width: 2rem;
-    @apply inline-block;
-  }
 </style>
