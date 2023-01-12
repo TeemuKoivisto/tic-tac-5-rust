@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { GameOverParams } from '../../stores/modal'
+  import type { GameOverParams } from '../../stores/modal'
   import { gameActions } from '../../stores/game'
 
   export let params: GameOverParams

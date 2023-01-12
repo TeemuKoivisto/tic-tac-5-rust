@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fade } from 'svelte/transition'
+
   import { lastMove, wasOwnMove } from '../stores/game'
   import { modalActions, EModal } from '../stores/modal'
 

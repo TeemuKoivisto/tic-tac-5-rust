@@ -25,10 +25,7 @@ export const openModal = writable<EModal | null>(null)
 export const modalActions = {
   open<K extends keyof ModalParams>(name: K, params: ModalParams[K]) {
     openModal.set(name)
-    modals.update(m => {
-      m[name] = params
-      return m
-    })
+    modals.update(m => ({ ...m, [name]: params }))
   },
   close() {
     openModal.set(null)
