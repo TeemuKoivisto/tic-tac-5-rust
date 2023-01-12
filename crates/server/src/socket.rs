@@ -52,8 +52,9 @@ pub async fn listen(ctx: Arc<Context>, ws_stream: WebSocketStream<TcpStream>, so
                             debug!("ClientMsgType::create_lobby_game {:#?}", create_game);
                             let (started, game_mut) =
                                 ctx.create_lobby_game(socket_id, create_game).await;
+                            ctx.broadcast_lobby_state().await;
                             if started {
-                                ctx.start_game(game_mut).await;
+                                // ctx.start_game(game_mut).await;
                             }
                         }
                     }
@@ -66,7 +67,7 @@ pub async fn listen(ctx: Arc<Context>, ws_stream: WebSocketStream<TcpStream>, so
                                 .join_lobby_game(socket_id, game_mut.clone(), player_join)
                                 .await;
                             if started {
-                                ctx.start_game(game_mut).await;
+                                // ctx.start_game(game_mut).await;
                             }
                         }
                     }

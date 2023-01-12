@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition'
   import { lastMove, wasOwnMove } from '../stores/game'
+  import { modalActions, EModal } from '../stores/modal'
 
   $: hideModal = $lastMove === undefined || !$wasOwnMove
 
@@ -10,6 +11,15 @@
   function onKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       isOpen = !isOpen
+      if (!isOpen) {
+        modalActions.open(EModal.GAME_OVER, {
+          playerWon: true,
+          startTime: Date.now(),
+          turns: 0,
+        })
+      } else {
+        modalActions.close()
+      }
     }
   }
 </script>

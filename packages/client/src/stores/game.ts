@@ -16,6 +16,7 @@ import {
   CellType,
 } from '@tt5/prototypes'
 
+import { modalActions, EModal } from './modal'
 import { socketActions } from './ws'
 import { log } from '../logger'
 
@@ -29,6 +30,9 @@ export const playerName = writable('unknown')
 export const gameState = writable<GameState>('connecting')
 export const gameEnd = writable<GameEnd | undefined>(undefined)
 export const gameId = writable<string>('')
+export const gameStarted = writable<number>(0)
+export const gameTurns = writable<number>(0)
+
 export const players = writable<Player[]>([])
 export const cells = writable<Map<string, Cell>>(new Map())
 export const gridSize = derived(cells, cells => Math.sqrt(cells.size))
@@ -70,15 +74,24 @@ function handleMessages(evt: SocketEvent) {
       cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
       localPlayer.set(evt.data.players.find(p => p.id === playerId))
       gameState.set('game-running')
+      gameStarted.set(Date.now())
       break
     case ServerMsgType.game_end:
-      gameEnd.set(evt.data)
+      modalActions.open(EModal.GAME_OVER, {
+        playerWon: evt.data.winner?.id === playerId,
+        startTime: get(gameStarted),
+        turns: get(gameTurns),
+      })
       gameState.set('game-ended')
+      gameEnd.set(evt.data)
       lastMove.set(undefined)
+      gameStarted.set(0)
+      gameTurns.set(0)
       break
     case ServerMsgType.game_player_move:
       const key = `${evt.data.x}:${evt.data.y}`
       lastMove.set(evt.data)
+      gameTurns.update(t => t + 1)
       cells.update(cells => {
         const old = cells.get(key)
         if (!old) {

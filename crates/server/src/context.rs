@@ -121,19 +121,6 @@ impl Context {
                     .send(ServerEvent::GameStart(game.get_game_start()));
             }
         }
-        let games = game_manager.lobby_state().await;
-        conn_manager
-            .broadcast(
-                serialize_server_event(
-                    ServerMsgType::lobby_state,
-                    &LobbyState {
-                        games,
-                        players: game_manager.lobby_players.clone(),
-                    },
-                ),
-                "lobby".to_string(),
-            )
-            .await;
         (started, game_mut)
     }
 

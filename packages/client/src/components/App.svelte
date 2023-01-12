@@ -18,9 +18,9 @@
     <Waiting />
   {:else if $gameState === 'lobby'}
     <Lobby />
-  {:else if $gameState === 'game-ended'}
-    <GameOver gameEnd={$gameEnd} {playerId} />
-  {:else if $gameState === 'game-running'}
+    <!-- {:else if $gameState === 'game-ended'}
+    <GameOver gameEnd={$gameEnd} {playerId} /> -->
+  {:else if $gameState === 'game-running' || $gameState === 'game-ended'}
     <Play />
   {:else if $gameState === 'connecting'}
     <Loading />
