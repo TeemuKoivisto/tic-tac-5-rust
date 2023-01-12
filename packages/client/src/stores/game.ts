@@ -2,6 +2,7 @@ import { derived, get, writable } from 'svelte/store'
 import {
   Cell,
   GameEnd,
+  GameMove,
   Player,
   ServerMsgType,
   ClientMsgType,
@@ -34,6 +35,11 @@ export const gridSize = derived(cells, cells => Math.sqrt(cells.size))
 export const playerId = Math.ceil(Math.random() * 100000) // TODO: remove client-side id generation
 export const localPlayer = writable<Player | undefined>(undefined)
 export const retryConnectTimeout = writable<ReturnType<typeof setTimeout> | undefined>()
+export const lastMove = writable<GameMove | undefined>(undefined)
+export const wasOwnMove = derived(
+  [lastMove, localPlayer],
+  ([m, p]) => m?.player && m.player === p?.playerNumber
+)
 
 function handleMessages(evt: SocketEvent) {
   log.debug('Event:', evt)
@@ -68,9 +74,11 @@ function handleMessages(evt: SocketEvent) {
     case ServerMsgType.game_end:
       gameEnd.set(evt.data)
       gameState.set('game-ended')
+      lastMove.set(undefined)
       break
     case ServerMsgType.game_player_move:
       const key = `${evt.data.x}:${evt.data.y}`
+      lastMove.set(evt.data)
       cells.update(cells => {
         const old = cells.get(key)
         if (!old) {

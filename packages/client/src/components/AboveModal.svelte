@@ -1,5 +1,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition'
+  import { lastMove, wasOwnMove } from '../stores/game'
+
+  $: hideModal = $lastMove === undefined || !$wasOwnMove
 
   export let isOpen = false
   const ANIMATION_DURATION = 400
@@ -9,28 +12,24 @@
       isOpen = !isOpen
     }
   }
-  function handleToggleOpen() {
-    isOpen = !isOpen
-  }
 </script>
 
 <svelte:window on:keydown|preventDefault={onKeyDown} />
 <section
   class="w-full flex items-center absolute justify-center z-20"
-  class:hidden={!isOpen}
-  class:-translate-y-full={!isOpen}
+  class:hidden={hideModal}
+  class:-translate-y-full={hideModal}
 >
-  {#if isOpen}
+  {#if wasOwnMove}
     <button
       transition:fade={{ duration: ANIMATION_DURATION }}
       class="dropdown-overlay"
-      on:click={handleToggleOpen}
       tabindex="-1"
     />
   {/if}
   <div
     class="dropdown-menu transform flex flex-col justify-center"
-    class:-translate-y-full={!isOpen}
+    class:-translate-y-full={hideModal}
   >
     <h2 class="text-center text-lg my-1.5 text-black">It's opponent's turn</h2>
   </div>
