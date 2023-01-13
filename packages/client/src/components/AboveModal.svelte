@@ -1,38 +1,33 @@
 <script lang="ts">
   import { lastMove, wasOwnMove } from '../stores/game'
-  import { modalActions, EModal } from '../stores/modal'
+  // import { modalActions, EModal } from '../stores/modal'
 
   $: hideModal = $lastMove === undefined || !$wasOwnMove
 
-  export let isOpen = false
+  let isOpen = false
 
   function onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      isOpen = !isOpen
-      if (!isOpen) {
-        modalActions.open(EModal.GAME_OVER, {
-          playerWon: true,
-          startTime: Date.now(),
-          turns: 0,
-        })
-      } else {
-        modalActions.close()
-      }
-    }
+    // if (e.key === 'Escape') {
+    //   isOpen = !isOpen
+    //   if (!isOpen) {
+    //     modalActions.open(EModal.GAME_OVER, {
+    //       playerWon: true,
+    //       startTime: Date.now(),
+    //       turns: 0,
+    //     })
+    //   } else {
+    //     modalActions.close()
+    //   }
+    // }
   }
 </script>
 
 <svelte:window on:keydown|preventDefault={onKeyDown} />
-<section
-  class="w-full flex items-center absolute justify-center z-20"
-  class:hidden={hideModal}
-  class:-translate-y-full={hideModal}
->
-  <div
-    class="menu transform flex flex-col justify-center"
-    class:-translate-y-full={hideModal}
-  >
-    <h2 class="text-center text-lg my-1.5 text-black">It's opponent's turn</h2>
+<section class="h-0 relative">
+  <div class="w-full z-20 flex items-center relative justify-center">
+    <div class="menu transform flex flex-col justify-center" class:-translate-y-full={hideModal}>
+      <h2 class="text-center text-lg my-1.5 text-black">It's opponent's turn</h2>
+    </div>
   </div>
 </section>
 
