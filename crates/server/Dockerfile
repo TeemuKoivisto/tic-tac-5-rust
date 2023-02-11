@@ -26,7 +26,7 @@ RUN cargo install --path ./crates/server
 ####################
 FROM rust:1-slim-buster
 
-ENV INSTALL_PATH /usr/local/liquid_server
+ENV INSTALL_PATH /usr/local/tic-tac-5
 
 WORKDIR ${INSTALL_PATH}
 COPY --from=builder /usr/local/cargo/bin/server ${INSTALL_PATH}
