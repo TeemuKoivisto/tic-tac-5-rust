@@ -1,0 +1,60 @@
+name: Publish and deploy worker
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  push_to_registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v1
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./crates/server/Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          load: true
+          tags: latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build worker image and push it to Docker registry
+        run: ./scripts.sh docker:push
+
+  deploy:
+    needs: push_to_registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Run playbook
+        uses: dawidd6/action-ansible-playbook@v2
+        with:
+          playbook: .ansible/deploy-worker/playbook.yml
+          key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          inventory: |
+            [tic-tac-5]
+            95.217.183.51
+
+            [all:vars]
+            ansible_ssh_user=root
+          options: |
+            --verbose

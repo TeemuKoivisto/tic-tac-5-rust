@@ -1,0 +1,5 @@
+---
+docker_image: tic-tac-5
+aws_user_id: 626386600593
+aws_region: eu-central-1
+aws_format: table
