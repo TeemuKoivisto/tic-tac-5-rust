@@ -19,3 +19,4 @@ uuid = { version = "1.1.2", features = [
 ]}
 log = { version = "0.4", features = ["std"] }
 env_logger = { version = "0.9.1" }
+sentry = "0.29.2"

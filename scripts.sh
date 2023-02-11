@@ -25,9 +25,9 @@ case "$1" in
       --password-stdin
 
     echo "Building & pushing image with version ${VERSION} and 'latest'"
-    # Eg 626386600593.dkr.ecr.eu-west-1.amazonaws.com/ysync-worker:0.2.0
+    # Eg 626386600593.dkr.ecr.eu-west-1.amazonaws.com/tic-tac-5:0.2.0
     docker buildx build --push \
-      -f ./crates/worker/Dockerfile \
+      -f ./crates/server/Dockerfile \
       -t ${IMAGE}:${VERSION} \
       -t ${IMAGE}:latest  .
     ;;

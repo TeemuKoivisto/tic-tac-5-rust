@@ -20,11 +20,20 @@ use tokio::sync::Mutex;
 async fn main() {
     env_logger::init();
     let port = std::env::var("PORT").unwrap_or_else(|_| "6634".to_string());
+    let sentry_url = std::env::var("SENTRY_URL").unwrap_or_else(|_| "".to_string());
     let addr = format!("0.0.0.0:{}", port);
 
     let listener = TcpListener::bind(&addr)
         .await
         .expect("Listening to TCP failed.");
+
+    let _guard = sentry::init((
+        sentry_url,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            ..Default::default()
+        },
+    ));
 
     /*
         Broadcast data to all clients in a separate async tokio green thread.

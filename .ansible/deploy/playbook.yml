@@ -23,7 +23,7 @@
 
     - name: Restart it
       community.general.supervisorctl:
-        name: "{{ docker_image }}"
+        name: '{{ docker_image }}'
         state: started
 
     - name: Remove dangling images
