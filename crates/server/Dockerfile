@@ -8,6 +8,8 @@ RUN USER=root cargo new app
 
 WORKDIR /usr/src/app
 
+RUN apt-get update && apt-get -y install pkg-config libssl-dev
+
 COPY Cargo.lock Cargo.toml ./
 COPY crates ./crates
 
