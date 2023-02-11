@@ -1,4 +1,4 @@
-name: Publish and deploy worker
+name: Publish and deploy server
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
       - name: Run playbook
         uses: dawidd6/action-ansible-playbook@v2
         with:
-          playbook: .ansible/deploy-worker/playbook.yml
+          playbook: .ansible/deploy-server/playbook.yml
           key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
           inventory: |
             [tic-tac-5]
