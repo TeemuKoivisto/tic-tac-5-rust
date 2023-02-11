@@ -17,7 +17,7 @@ case "$1" in
     ECR_REPOSITORY="tic-tac-5"
     REGISTRY_URL=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
     IMAGE=${REGISTRY_URL}/${ECR_REPOSITORY}
-    VERSION=$(cat crates/worker/Cargo.toml | grep version | awk -F'[ "]' 'NR==1{print $4}')
+    VERSION=$(cat crates/server/Cargo.toml | grep version | awk -F'[ "]' 'NR==1{print $4}')
 
     aws ecr get-login-password --region ${AWS_REGION} | docker login \
       --username=AWS \
