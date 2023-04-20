@@ -32,7 +32,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build worker image and push it to Docker registry
-        run: ./scripts.sh docker:push
+        run: ./ex.sh docker:push
 
   deploy:
     needs: push_to_registry
