@@ -1,5 +1,3 @@
-import { Ball } from '@tt5/prototypes'
-
 export type GameState =
   | 'connecting'
   | 'lobby'
@@ -21,17 +19,6 @@ export interface Cursor {
 export interface Move {
   x: number
   y: number
-  targetX: number
-  targetY: number
-}
-
-export interface ClientBall extends Ball {
-  targetX: number
-  targetY: number
-  pixiBall: any
-}
-export interface ClientCursor extends Cursor {
-  color: number
   targetX: number
   targetY: number
 }

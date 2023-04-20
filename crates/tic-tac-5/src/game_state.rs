@@ -49,7 +49,7 @@ impl GameState {
             rng,
         }
     }
-    pub fn add_player(&mut self, player_id: &u32, name: String, socket_id: &u32) {
+    pub fn add_player(&mut self, player_id: &u32, name: String, socket_id: Option<u32>) {
         let player_number = self.players.len() as u32 + 1;
         let symbol = if player_number == 1 {
             "X".to_string()
@@ -58,11 +58,12 @@ impl GameState {
         };
         let player = Player {
             id: *player_id,
-            socket_id: *socket_id,
+            socket_id: socket_id.unwrap_or(0),
             player_number,
             symbol,
             name,
             dead: false,
+            ai: false,
         };
         self.players.push(player);
     }

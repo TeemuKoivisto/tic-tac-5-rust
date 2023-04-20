@@ -200,6 +200,7 @@ pub struct Player {
     pub symbol: String,
     pub name: String,
     pub dead: bool,
+    pub ai: bool,
 }
 
 impl<'a> MessageRead<'a> for Player {
@@ -213,6 +214,7 @@ impl<'a> MessageRead<'a> for Player {
                 Ok(34) => msg.symbol = r.read_string(bytes)?.to_owned(),
                 Ok(42) => msg.name = r.read_string(bytes)?.to_owned(),
                 Ok(48) => msg.dead = r.read_bool(bytes)?,
+                Ok(64) => msg.ai = r.read_bool(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -230,6 +232,7 @@ impl MessageWrite for Player {
         + if self.symbol == String::default() { 0 } else { 1 + sizeof_len((&self.symbol).len()) }
         + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
         + if self.dead == false { 0 } else { 1 + sizeof_varint(*(&self.dead) as u64) }
+        + if self.ai == false { 0 } else { 1 + sizeof_varint(*(&self.ai) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
@@ -239,6 +242,7 @@ impl MessageWrite for Player {
         if self.symbol != String::default() { w.write_with_tag(34, |w| w.write_string(&**&self.symbol))?; }
         if self.name != String::default() { w.write_with_tag(42, |w| w.write_string(&**&self.name))?; }
         if self.dead != false { w.write_with_tag(48, |w| w.write_bool(*&self.dead))?; }
+        if self.ai != false { w.write_with_tag(64, |w| w.write_bool(*&self.ai))?; }
         Ok(())
     }
 }
@@ -630,6 +634,7 @@ pub struct PlayerJoinGame {
     pub game_id: String,
     pub player_id: u32,
     pub name: String,
+    pub options: Option<proto_all::GameOptions>,
 }
 
 impl<'a> MessageRead<'a> for PlayerJoinGame {
@@ -640,6 +645,7 @@ impl<'a> MessageRead<'a> for PlayerJoinGame {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_id = r.read_uint32(bytes)?,
                 Ok(26) => msg.name = r.read_string(bytes)?.to_owned(),
+                Ok(34) => msg.options = Some(r.read_message::<proto_all::GameOptions>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -654,12 +660,14 @@ impl MessageWrite for PlayerJoinGame {
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
         + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
+        + self.options.as_ref().map_or(0, |m| 1 + sizeof_len((m).get_size()))
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
         if self.name != String::default() { w.write_with_tag(26, |w| w.write_string(&**&self.name))?; }
+        if let Some(ref s) = self.options { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())
     }
 }
@@ -708,12 +716,12 @@ impl MessageWrite for PlayerSelectCell {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct PlayerLeave {
+pub struct PlayerLeaveGame {
     pub game_id: String,
     pub player_id: u32,
 }
 
-impl<'a> MessageRead<'a> for PlayerLeave {
+impl<'a> MessageRead<'a> for PlayerLeaveGame {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
@@ -728,7 +736,7 @@ impl<'a> MessageRead<'a> for PlayerLeave {
     }
 }
 
-impl MessageWrite for PlayerLeave {
+impl MessageWrite for PlayerLeaveGame {
     fn get_size(&self) -> usize {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }

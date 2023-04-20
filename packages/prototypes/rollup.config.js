@@ -3,7 +3,7 @@ import typescript from 'rollup-plugin-typescript2'
 import pkg from './package.json' assert { type: 'json' }
 
 export default {
-  input: 'out-ts/index.ts',
+  input: 'index.ts',
   output: [
     {
       file: pkg.main,

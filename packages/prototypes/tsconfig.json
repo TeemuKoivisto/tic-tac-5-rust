@@ -3,6 +3,6 @@
   "compilerOptions": {
     "target": "es2018"
   },
-  "include": ["out-ts"],
+  "include": ["protos"],
   "exclude": ["node_modules"]
 }

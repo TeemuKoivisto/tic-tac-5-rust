@@ -246,6 +246,7 @@ export interface Player {
   symbol: string;
   name: string;
   dead: boolean;
+  ai: boolean;
 }
 
 export interface Cell {
@@ -312,6 +313,7 @@ export interface PlayerJoinGame {
   gameId?: string | undefined;
   playerId: number;
   name: string;
+  options: GameOptions | undefined;
 }
 
 export interface PlayerSelectCell {
@@ -321,13 +323,13 @@ export interface PlayerSelectCell {
   y: number;
 }
 
-export interface PlayerLeave {
+export interface PlayerLeaveGame {
   gameId: string;
   playerId: number;
 }
 
 function createBasePlayer(): Player {
-  return { id: 0, socketId: 0, playerNumber: 0, symbol: "", name: "", dead: false };
+  return { id: 0, socketId: 0, playerNumber: 0, symbol: "", name: "", dead: false, ai: false };
 }
 
 export const Player = {
@@ -349,6 +351,9 @@ export const Player = {
     }
     if (message.dead === true) {
       writer.uint32(48).bool(message.dead);
+    }
+    if (message.ai === true) {
+      writer.uint32(64).bool(message.ai);
     }
     return writer;
   },
@@ -378,6 +383,9 @@ export const Player = {
         case 6:
           message.dead = reader.bool();
           break;
+        case 8:
+          message.ai = reader.bool();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -394,6 +402,7 @@ export const Player = {
       symbol: isSet(object.symbol) ? String(object.symbol) : "",
       name: isSet(object.name) ? String(object.name) : "",
       dead: isSet(object.dead) ? Boolean(object.dead) : false,
+      ai: isSet(object.ai) ? Boolean(object.ai) : false,
     };
   },
 
@@ -405,7 +414,12 @@ export const Player = {
     message.symbol !== undefined && (obj.symbol = message.symbol);
     message.name !== undefined && (obj.name = message.name);
     message.dead !== undefined && (obj.dead = message.dead);
+    message.ai !== undefined && (obj.ai = message.ai);
     return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Player>, I>>(base?: I): Player {
+    return Player.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<Player>, I>>(object: I): Player {
@@ -416,6 +430,7 @@ export const Player = {
     message.symbol = object.symbol ?? "";
     message.name = object.name ?? "";
     message.dead = object.dead ?? false;
+    message.ai = object.ai ?? false;
     return message;
   },
 };
@@ -486,6 +501,10 @@ export const Cell = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<Cell>, I>>(base?: I): Cell {
+    return Cell.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<Cell>, I>>(object: I): Cell {
     const message = createBaseCell();
     message.x = object.x ?? 0;
@@ -554,6 +573,10 @@ export const LobbyGame = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<LobbyGame>, I>>(base?: I): LobbyGame {
+    return LobbyGame.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<LobbyGame>, I>>(object: I): LobbyGame {
     const message = createBaseLobbyGame();
     message.gameId = object.gameId ?? "";
@@ -611,6 +634,10 @@ export const LobbyPlayer = {
     message.playerId !== undefined && (obj.playerId = Math.round(message.playerId));
     message.name !== undefined && (obj.name = message.name);
     return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LobbyPlayer>, I>>(base?: I): LobbyPlayer {
+    return LobbyPlayer.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<LobbyPlayer>, I>>(object: I): LobbyPlayer {
@@ -677,6 +704,10 @@ export const LobbyState = {
       obj.players = [];
     }
     return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LobbyState>, I>>(base?: I): LobbyState {
+    return LobbyState.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<LobbyState>, I>>(object: I): LobbyState {
@@ -753,6 +784,10 @@ export const GameStart = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<GameStart>, I>>(base?: I): GameStart {
+    return GameStart.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<GameStart>, I>>(object: I): GameStart {
     const message = createBaseGameStart();
     message.gameId = object.gameId ?? "";
@@ -818,6 +853,10 @@ export const GameEnd = {
     message.result !== undefined && (obj.result = gameStatusToJSON(message.result));
     message.winner !== undefined && (obj.winner = message.winner ? Player.toJSON(message.winner) : undefined);
     return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GameEnd>, I>>(base?: I): GameEnd {
+    return GameEnd.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<GameEnd>, I>>(object: I): GameEnd {
@@ -889,6 +928,10 @@ export const GameMove = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<GameMove>, I>>(base?: I): GameMove {
+    return GameMove.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<GameMove>, I>>(object: I): GameMove {
     const message = createBaseGameMove();
     message.player = object.player ?? 0;
@@ -948,6 +991,10 @@ export const GameOptions = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<GameOptions>, I>>(base?: I): GameOptions {
+    return GameOptions.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<GameOptions>, I>>(object: I): GameOptions {
     const message = createBaseGameOptions();
     message.size = object.size ?? 0;
@@ -1004,6 +1051,10 @@ export const PlayerJoinLobby = {
     message.playerId !== undefined && (obj.playerId = Math.round(message.playerId));
     message.name !== undefined && (obj.name = message.name);
     return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PlayerJoinLobby>, I>>(base?: I): PlayerJoinLobby {
+    return PlayerJoinLobby.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<PlayerJoinLobby>, I>>(object: I): PlayerJoinLobby {
@@ -1080,6 +1131,10 @@ export const PlayerCreateGame = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<PlayerCreateGame>, I>>(base?: I): PlayerCreateGame {
+    return PlayerCreateGame.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<PlayerCreateGame>, I>>(object: I): PlayerCreateGame {
     const message = createBasePlayerCreateGame();
     message.playerId = object.playerId ?? 0;
@@ -1093,7 +1148,7 @@ export const PlayerCreateGame = {
 };
 
 function createBasePlayerJoinGame(): PlayerJoinGame {
-  return { gameId: undefined, playerId: 0, name: "" };
+  return { gameId: undefined, playerId: 0, name: "", options: undefined };
 }
 
 export const PlayerJoinGame = {
@@ -1106,6 +1161,9 @@ export const PlayerJoinGame = {
     }
     if (message.name !== "") {
       writer.uint32(26).string(message.name);
+    }
+    if (message.options !== undefined) {
+      GameOptions.encode(message.options, writer.uint32(34).fork()).ldelim();
     }
     return writer;
   },
@@ -1126,6 +1184,9 @@ export const PlayerJoinGame = {
         case 3:
           message.name = reader.string();
           break;
+        case 4:
+          message.options = GameOptions.decode(reader, reader.uint32());
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1139,6 +1200,7 @@ export const PlayerJoinGame = {
       gameId: isSet(object.gameId) ? String(object.gameId) : undefined,
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
       name: isSet(object.name) ? String(object.name) : "",
+      options: isSet(object.options) ? GameOptions.fromJSON(object.options) : undefined,
     };
   },
 
@@ -1147,7 +1209,12 @@ export const PlayerJoinGame = {
     message.gameId !== undefined && (obj.gameId = message.gameId);
     message.playerId !== undefined && (obj.playerId = Math.round(message.playerId));
     message.name !== undefined && (obj.name = message.name);
+    message.options !== undefined && (obj.options = message.options ? GameOptions.toJSON(message.options) : undefined);
     return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PlayerJoinGame>, I>>(base?: I): PlayerJoinGame {
+    return PlayerJoinGame.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<PlayerJoinGame>, I>>(object: I): PlayerJoinGame {
@@ -1155,6 +1222,9 @@ export const PlayerJoinGame = {
     message.gameId = object.gameId ?? undefined;
     message.playerId = object.playerId ?? 0;
     message.name = object.name ?? "";
+    message.options = (object.options !== undefined && object.options !== null)
+      ? GameOptions.fromPartial(object.options)
+      : undefined;
     return message;
   },
 };
@@ -1225,6 +1295,10 @@ export const PlayerSelectCell = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<PlayerSelectCell>, I>>(base?: I): PlayerSelectCell {
+    return PlayerSelectCell.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<PlayerSelectCell>, I>>(object: I): PlayerSelectCell {
     const message = createBasePlayerSelectCell();
     message.gameId = object.gameId ?? "";
@@ -1235,12 +1309,12 @@ export const PlayerSelectCell = {
   },
 };
 
-function createBasePlayerLeave(): PlayerLeave {
+function createBasePlayerLeaveGame(): PlayerLeaveGame {
   return { gameId: "", playerId: 0 };
 }
 
-export const PlayerLeave = {
-  encode(message: PlayerLeave, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const PlayerLeaveGame = {
+  encode(message: PlayerLeaveGame, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.gameId !== "") {
       writer.uint32(10).string(message.gameId);
     }
@@ -1250,10 +1324,10 @@ export const PlayerLeave = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerLeave {
+  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerLeaveGame {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBasePlayerLeave();
+    const message = createBasePlayerLeaveGame();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1271,22 +1345,26 @@ export const PlayerLeave = {
     return message;
   },
 
-  fromJSON(object: any): PlayerLeave {
+  fromJSON(object: any): PlayerLeaveGame {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : "",
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
     };
   },
 
-  toJSON(message: PlayerLeave): unknown {
+  toJSON(message: PlayerLeaveGame): unknown {
     const obj: any = {};
     message.gameId !== undefined && (obj.gameId = message.gameId);
     message.playerId !== undefined && (obj.playerId = Math.round(message.playerId));
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<PlayerLeave>, I>>(object: I): PlayerLeave {
-    const message = createBasePlayerLeave();
+  create<I extends Exact<DeepPartial<PlayerLeaveGame>, I>>(base?: I): PlayerLeaveGame {
+    return PlayerLeaveGame.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PlayerLeaveGame>, I>>(object: I): PlayerLeaveGame {
+    const message = createBasePlayerLeaveGame();
     message.gameId = object.gameId ?? "";
     message.playerId = object.playerId ?? 0;
     return message;

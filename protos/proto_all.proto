@@ -44,6 +44,7 @@ message Player {
     string symbol = 4;
     string name = 5;
     bool dead = 6;
+    bool ai = 8;
 }
 
 enum CellType {
@@ -128,6 +129,7 @@ message PlayerJoinGame {
     optional string game_id = 1;
     uint32 player_id = 2;
     string name = 3;
+    GameOptions options = 4;
 }
 
 message PlayerSelectCell {
@@ -137,7 +139,7 @@ message PlayerSelectCell {
     uint32 y = 4;
 }
 
-message PlayerLeave {
+message PlayerLeaveGame {
     string game_id = 1;
     uint32 player_id = 2;
 }

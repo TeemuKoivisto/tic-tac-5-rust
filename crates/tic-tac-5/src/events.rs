@@ -43,7 +43,7 @@ pub enum ServerEvent {
     GameStart(GameStart),
     GameEnd(GameEnd),
     GameMove(String, GameMove),
-    Quit(PlayerLeave),
+    Quit(PlayerLeaveGame),
 }
 
 impl TryInto<u8> for ServerMsgType {

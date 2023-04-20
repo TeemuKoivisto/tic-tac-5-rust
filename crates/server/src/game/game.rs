@@ -5,7 +5,7 @@ use uuid::Uuid;
 pub struct JoinedPlayer {
     pub player_id: u32,
     pub name: String,
-    pub socket_id: u32,
+    pub socket_id: Option<u32>, // None if AI
 }
 
 pub struct Game {
@@ -107,7 +107,7 @@ impl Game {
             JoinedPlayer {
                 player_id: payload.player_id,
                 name: payload.name.clone(),
-                socket_id,
+                socket_id: Some(socket_id),
             },
         );
         if self.joined_players.len() as u32 == self.state.options.players {
@@ -120,12 +120,24 @@ impl Game {
     pub fn handle_game_start(&mut self) {
         for player in &self.joined_players {
             self.state
-                .add_player(&player.player_id, player.name.clone(), &player.socket_id);
+                .add_player(&player.player_id, player.name.clone(), player.socket_id);
         }
         self.state.status = GameStatus::X_TURN;
     }
 
-    pub fn handle_player_disconnect(&mut self, player_id: &u32) {
+    pub fn end_game(&mut self) -> (GameStatus, Option<&Player>) {
+        let status = self.state.status;
+        if status == GameStatus::X_WON {
+            return (GameStatus::X_WON, Some(&self.state.players[0]));
+        } else if status == GameStatus::O_WON {
+            return (GameStatus::O_WON, Some(&self.state.players[1]));
+        } else {
+            self.state.status = GameStatus::TIE;
+        }
+        (GameStatus::TIE, None)
+    }
+
+    pub fn handle_player_leave(&mut self, player_id: &u32) {
         // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
         self.joined_players.retain(|p| p.player_id != *player_id);
         if self.state.status != GameStatus::WAITING {
@@ -142,6 +154,11 @@ impl Game {
         }
     }
 
+    pub fn handle_player_disconnect(&mut self, player_id: &u32) {
+        // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
+        self.handle_player_leave(player_id);
+    }
+
     pub fn get_game_start(&self) -> GameStart {
         GameStart {
             game_id: self.id.to_string(),
@@ -150,11 +167,11 @@ impl Game {
         }
     }
 
-    pub fn get_game_end(&self, winner: Option<&Player>) -> GameEnd {
+    pub fn get_game_end(&self, winner: Option<Player>) -> GameEnd {
         GameEnd {
             game_id: self.id.to_string(),
             result: self.state.status,
-            winner: winner.cloned(),
+            winner,
         }
     }
 

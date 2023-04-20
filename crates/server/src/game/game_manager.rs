@@ -5,25 +5,18 @@ use crate::game::game::Game;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tic_tac_5::{
-    events::{GameEvent, ServerEvent},
-    proto::proto_all::*,
-};
-use tokio::sync::mpsc::error::SendError;
-use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedSender};
+use tic_tac_5::proto::proto_all::*;
 use tokio::sync::Mutex;
 
 pub struct GameManager {
-    pub broadcast: UnboundedSender<ServerEvent>,
     pub games: HashMap<Uuid, Arc<Mutex<Game>>>,
     pub lobby_players: Vec<LobbyPlayer>,
     pub lobby_chat: Vec<String>,
 }
 
 impl GameManager {
-    pub fn new(broadcast: UnboundedSender<ServerEvent>) -> GameManager {
+    pub fn new() -> GameManager {
         Self {
-            broadcast,
             games: HashMap::new(),
             lobby_players: Vec::new(),
             lobby_chat: Vec::new(),
