@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store'
+import { get, writable } from 'svelte/store'
 
 export enum EModal {
   GAME_OVER = 'GAME_OVER_MODAL',
@@ -30,4 +30,12 @@ export const modalActions = {
   close() {
     openModal.set(null)
   },
+  toggle(modal: EModal) {
+    const opened = get(openModal)
+    if (!opened || (opened && opened !== modal)) {
+      openModal.set(modal)
+    } else {
+      openModal.set(null)
+    }
+  }
 }

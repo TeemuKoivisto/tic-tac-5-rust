@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::debug;
 use uuid::Uuid;
 
 use crate::game::game::Game;
@@ -10,16 +10,12 @@ use tokio::sync::Mutex;
 
 pub struct GameManager {
     pub games: HashMap<Uuid, Arc<Mutex<Game>>>,
-    pub lobby_players: Vec<LobbyPlayer>,
-    pub lobby_chat: Vec<String>,
 }
 
 impl GameManager {
     pub fn new() -> GameManager {
         Self {
             games: HashMap::new(),
-            lobby_players: Vec::new(),
-            lobby_chat: Vec::new(),
         }
     }
 
@@ -37,20 +33,6 @@ impl GameManager {
             );
         }
         games
-    }
-
-    pub fn player_join_lobby(&mut self, data: PlayerJoinLobby) {
-        self.lobby_players.insert(
-            0,
-            LobbyPlayer {
-                player_id: data.player_id,
-                name: data.name,
-            },
-        );
-    }
-
-    pub fn player_leave_lobby(&mut self, player_id: u32) {
-        self.lobby_players.retain(|p| p.player_id != player_id);
     }
 
     pub fn remove_game(&mut self, game_id: Uuid) {

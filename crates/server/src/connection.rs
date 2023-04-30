@@ -1,16 +1,14 @@
-use futures_util::sink::Send;
+use std::{collections::HashMap, sync::Arc};
+
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
-use log::{debug, info};
-use tokio::net::TcpStream;
+use log::{debug, error, info, warn};
+use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::game::serialize_server_event::serialize_server_event;
-use tic_tac_5::{
-    events::{GameEvent, ServerEvent},
-    proto::proto_all::*,
-};
+use tic_tac_5::{events::ServerEvent, proto::proto_all::*};
 
 #[derive(Debug)]
 pub struct Connection {
@@ -24,85 +22,137 @@ impl Connection {
         Self {
             id,
             sender,
-            rooms: vec!["*".to_string()],
+            rooms: Vec::new(),
         }
     }
     pub fn is_in_room(&self, room: &String) -> bool {
         self.rooms.contains(room)
     }
-    pub fn join_room(&mut self, room: String) {
-        self.rooms.push(room);
+    pub fn join_room(&mut self, room: &String) {
+        self.rooms.push(room.to_string());
     }
-    // TODO: call this function
-    pub fn leave_room(&mut self, room: String) {
-        self.rooms.retain(|r| r != &room);
+    pub fn leave_room(&mut self, room: &String) {
+        self.rooms.retain(|r| r != room);
     }
-    pub fn send(
+    pub async fn send(
         &mut self,
         msg: Message,
-    ) -> Send<'_, SplitSink<WebSocketStream<TcpStream>, Message>, Message> {
-        self.sender.send(msg)
+    ) -> Result<(), tokio_tungstenite::tungstenite::Error> {
+        let res = self.sender.send(msg).await;
+        if res.is_err() {
+            warn!("{:?}", res.as_ref().err());
+        }
+        res
     }
 }
 
 #[derive(Debug)]
 pub struct ConnectionManager {
-    connections: Vec<Connection>,
+    connections: HashMap<u32, Arc<Mutex<Connection>>>,
+    rooms: HashMap<String, Vec<u32>>,
 }
 
 impl ConnectionManager {
     pub fn new() -> Self {
         Self {
-            connections: Vec::new(),
+            connections: HashMap::new(),
+            rooms: HashMap::new(),
         }
     }
-    pub fn add(&mut self, conn: Connection) {
-        self.connections.push(conn);
+    pub fn add(&mut self, socket_id: u32, conn: Arc<Mutex<Connection>>) {
+        self.connections.insert(socket_id, conn);
     }
-    pub fn remove(&mut self, id: u32) {
-        self.connections.retain(|c| c.id != id);
-    }
-    pub fn join_conn_to_room(&mut self, id: u32, room: String) {
-        info!("join conn {:?} to room {:?}", id, room);
-        self.connections
-            .iter_mut()
-            .find(|c| c.id == id)
-            .unwrap()
-            .join_room(room)
-    }
-    pub fn remove_conn_from_room(&mut self, id: u32, room: String) {
-        self.connections
-            .iter_mut()
-            .find(|c| c.id == id)
-            .unwrap()
-            .leave_room(room)
-    }
-    pub fn remove_room(&mut self, room: String) {
-        self.connections
-            .iter_mut()
-            .map(|c| {
-                if c.is_in_room(&room) {
-                    c.leave_room(room.to_string());
-                }
-            })
-            .collect()
-    }
-    pub fn get(&self, id: u32) -> &Connection {
-        self.connections.iter().find(|c| c.id == id).unwrap()
-    }
-    pub async fn send(&mut self, msg: Message, socket_id: u32) {
-        for conn in self.connections.iter_mut() {
-            if conn.id == socket_id {
-                let _ = conn.send(msg.clone()).await;
+    pub async fn remove(&mut self, conn_mut: Arc<Mutex<Connection>>) {
+        let conn = conn_mut.lock().await;
+        let socket_id = &conn.id;
+        for room in conn.rooms.iter() {
+            let connected = self.rooms.entry(room.clone()).or_insert(Vec::new());
+            connected.retain(|id| id != socket_id);
+            if connected.is_empty() {
+                self.rooms.remove(room);
             }
         }
+        self.connections.remove(socket_id);
     }
-    pub async fn broadcast(&mut self, msg: Message, room: String) {
-        // debug("hello broadcast to room {:?}", room);
-        for conn in self.connections.iter_mut() {
-            // debug("broadcasting to conn {:?}", conn);
-            if conn.is_in_room(&room) {
-                let _ = conn.send(msg.clone()).await;
+    pub async fn join_conn_to_room(&mut self, socket_id: &u32, room: &String) {
+        info!("join conn {:?} to room {:?}", socket_id, room);
+        let conn = self.connections.get(socket_id);
+        if conn.is_none() {
+            error!(
+                "Tried to join non-existent connection {} to room {}",
+                socket_id, room
+            );
+            return;
+        }
+        let locked = conn.unwrap().try_lock();
+        if locked.is_err() {
+            error!("Tried to join a locked connection to room: {} {:?}", room, locked.err());
+        } else {
+            let _ = locked.unwrap().join_room(room);
+        }
+        let connected = self.rooms.entry(room.to_string()).or_insert(Vec::new());
+        connected.push(*socket_id);
+    }
+    pub async fn remove_conn_from_room(&mut self, socket_id: &u32, room: &String) {
+        let conn = self.connections.get(socket_id);
+        if conn.is_none() {
+            error!(
+                "Tried to remove non-existent connection {} from room {}",
+                socket_id, room
+            );
+            return;
+        }
+        let locked = conn.unwrap().try_lock();
+        if locked.is_err() {
+            error!("Tried to remove a locked connection from room: {} {:?}", room, locked.err());
+        } else {
+            let _ = locked.unwrap().leave_room(room);
+        }
+        let connected = self.rooms.entry(room.clone()).or_insert(Vec::new());
+        connected.retain(|id| id != socket_id);
+        if connected.is_empty() {
+            self.rooms.remove(room);
+        }
+    }
+    pub async fn remove_room(&mut self, room: &String) {
+        let sockets = self.rooms.get(room);
+        if sockets.is_some() {
+            for socket_id in sockets.unwrap() {
+                let conn = self.connections.get(socket_id);
+                let locked = conn.unwrap().try_lock();
+                if locked.is_err() {
+                    error!("Tried to remove a room with a locked connection! {:?}", locked.err());
+                } else {
+                    let _ = locked.unwrap().leave_room(room);
+                }
+            }
+        }
+        self.rooms.remove(room);
+    }
+    // pub fn get(&self, id: &u32) -> Option<&Arc<tokio::sync::Mutex<Connection>>> {
+    //     self.connection_map.get(id)
+    // }
+    // pub async fn send(&mut self, msg: Message, socket_id: &u32) {
+    //     let conn = self.connection_map.get(socket_id);
+    //     if conn.is_none() {
+    //         error!("Tried to send to non-existent connection {}", socket_id);
+    //         return;
+    //     }
+    //     let _ = conn.unwrap().lock().await.send(msg.clone()).await;
+    // }
+    pub async fn broadcast(&mut self, msg: Message, room: &String) {
+        let sockets = self.rooms.get(room);
+        if sockets.is_some() {
+            for socket_id in sockets.unwrap() {
+                let conn = self.connections.get(socket_id);
+                if conn.is_some() {
+                    let locked = conn.unwrap().try_lock();
+                    if locked.is_err() {
+                        error!("Tried to send to an already locked connection! {:?}", locked.err());
+                    } else {
+                        let _ = locked.unwrap().send(msg.clone()).await;
+                    }
+                }
             }
         }
     }
@@ -112,15 +162,15 @@ impl ConnectionManager {
                 // debug!("ServerEvents::ClientConnected {:?}", conn);
                 // self.add(conn);
             }
-            ServerEvent::ClientDisconnected(client_id) => {
+            ServerEvent::ClientDisconnected(socket_id) => {
                 debug!("ServerEvents::ClientDisconnected");
-                self.remove(client_id);
+                // self.remove(&socket_id);
             }
             ServerEvent::LobbyGames(payload) => {
                 debug!("ServerEvents::LobbyGames");
                 self.broadcast(
                     serialize_server_event(ServerMsgType::lobby_state, &payload),
-                    "lobby".to_string(),
+                    &"lobby".to_string(),
                 )
                 .await;
             }
@@ -134,7 +184,7 @@ impl ConnectionManager {
                 debug!("ServerEvents::GameStart");
                 self.broadcast(
                     serialize_server_event(ServerMsgType::game_start, &start),
-                    start.game_id,
+                    &start.game_id,
                 )
                 .await;
             }
@@ -142,14 +192,14 @@ impl ConnectionManager {
                 debug!("ServerEvents::GameEnd");
                 self.broadcast(
                     serialize_server_event(ServerMsgType::game_end, &payload),
-                    payload.game_id,
+                    &payload.game_id,
                 )
                 .await;
             }
             ServerEvent::GameMove(game_id, payload) => {
                 self.broadcast(
                     serialize_server_event(ServerMsgType::game_player_move, &payload),
-                    game_id,
+                    &game_id,
                 )
                 .await;
             }
@@ -157,7 +207,7 @@ impl ConnectionManager {
                 debug!("ServerEvents::Quit");
                 self.broadcast(
                     serialize_server_event(ServerMsgType::player_left, &payload),
-                    payload.game_id,
+                    &payload.game_id,
                 )
                 .await;
             }

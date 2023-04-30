@@ -1,6 +1,11 @@
-// use tic_tac_5::{events::*, game_state::*};
-use tic_tac_5::{events::ServerEvent, game_state::*, proto::proto_all::*};
+use std::{collections::HashMap, sync::Arc};
+
+use tic_tac_5::{game_state::*, proto::proto_all::*};
+use tokio::sync::Mutex;
+use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
+
+use crate::connection::Connection;
 
 pub struct JoinedPlayer {
     pub player_id: u32,
@@ -11,6 +16,7 @@ pub struct JoinedPlayer {
 pub struct Game {
     pub id: Uuid,
     pub state: GameState,
+    pub connections: HashMap<u32, Arc<Mutex<Connection>>>,
     pub joined_players: Vec<JoinedPlayer>,
 }
 
@@ -19,6 +25,7 @@ impl Game {
         Self {
             id: Uuid::new_v4(),
             state: GameState::new(options, rng_seed),
+            connections: HashMap::new(),
             joined_players: Vec::new(),
         }
     }
@@ -155,8 +162,33 @@ impl Game {
     }
 
     pub fn handle_player_disconnect(&mut self, player_id: &u32) {
-        // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
+        // @TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
         self.handle_player_leave(player_id);
+    }
+
+    pub fn add_player_connection(&mut self, socket_id: u32, conn: Arc<Mutex<Connection>>) {
+        self.connections.insert(socket_id, conn);
+    }
+
+    pub fn remove_player_connection(&mut self, socket_id: &u32) {
+        // @TODO remove joined player?
+        self.connections.remove(socket_id);
+    }
+
+    pub async fn broadcast_game_msg(&mut self, msg: Message) {
+        // @TODO can deadlock if conn_manager sends to same connections at the same time
+        for p in self.joined_players.iter() {
+            if p.socket_id.is_none() {
+                continue;
+            }
+            let conn = self.connections.get(&p.socket_id.unwrap());
+            if conn.is_none() {
+                continue;
+            }
+            println!("broadcast to {}", p.socket_id.unwrap());
+            let _ = conn.unwrap().lock().await.send(msg.clone()).await;
+            println!("broadcasted!")
+        }
     }
 
     pub fn get_game_start(&self) -> GameStart {
@@ -174,17 +206,4 @@ impl Game {
             winner,
         }
     }
-
-    // pub fn get_tick(&self) -> Tick {
-    //     Tick {
-    //         game_id: self.id.to_string(),
-    //         cursors: self
-    //             .state
-    //             .players
-    //             .iter()
-    //             .map(|p| p.cursor.as_ref().unwrap().clone())
-    //             .collect(),
-    //         balls: self.state.get_balls(),
-    //     }
-    // }
 }

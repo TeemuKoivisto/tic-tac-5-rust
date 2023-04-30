@@ -4,8 +4,6 @@
 
   $: hideModal = $lastMove === undefined || !$wasOwnMove
 
-  let isOpen = false
-
   function onKeyDown(e: KeyboardEvent) {
     // if (e.key === 'Escape') {
     //   isOpen = !isOpen

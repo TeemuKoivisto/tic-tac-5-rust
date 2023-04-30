@@ -1,6 +1,8 @@
 mod connection;
 mod context;
 mod game;
+mod lobby;
+mod player_context;
 mod socket;
 
 use crate::connection::*;
