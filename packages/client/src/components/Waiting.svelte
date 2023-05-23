@@ -1,4 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
+
+  onMount(() => {
+    console.log('mount waiting')
+    return () => {
+      console.log('destroy waiting')
+    }
+  })
 </script>
 
 <section

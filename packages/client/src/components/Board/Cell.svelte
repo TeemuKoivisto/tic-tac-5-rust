@@ -11,8 +11,10 @@
   $: wasLastMove = $lastMove?.x === x && $lastMove?.y === y
 
   cells.subscribe(cells => {
+    // console.log('cells changed')
     let newVal = cells.get(`${x}:${y}`) as Cell
     if (newVal.cellType !== cell.cellType) {
+      // console.log('newVal', newVal)
       cell = newVal
     }
   })

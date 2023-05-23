@@ -67,14 +67,19 @@ function handleMessages(evt: SocketEvent) {
     case ServerMsgType.lobby_state:
       lobbyGames.set(evt.data.games)
       lobbyPlayers.set(evt.data.players)
+      // console.log('lobby games', get(lobbyGames))
       break
     case ServerMsgType.game_start:
+      modalActions.close();
       gameId.set(evt.data.gameId)
       players.set(evt.data.players)
       cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
       localPlayer.set(evt.data.players.find(p => p.id === playerId))
-      gameState.set('game-running')
-      gameStarted.set(Date.now())
+      gameEnd.set(undefined)
+      setTimeout(() => {
+        gameState.set('game-running')
+        gameStarted.set(Date.now())
+      }, 200)
       break
     case ServerMsgType.game_end:
       modalActions.open(EModal.GAME_OVER, {

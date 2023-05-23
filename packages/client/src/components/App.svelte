@@ -8,6 +8,10 @@
 
   import { gameActions, gameState } from '../stores/game'
 
+  $: {
+    console.log('new gamestate: ', $gameState)
+  }
+
   onMount(() => {
     gameActions.runGame()
   })

@@ -15,12 +15,14 @@
 
   function handleRematch() {}
   function handleNewGame() {
+    hideModal()
     gameActions.createGame({
       size: 0,
       players: 2,
     })
   }
   function handleOpenLobby() {
+    hideModal()
     gameActions.joinLobby()
   }
 </script>

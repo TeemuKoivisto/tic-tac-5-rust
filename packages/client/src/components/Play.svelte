@@ -20,7 +20,7 @@
   })
 </script>
 
-<svelte:window on:keydown={handleKeydown}/>
+<!-- <svelte:window on:keydown={handleKeydown}/> -->
 <AboveModal />
 <Board />
 <Modal />
