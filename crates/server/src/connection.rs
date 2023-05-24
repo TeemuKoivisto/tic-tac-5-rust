@@ -7,8 +7,9 @@ use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
-use crate::game::serialize_server_event::serialize_server_event;
 use tic_tac_5::{events::ServerEvent, proto::proto_all::*};
+
+use crate::ws::serialize_server_event::serialize_server_event;
 
 #[derive(Debug)]
 pub struct Connection {
@@ -86,7 +87,11 @@ impl ConnectionManager {
         }
         let locked = conn.unwrap().try_lock();
         if locked.is_err() {
-            error!("Tried to join a locked connection to room: {} {:?}", room, locked.err());
+            error!(
+                "Tried to join a locked connection to room: {} {:?}",
+                room,
+                locked.err()
+            );
         } else {
             let _ = locked.unwrap().join_room(room);
         }
@@ -104,7 +109,11 @@ impl ConnectionManager {
         }
         let locked = conn.unwrap().try_lock();
         if locked.is_err() {
-            error!("Tried to remove a locked connection from room: {} {:?}", room, locked.err());
+            error!(
+                "Tried to remove a locked connection from room: {} {:?}",
+                room,
+                locked.err()
+            );
         } else {
             let _ = locked.unwrap().leave_room(room);
         }
@@ -121,7 +130,10 @@ impl ConnectionManager {
                 let conn = self.connections.get(socket_id);
                 let locked = conn.unwrap().try_lock();
                 if locked.is_err() {
-                    error!("Tried to remove a room with a locked connection! {:?}", locked.err());
+                    error!(
+                        "Tried to remove a room with a locked connection! {:?}",
+                        locked.err()
+                    );
                 } else {
                     let _ = locked.unwrap().leave_room(room);
                 }
@@ -148,7 +160,10 @@ impl ConnectionManager {
                 if conn.is_some() {
                     let locked = conn.unwrap().try_lock();
                     if locked.is_err() {
-                        error!("Tried to send to an already locked connection! {:?}", locked.err());
+                        error!(
+                            "Tried to send to an already locked connection! {:?}",
+                            locked.err()
+                        );
                     } else {
                         let _ = locked.unwrap().send(msg.clone()).await;
                     }

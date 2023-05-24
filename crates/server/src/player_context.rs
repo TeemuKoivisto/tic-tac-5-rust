@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::connection::Connection;
 use crate::game::game::Game;
-use crate::game::serialize_server_event::serialize_server_event;
+use crate::ws::serialize_server_event::serialize_server_event;
 use tic_tac_5::proto::proto_all::*;
 
 pub struct PlayerContext {

@@ -1,19 +1,16 @@
 mod connection;
-mod context;
 mod game;
-mod lobby;
 mod player_context;
-mod socket;
+mod state;
+mod ws;
 
-use crate::connection::*;
-use crate::context::Context;
-use crate::game::game_manager::GameManager;
-use crate::socket::*;
+use crate::state::context::Context;
+use crate::ws::ws_session::run_session;
+use crate::ws::ws_session_handle::WsSessionHandle;
 
 use log::info;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
@@ -34,9 +31,7 @@ async fn main() {
         .await
         .expect("Listening to TCP failed.");
 
-    let game_manager = Arc::new(Mutex::new(GameManager::new()));
-    let conn_manager = Arc::new(Mutex::new(ConnectionManager::new()));
-    let ctx = Arc::new(Context::new(game_manager, conn_manager));
+    let ctx = Arc::new(Context::new());
 
     println!("Listening on: {}", addr);
 
@@ -50,7 +45,12 @@ async fn main() {
             Ok(ws_stream) => {
                 socket_id += 1;
                 info!("New Connection {} Socket ID {}", peer, socket_id);
-                tokio::spawn(listen(ctx.clone(), ws_stream, socket_id));
+                // tokio::spawn(listen(ctx.clone(), ws_stream, socket_id));
+                let session = WsSessionHandle::new(ws_stream, socket_id);
+                // ctx.lobby()
+                // ctx.lobby.as_ref().c
+                let _ = session.subscribe(&ctx.lobby.client_sender);
+                run_session(session.actor);
             }
         }
     }

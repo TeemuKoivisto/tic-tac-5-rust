@@ -5,9 +5,10 @@ use uuid::Uuid;
 use crate::connection::Connection;
 use crate::connection::ConnectionManager;
 use crate::game::game::Game;
-use crate::game::game_manager::GameManager;
 use crate::lobby::Lobby;
 use tic_tac_5::{events::ServerEvent, proto::proto_all::*};
+
+use super::game_manager::GameManager;
 
 pub struct Context {
     // pub players: Arc<Mutex<Vec<Arc<Mutex<&PlayerContext>>>>>,
