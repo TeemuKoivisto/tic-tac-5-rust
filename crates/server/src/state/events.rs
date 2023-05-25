@@ -11,7 +11,7 @@ pub enum LobbyEvent {
     Subscribe(broadcast::Sender<ClientEvent>),
     JoinLobby(u32),
     LobbyMsg(u32),
-    LeaveLobby(u32),
+    LeaveLobby(Vec<u32>),
     LobbyState(LobbyState),
     JoinLobbyGame(u32),
     LeaveLobbyGame(u32),

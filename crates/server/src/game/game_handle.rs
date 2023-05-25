@@ -4,6 +4,7 @@ use tokio::{sync::broadcast, task::JoinHandle};
 use uuid::Uuid;
 
 use crate::state::events::{ClientEvent, GameEvent};
+use crate::state::lobby_actor::ClientSubscriber;
 
 use super::game::Game;
 use super::listed_game::ListedGame;

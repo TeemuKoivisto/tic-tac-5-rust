@@ -10,10 +10,6 @@ use super::{
 pub struct Lobby {
     pub client_sender: broadcast::Sender<ClientEvent>,
     pub lobby_receiver: broadcast::Receiver<LobbyEvent>,
-    // Use this and trait Broadcastable to send messages either to game or lobby depending who has the connection?
-    // problem -> lot of moving of connections
-    // plus -> no need to loop players in games when broadcasting lobby state
-    // pub connections: Vec<Arc<Mutex<Connection>>>,
 }
 
 impl Lobby {
