@@ -8,12 +8,14 @@ use tokio::sync::{broadcast, mpsc};
 // leave_lobby_game = 4;
 #[derive(Debug, Clone)]
 pub enum LobbyEvent {
+    Subscribe(broadcast::Sender<ClientEvent>),
     JoinLobby(u32),
     LobbyMsg(u32),
     LeaveLobby(u32),
     LobbyState(LobbyState),
     JoinLobbyGame(u32),
     LeaveLobbyGame(u32),
+    PlayerJoinGame(PlayerJoinGame),
 }
 
 // player_select_cell = 5;
@@ -27,6 +29,8 @@ pub enum ClientEvent {
     ),
     Disconnected(u32),
     PlayerJoinLobby(PlayerJoinLobby),
+    PlayerCreateGame(u32, PlayerCreateGame),
+    PlayerJoinGame(u32, PlayerJoinGame),
     SelectCell(),
     LeaveGame(),
 }
@@ -39,7 +43,7 @@ pub enum ClientEvent {
 #[derive(Debug, Clone)]
 pub enum GameEvent {
     Subscribe(String, broadcast::Sender<ClientEvent>),
-    PlayerJoin(),
+    PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
     GameStart(),
     GameEnd(),

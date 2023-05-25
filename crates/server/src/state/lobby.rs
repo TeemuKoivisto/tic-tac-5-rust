@@ -1,5 +1,6 @@
 use tic_tac_5::proto::proto_all::*;
 use tokio::sync::broadcast;
+use tokio::sync::broadcast::error::SendError;
 
 use super::{
     events::{ClientEvent, LobbyEvent},
@@ -27,17 +28,10 @@ impl Lobby {
         }
     }
 
-    pub fn player_join_lobby(&mut self, data: PlayerJoinLobby) {
-        // self.lobby_players.insert(
-        //     0,
-        //     LobbyPlayer {
-        //         player_id: data.player_id,
-        //         name: data.name,
-        //     },
-        // );
-    }
-
-    pub fn player_leave_lobby(&mut self, player_id: u32) {
-        // self.lobby_players.retain(|p| p.player_id != player_id);
+    pub fn subscribe(
+        &self,
+        sender: &broadcast::Sender<LobbyEvent>,
+    ) -> Result<usize, SendError<LobbyEvent>> {
+        sender.send(LobbyEvent::Subscribe(self.client_sender.clone()))
     }
 }

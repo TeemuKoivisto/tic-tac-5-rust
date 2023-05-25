@@ -4,19 +4,17 @@ use uuid::Uuid;
 
 use crate::connection::Connection;
 use crate::game::game::Game;
-use tic_tac_5::{events::ServerEvent, proto::proto_all::*};
+use tic_tac_5::proto::proto_all::*;
 
-use super::{game_manager::GameManager, lobby::Lobby};
+use super::lobby::Lobby;
 
 pub struct Context {
-    pub game_manager: Arc<GameManager>,
     pub lobby: Arc<Lobby>,
 }
 
 impl Context {
     pub fn new() -> Self {
         Self {
-            game_manager: Arc::new(GameManager::new()),
             lobby: Arc::new(Lobby::new()),
         }
     }

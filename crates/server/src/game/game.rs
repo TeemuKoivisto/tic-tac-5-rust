@@ -1,49 +1,43 @@
+use log::{debug, error, info};
 use std::{collections::HashMap, sync::Arc};
-
 use tic_tac_5::{game_state::*, proto::proto_all::*};
 use tokio::sync::Mutex;
-use tokio_tungstenite::tungstenite::Message;
+use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
-use crate::connection::Connection;
+use crate::state::events::{ClientEvent, GameEvent};
 
-pub struct JoinedPlayer {
-    pub player_id: u32,
-    pub name: String,
-    pub socket_id: Option<u32>, // None if AI
+use super::listed_game::{JoinedPlayer, ListedGame};
+
+pub struct Subscriber {
+    socket_id: u32,
+    sender: broadcast::Sender<GameEvent>,
 }
 
 pub struct Game {
     pub id: Uuid,
     pub state: GameState,
-    pub connections: HashMap<u32, Arc<Mutex<Connection>>>,
     pub joined_players: Vec<JoinedPlayer>,
+    game_sender: broadcast::Sender<GameEvent>,
+    pub client_receiver: broadcast::Receiver<ClientEvent>,
+    subscribers: Vec<Subscriber>,
 }
 
 impl Game {
-    pub fn new(options: &GameOptions, rng_seed: Option<[u8; 32]>) -> Self {
+    pub fn new(
+        lobby_game: &ListedGame,
+        rng_seed: Option<[u8; 32]>,
+        game_sender: broadcast::Sender<GameEvent>,
+        client_receiver: broadcast::Receiver<ClientEvent>,
+    ) -> Self {
         Self {
-            id: Uuid::new_v4(),
-            state: GameState::new(options, rng_seed),
-            connections: HashMap::new(),
-            joined_players: Vec::new(),
+            id: lobby_game.id,
+            state: GameState::new(&lobby_game.options, rng_seed),
+            joined_players: lobby_game.joined_players.clone(),
+            game_sender,
+            client_receiver,
+            subscribers: Vec::new(),
         }
-    }
-    pub fn allows_joining(&self) -> bool {
-        self.state.status == GameStatus::WAITING
-            && self.state.players.len() as u32 != self.state.options.players
-    }
-    pub fn matches_player_options(&self, user_options: &GameOptions) -> bool {
-        true
-    }
-    pub fn is_running(&self) -> bool {
-        self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN
-    }
-    pub fn is_empty(&self) -> bool {
-        self.joined_players.len() == 0
-    }
-    pub fn is_waiting_and_empty(&self) -> bool {
-        self.state.status == GameStatus::WAITING && self.joined_players.len() == 0
     }
     pub fn get_winner(&self) -> Option<&Player> {
         if self.state.status == GameStatus::X_WON {
@@ -63,8 +57,6 @@ impl Game {
                 "Player {} tried to move when it was {} turn",
                 payload.player_number, self.state.player_in_turn
             ));
-        } else if !self.is_running() {
-            return Some("Game has already ended".to_string());
         } else if !self
             .state
             .board
@@ -106,22 +98,6 @@ impl Game {
             };
         }
         Ok(did_win)
-    }
-
-    pub fn handle_player_join(&mut self, payload: &PlayerJoinGame, socket_id: u32) -> bool {
-        self.joined_players.insert(
-            0,
-            JoinedPlayer {
-                player_id: payload.player_id,
-                name: payload.name.clone(),
-                socket_id: Some(socket_id),
-            },
-        );
-        if self.joined_players.len() as u32 == self.state.options.players {
-            self.handle_game_start();
-            return true;
-        }
-        false
     }
 
     pub fn handle_game_start(&mut self) {
@@ -166,31 +142,6 @@ impl Game {
         self.handle_player_leave(player_id);
     }
 
-    pub fn add_player_connection(&mut self, socket_id: u32, conn: Arc<Mutex<Connection>>) {
-        self.connections.insert(socket_id, conn);
-    }
-
-    pub fn remove_player_connection(&mut self, socket_id: &u32) {
-        // @TODO remove joined player?
-        self.connections.remove(socket_id);
-    }
-
-    pub async fn broadcast_game_msg(&mut self, msg: Message) {
-        // @TODO can deadlock if conn_manager sends to same connections at the same time
-        for p in self.joined_players.iter() {
-            if p.socket_id.is_none() {
-                continue;
-            }
-            let conn = self.connections.get(&p.socket_id.unwrap());
-            if conn.is_none() {
-                continue;
-            }
-            println!("broadcast to {}", p.socket_id.unwrap());
-            let _ = conn.unwrap().lock().await.send(msg.clone()).await;
-            println!("broadcasted!")
-        }
-    }
-
     pub fn get_game_start(&self) -> GameStart {
         GameStart {
             game_id: self.id.to_string(),
@@ -204,6 +155,19 @@ impl Game {
             game_id: self.id.to_string(),
             result: self.state.status,
             winner,
+        }
+    }
+
+    pub async fn handle_client_event(&mut self, msg: ClientEvent) {
+        info!("Game -> ClientEvent {:?}", msg);
+        match msg {
+            ClientEvent::Connected(_, _, _) => todo!(),
+            ClientEvent::Disconnected(_) => todo!(),
+            ClientEvent::PlayerJoinLobby(_) => todo!(),
+            ClientEvent::PlayerCreateGame(_, _) => todo!(),
+            ClientEvent::SelectCell() => todo!(),
+            ClientEvent::LeaveGame() => todo!(),
+            ClientEvent::PlayerJoinGame(_, _) => todo!(),
         }
     }
 }

@@ -2,7 +2,6 @@ use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
 use quick_protobuf::{BytesReader, MessageRead};
-use quick_protobuf::{MessageWrite, Writer};
 use tic_tac_5::proto::proto_all::*;
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc};
@@ -43,6 +42,10 @@ impl WsSession {
         }
     }
 
+    pub fn send_disconnect(&mut self) {
+        self.send(ClientEvent::Disconnected(self.socket_id));
+    }
+
     pub async fn handle_ws_message(
         &mut self,
         msg: Message,
@@ -57,11 +60,14 @@ impl WsSession {
                     debug!("ClientMsgType::join_lobby {:#?}", player_join);
                     // ctx.join_lobby(socket_id, player_join).await;
                     // ctx.broadcast_lobby_state().await;
+                    println!("sending to {} subscribers", self.subscribers.len());
+                    self.send(ClientEvent::PlayerJoinLobby(player_join));
                 }
             }
             Ok(ClientMsgType::create_lobby_game) => {
-                if let Ok(create_game) = PlayerCreateGame::from_reader(&mut reader, &msg) {
-                    debug!("ClientMsgType::create_lobby_game {:#?}", create_game);
+                if let Ok(payload) = PlayerCreateGame::from_reader(&mut reader, &msg) {
+                    debug!("ClientMsgType::create_lobby_game {:#?}", payload);
+                    self.send(ClientEvent::PlayerCreateGame(self.socket_id, payload));
                     // let (started, game_mut) = ctx.create_lobby_game(socket_id, create_game).await;
                     // game_mut
                     //     .lock()
@@ -122,22 +128,33 @@ impl WsSession {
     pub async fn handle_lobby_event(&mut self, msg: LobbyEvent) {
         info!("Client -> LobbyEvent {:?}", msg);
         match msg {
+            LobbyEvent::Subscribe(sender) => {
+                self.subscribers.push(sender);
+            }
             LobbyEvent::JoinLobby(_) => todo!(),
             LobbyEvent::LobbyMsg(_) => todo!(),
             LobbyEvent::LeaveLobby(_) => todo!(),
             LobbyEvent::LobbyState(payload) => {
-                self.ws_sender
-                    .send(serialize_server_event(ServerMsgType::lobby_state, &payload));
+                let _ = self
+                    .ws_sender
+                    .send(serialize_server_event(ServerMsgType::lobby_state, &payload))
+                    .await;
             }
             LobbyEvent::JoinLobbyGame(_) => todo!(),
             LobbyEvent::LeaveLobbyGame(_) => todo!(),
+            LobbyEvent::PlayerJoinGame(payload) => {
+                let _ = self
+                    .ws_sender
+                    .send(serialize_server_event(ServerMsgType::player_join, &payload))
+                    .await;
+            }
         }
     }
     pub async fn handle_game_event(&mut self, msg: GameEvent) {
         info!("Client -> GameEvent {:?}", msg);
         match msg {
             GameEvent::Subscribe(_, _) => todo!(),
-            GameEvent::PlayerJoin() => todo!(),
+            GameEvent::PlayerJoin(_) => todo!(),
             GameEvent::PlayerLeave() => todo!(),
             GameEvent::GameStart() => todo!(),
             GameEvent::GameEnd() => todo!(),
@@ -182,5 +199,6 @@ pub fn run_session(mut actor: WsSession) -> JoinHandle<()> {
                 },
             }
         }
+        actor.send_disconnect();
     })
 }

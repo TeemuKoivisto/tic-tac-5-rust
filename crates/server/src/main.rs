@@ -1,6 +1,5 @@
 mod connection;
 mod game;
-mod player_context;
 mod state;
 mod ws;
 
@@ -47,9 +46,8 @@ async fn main() {
                 info!("New Connection {} Socket ID {}", peer, socket_id);
                 // tokio::spawn(listen(ctx.clone(), ws_stream, socket_id));
                 let session = WsSessionHandle::new(ws_stream, socket_id);
-                // ctx.lobby()
-                // ctx.lobby.as_ref().c
                 let _ = session.subscribe(&ctx.lobby.client_sender);
+                let _ = ctx.lobby.subscribe(&session.lobby_sender);
                 run_session(session.actor);
             }
         }
