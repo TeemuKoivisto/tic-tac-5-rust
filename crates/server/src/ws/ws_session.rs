@@ -126,6 +126,7 @@ impl WsSession {
             Ok(ClientMsgType::player_select_cell) => {
                 if let Ok(payload) = PlayerSelectCell::from_reader(&mut reader, &msg) {
                     debug!("ClientMsgType::player_select_cell {:#?}", payload);
+                    self.send_to_game(ClientEvent::SelectCell(self.socket_id, payload));
                     // let ended = player.player_select_cell(&payload).await;
                     // if ended {
                     //     player.remove_joined_game().await;
@@ -205,7 +206,19 @@ impl WsSession {
                     .await;
             }
             GameEvent::GameEnd() => todo!(),
-            GameEvent::GameUpdate() => todo!(),
+            GameEvent::GameUpdate(payload) => {
+                let _ = self
+                    .ws_sender
+                    .send(serialize_server_event(
+                        ServerMsgType::game_player_move,
+                        &GameMove {
+                            player: payload.player_number,
+                            x: payload.x,
+                            y: payload.y,
+                        },
+                    ))
+                    .await;
+            }
         }
     }
     fn send_to_lobby(&mut self, event: ClientEvent) {

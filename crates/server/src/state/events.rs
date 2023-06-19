@@ -34,7 +34,7 @@ pub enum ClientEvent {
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),
     PlayerJoinGame(u32, PlayerJoinGame),
-    SelectCell(),
+    SelectCell(u32, PlayerSelectCell),
     LeaveGame(),
 }
 
@@ -50,5 +50,5 @@ pub enum GameEvent {
     PlayerLeave(),
     GameStart(GameStart),
     GameEnd(),
-    GameUpdate(),
+    GameUpdate(PlayerSelectCell),
 }

@@ -169,7 +169,7 @@ impl LobbyActor {
                     self.running_games.insert(game.id, game);
                 }
             }
-            ClientEvent::SelectCell() => todo!(),
+            ClientEvent::SelectCell(_, _) => todo!(),
             ClientEvent::LeaveGame() => todo!(),
             ClientEvent::PlayerJoinLobby(data) => {
                 self.lobby_players.insert(

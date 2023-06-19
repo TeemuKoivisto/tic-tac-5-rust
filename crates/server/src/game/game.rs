@@ -166,7 +166,21 @@ impl Game {
             ClientEvent::Disconnected(_) => todo!(),
             ClientEvent::PlayerJoinLobby(_) => todo!(),
             ClientEvent::PlayerCreateGame(_, _) => todo!(),
-            ClientEvent::SelectCell() => todo!(),
+            ClientEvent::SelectCell(socket_id, payload) => {
+                let result = self.handle_player_move(&payload);
+                if result.is_ok() {
+                    self.send(GameEvent::GameUpdate(payload));
+                    if result.unwrap() {
+                        todo!("end game");
+                        //     player.remove_joined_game().await;
+                        //     let game_id = Uuid::parse_str(&payload.game_id).unwrap();
+                        //     ctx.end_game(game_id).await;
+                        //     ctx.remove_game(game_id).await;
+                        //     ctx.broadcast_lobby_state().await;
+                        // }
+                    }
+                }
+            }
             ClientEvent::LeaveGame() => todo!(),
             ClientEvent::PlayerJoinGame(_, _) => todo!(),
             ClientEvent::SubscribeToGame(client, sender) => {
