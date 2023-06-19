@@ -134,14 +134,7 @@ impl LobbyActor {
                         .lobby_sender
                         .send(LobbyToClientEvent::PlayerJoinGame(player_join));
                 }
-                for sub in &self.subscribers {
-                    let _ = sub
-                        .lobby_sender
-                        .send(LobbyToClientEvent::LobbyState(LobbyState {
-                            games: self.lobby_state(),
-                            players: self.lobby_players.clone(),
-                        }));
-                }
+                self.send_lobby_state();
             }
             ClientToLobbyEvent::PlayerJoinGame(socket_id, payload) => {
                 let game_id = Uuid::parse_str(&payload.game_id).unwrap();
@@ -175,6 +168,7 @@ impl LobbyActor {
                     // also leave lobby
                     self.running_games.insert(game.id, game);
                 }
+                self.send_lobby_state();
             }
             ClientToLobbyEvent::SelectCell(_, _) => todo!(),
             ClientToLobbyEvent::LeaveGame() => todo!(),
@@ -186,6 +180,7 @@ impl LobbyActor {
                         name: data.name,
                     },
                 );
+                self.send_lobby_state();
             }
             ClientToLobbyEvent::SubscribeToGame(_, _) => todo!(),
         }
@@ -197,14 +192,7 @@ impl LobbyActor {
             GameToLobbyEvent::GameEnded(game_id) => {
                 self.running_games.remove(&game_id);
                 self.lobby_games.retain(|g| g.id != game_id);
-                for sub in &self.subscribers {
-                    let _ = sub
-                        .lobby_sender
-                        .send(LobbyToClientEvent::LobbyState(LobbyState {
-                            games: self.lobby_state(),
-                            players: self.lobby_players.clone(),
-                        }));
-                }
+                self.send_lobby_state();
             }
         }
     }
@@ -212,6 +200,15 @@ impl LobbyActor {
     fn send(&mut self, event: LobbyToClientEvent) {
         self.subscribers
             .retain(|sub| sub.lobby_sender.send(event.clone()).is_ok());
+    }
+
+    fn send_lobby_state(&mut self) {
+        let state = LobbyToClientEvent::LobbyState(LobbyState {
+            games: self.lobby_state(),
+            players: self.lobby_players.clone(),
+        });
+        self.subscribers
+            .retain(|sub| sub.lobby_sender.send(state.clone()).is_ok());
     }
 }
 

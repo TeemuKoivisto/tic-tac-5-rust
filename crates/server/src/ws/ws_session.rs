@@ -168,7 +168,9 @@ impl WsSession {
             }
             LobbyToClientEvent::JoinLobby(_) => todo!(),
             LobbyToClientEvent::LobbyMsg(_) => todo!(),
-            LobbyToClientEvent::LeaveLobby(payload) => {}
+            LobbyToClientEvent::LeaveLobby(payload) => {
+                // TODO send to client
+            }
             LobbyToClientEvent::LobbyState(payload) => {
                 let _ = self
                     .ws_sender
@@ -186,7 +188,6 @@ impl WsSession {
         }
     }
     pub async fn handle_game_event(&mut self, msg: GameToClientEvent) {
-        // info!("Client -> GameEvent {:?}", msg);
         info!("Client {} -> GameEvent", self.socket_id);
         match msg {
             GameToClientEvent::Subscribe(game_id, client_sender) => {
