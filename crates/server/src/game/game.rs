@@ -6,7 +6,7 @@ use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
 use crate::state::events::{
-    ClientToLobbyEvent, GameToClientEvent, GameToLobbyEvent, LobbyToClientEvent,
+    ClientToGameEvent, GameToClientEvent, GameToLobbyEvent, LobbyToClientEvent,
 };
 
 use super::listed_game::{JoinedPlayer, ListedGame};
@@ -23,7 +23,7 @@ pub struct Game {
     pub joined_players: Vec<JoinedPlayer>,
     game_sender: broadcast::Sender<GameToClientEvent>,
     game_to_lobby_sender: broadcast::Sender<GameToLobbyEvent>,
-    pub client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
+    pub client_receiver: broadcast::Receiver<ClientToGameEvent>,
     subscribers: Vec<Subscriber>,
 }
 
@@ -33,7 +33,7 @@ impl Game {
         rng_seed: Option<[u8; 32]>,
         game_sender: broadcast::Sender<GameToClientEvent>,
         game_to_lobby_sender: broadcast::Sender<GameToLobbyEvent>,
-        client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
+        client_receiver: broadcast::Receiver<ClientToGameEvent>,
     ) -> Self {
         Self {
             id: lobby_game.id,
@@ -172,14 +172,12 @@ impl Game {
         }
     }
 
-    pub async fn handle_client_event(&mut self, msg: ClientToLobbyEvent) {
-        info!("Game -> ClientEvent {:?}", msg);
+    pub async fn handle_client_event(&mut self, msg: ClientToGameEvent) {
+        info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
-            ClientToLobbyEvent::Connected(_, _, _) => todo!(),
-            ClientToLobbyEvent::Disconnected(_) => todo!(),
-            ClientToLobbyEvent::PlayerJoinLobby(_) => todo!(),
-            ClientToLobbyEvent::PlayerCreateGame(_, _) => todo!(),
-            ClientToLobbyEvent::SelectCell(socket_id, payload) => {
+            ClientToGameEvent::Connected(_) => todo!(),
+            ClientToGameEvent::Disconnected(_) => todo!(),
+            ClientToGameEvent::SelectCell(socket_id, payload) => {
                 let result = self.handle_player_move(&payload);
                 if result.is_ok() {
                     if result.unwrap() {
@@ -201,9 +199,8 @@ impl Game {
                     }
                 }
             }
-            ClientToLobbyEvent::LeaveGame() => todo!(),
-            ClientToLobbyEvent::PlayerJoinGame(_, _) => todo!(),
-            ClientToLobbyEvent::SubscribeToGame(client, sender) => {
+            ClientToGameEvent::LeaveGame() => todo!(),
+            ClientToGameEvent::SubscribeToGame(client, sender) => {
                 self.subscribers.push(Subscriber {
                     socket_id: client.socket_id,
                     sender,

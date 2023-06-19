@@ -31,10 +31,16 @@ pub enum ClientToLobbyEvent {
         broadcast::Sender<GameToClientEvent>,
     ),
     Disconnected(u32),
-    SubscribeToGame(Client, broadcast::Sender<GameToClientEvent>),
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),
     PlayerJoinGame(u32, PlayerJoinGame),
+}
+
+#[derive(Debug, Clone)]
+pub enum ClientToGameEvent {
+    Connected(u32),
+    Disconnected(u32),
+    SubscribeToGame(Client, broadcast::Sender<GameToClientEvent>),
     SelectCell(u32, PlayerSelectCell),
     LeaveGame(),
 }
@@ -46,7 +52,7 @@ pub enum ClientToLobbyEvent {
 // game_player_move = 9;
 #[derive(Debug, Clone)]
 pub enum GameToClientEvent {
-    Subscribe(String, broadcast::Sender<ClientToLobbyEvent>),
+    Subscribe(String, broadcast::Sender<ClientToGameEvent>),
     PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
     GameStart(GameStart),

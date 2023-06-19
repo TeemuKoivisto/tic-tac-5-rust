@@ -1,5 +1,4 @@
 pub mod client;
-pub mod context;
 pub mod events;
 pub mod lobby;
-pub mod lobby_actor;
+pub mod lobby_handle;

@@ -3,15 +3,15 @@ use tokio::sync::broadcast::error::SendError;
 use tokio::{sync::broadcast, task::JoinHandle};
 use uuid::Uuid;
 
-use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, GameToLobbyEvent};
-use crate::state::lobby_actor::ClientSubscriber;
+use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent};
+use crate::state::lobby::ClientSubscriber;
 
 use super::game::Game;
 use super::listed_game::ListedGame;
 
 pub struct GameHandle {
     pub id: Uuid,
-    pub client_sender: broadcast::Sender<ClientToLobbyEvent>,
+    pub client_sender: broadcast::Sender<ClientToGameEvent>,
     pub game_receiver: broadcast::Receiver<GameToClientEvent>,
     // Use this and trait Broadcastable to send messages either to game or lobby depending who has the connection?
     // problem -> lot of moving of connections

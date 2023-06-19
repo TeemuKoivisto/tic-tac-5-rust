@@ -2,7 +2,7 @@ mod game;
 mod state;
 mod ws;
 
-use crate::state::context::Context;
+use crate::state::lobby_handle::LobbyHandle;
 use crate::ws::ws_session::run_session;
 use crate::ws::ws_session_handle::WsSessionHandle;
 
@@ -29,7 +29,7 @@ async fn main() {
         .await
         .expect("Listening to TCP failed.");
 
-    let ctx = Arc::new(Context::new());
+    let lobby = Arc::new(LobbyHandle::new());
 
     println!("Listening on: {}", addr);
 
@@ -43,10 +43,9 @@ async fn main() {
             Ok(ws_stream) => {
                 socket_id += 1;
                 info!("New Connection {} Socket ID {}", peer, socket_id);
-                // tokio::spawn(listen(ctx.clone(), ws_stream, socket_id));
                 let session = WsSessionHandle::new(ws_stream, socket_id);
-                let _ = session.subscribe(&ctx.lobby.client_sender);
-                let _ = ctx.lobby.subscribe(&session.lobby_sender);
+                let _ = session.subscribe(&lobby.client_sender);
+                let _ = lobby.subscribe(&session.lobby_sender);
                 run_session(session.actor);
             }
         }
