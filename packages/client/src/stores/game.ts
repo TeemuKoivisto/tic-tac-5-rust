@@ -78,7 +78,7 @@ function handleMessages(evt: SocketEvent) {
       break
     case ServerMsgType.game_end:
       modalActions.open(EModal.GAME_OVER, {
-        playerWon: evt.data.winner?.id === playerId,
+        playerWon: evt.data.winnerId === playerId,
         startTime: get(gameStarted),
         turns: get(gameTurns),
       })

@@ -95,7 +95,7 @@ message GameStart {
 message GameEnd {
     string game_id = 1;
     GameStatus result = 2;
-    optional Player winner = 3;
+    optional uint32 winner_id = 3;
 }
 
 message GameMove {

@@ -49,6 +49,6 @@ pub enum GameEvent {
     PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
     GameStart(GameStart),
-    GameEnd(),
+    GameEnd(GameEnd),
     GameUpdate(PlayerSelectCell),
 }

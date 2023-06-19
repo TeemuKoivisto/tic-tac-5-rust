@@ -442,7 +442,7 @@ impl MessageWrite for GameStart {
 pub struct GameEnd {
     pub game_id: String,
     pub result: proto_all::GameStatus,
-    pub winner: Option<proto_all::Player>,
+    pub winner_id: u32,
 }
 
 impl<'a> MessageRead<'a> for GameEnd {
@@ -452,7 +452,7 @@ impl<'a> MessageRead<'a> for GameEnd {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.result = r.read_enum(bytes)?,
-                Ok(26) => msg.winner = Some(r.read_message::<proto_all::Player>(bytes)?),
+                Ok(24) => msg.winner_id = r.read_uint32(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -466,13 +466,13 @@ impl MessageWrite for GameEnd {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.result == proto_all::GameStatus::WAITING { 0 } else { 1 + sizeof_varint(*(&self.result) as u64) }
-        + self.winner.as_ref().map_or(0, |m| 1 + sizeof_len((m).get_size()))
+        + if self.winner_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.winner_id) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.result != proto_all::GameStatus::WAITING { w.write_with_tag(16, |w| w.write_enum(*&self.result as i32))?; }
-        if let Some(ref s) = self.winner { w.write_with_tag(26, |w| w.write_message(s))?; }
+        if self.winner_id != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.winner_id))?; }
         Ok(())
     }
 }

@@ -281,7 +281,7 @@ export interface GameStart {
 export interface GameEnd {
   gameId: string
   result: GameStatus
-  winner?: Player | undefined
+  winnerId?: number | undefined
 }
 
 export interface GameMove {
@@ -804,7 +804,7 @@ export const GameStart = {
 }
 
 function createBaseGameEnd(): GameEnd {
-  return { gameId: '', result: 0, winner: undefined }
+  return { gameId: '', result: 0, winnerId: undefined }
 }
 
 export const GameEnd = {
@@ -815,8 +815,8 @@ export const GameEnd = {
     if (message.result !== 0) {
       writer.uint32(16).int32(message.result)
     }
-    if (message.winner !== undefined) {
-      Player.encode(message.winner, writer.uint32(26).fork()).ldelim()
+    if (message.winnerId !== undefined) {
+      writer.uint32(24).uint32(message.winnerId)
     }
     return writer
   },
@@ -835,7 +835,7 @@ export const GameEnd = {
           message.result = reader.int32() as any
           break
         case 3:
-          message.winner = Player.decode(reader, reader.uint32())
+          message.winnerId = reader.uint32()
           break
         default:
           reader.skipType(tag & 7)
@@ -849,7 +849,7 @@ export const GameEnd = {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
       result: isSet(object.result) ? gameStatusFromJSON(object.result) : 0,
-      winner: isSet(object.winner) ? Player.fromJSON(object.winner) : undefined,
+      winnerId: isSet(object.winnerId) ? Number(object.winnerId) : undefined,
     }
   },
 
@@ -857,8 +857,7 @@ export const GameEnd = {
     const obj: any = {}
     message.gameId !== undefined && (obj.gameId = message.gameId)
     message.result !== undefined && (obj.result = gameStatusToJSON(message.result))
-    message.winner !== undefined &&
-      (obj.winner = message.winner ? Player.toJSON(message.winner) : undefined)
+    message.winnerId !== undefined && (obj.winnerId = Math.round(message.winnerId))
     return obj
   },
 
@@ -870,10 +869,7 @@ export const GameEnd = {
     const message = createBaseGameEnd()
     message.gameId = object.gameId ?? ''
     message.result = object.result ?? 0
-    message.winner =
-      object.winner !== undefined && object.winner !== null
-        ? Player.fromPartial(object.winner)
-        : undefined
+    message.winnerId = object.winnerId ?? undefined
     return message
   },
 }

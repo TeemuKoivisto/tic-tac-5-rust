@@ -205,7 +205,12 @@ impl WsSession {
                     .send(serialize_server_event(ServerMsgType::game_start, &payload))
                     .await;
             }
-            GameEvent::GameEnd() => todo!(),
+            GameEvent::GameEnd(payload) => {
+                let _ = self
+                    .ws_sender
+                    .send(serialize_server_event(ServerMsgType::game_end, &payload))
+                    .await;
+            }
             GameEvent::GameUpdate(payload) => {
                 let _ = self
                     .ws_sender

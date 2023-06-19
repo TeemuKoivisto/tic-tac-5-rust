@@ -37,5 +37,5 @@ export const modalActions = {
     } else {
       openModal.set(null)
     }
-  }
+  },
 }

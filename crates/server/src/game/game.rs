@@ -151,11 +151,19 @@ impl Game {
         }
     }
 
-    pub fn get_game_end(&self, winner: Option<Player>) -> GameEnd {
+    fn get_game_end(&self) -> GameEnd {
+        let winner_id;
+        if self.state.status == GameStatus::X_WON {
+            winner_id = self.state.players[0].id;
+        } else if self.state.status == GameStatus::O_WON {
+            winner_id = self.state.players[1].id;
+        } else {
+            winner_id = 0;
+        }
         GameEnd {
             game_id: self.id.to_string(),
             result: self.state.status,
-            winner,
+            winner_id,
         }
     }
 
@@ -169,15 +177,19 @@ impl Game {
             ClientEvent::SelectCell(socket_id, payload) => {
                 let result = self.handle_player_move(&payload);
                 if result.is_ok() {
-                    self.send(GameEvent::GameUpdate(payload));
                     if result.unwrap() {
-                        todo!("end game");
                         //     player.remove_joined_game().await;
                         //     let game_id = Uuid::parse_str(&payload.game_id).unwrap();
                         //     ctx.end_game(game_id).await;
                         //     ctx.remove_game(game_id).await;
                         //     ctx.broadcast_lobby_state().await;
                         // }
+                        self.send_multiple(vec![
+                            GameEvent::GameUpdate(payload),
+                            GameEvent::GameEnd(self.get_game_end()),
+                        ]);
+                    } else {
+                        self.send(GameEvent::GameUpdate(payload));
                     }
                 }
             }
@@ -206,5 +218,12 @@ impl Game {
     fn send(&mut self, event: GameEvent) {
         self.subscribers
             .retain(|sub| sub.sender.send(event.clone()).is_ok());
+    }
+
+    fn send_multiple(&mut self, events: Vec<GameEvent>) {
+        for event in events {
+            self.subscribers
+                .retain(|sub| sub.sender.send(event.clone()).is_ok());
+        }
     }
 }

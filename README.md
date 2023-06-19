@@ -13,4 +13,3 @@ https://flourishing-cendol-f5a0f2.netlify.app/
 - keeps a ref to the joined game instance -> no need for locking game_manager again
 - game also keeps refs to the joined players' connections
 - each tick & broadcast will only lock connections that belong that game -> no more locking of the whole connection_manager
-

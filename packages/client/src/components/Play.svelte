@@ -6,12 +6,12 @@
   import Board from './Board/Board.svelte'
   import Modal from './Modal/Modal.svelte'
 
-  function handleKeydown(event: KeyboardEvent & { currentTarget: EventTarget & Window; }) {
-    if (event.key === "Escape") {
+  function handleKeydown(event: KeyboardEvent & { currentTarget: EventTarget & Window }) {
+    if (event.key === 'Escape') {
       modalActions.toggle(EModal.GAME_OVER)
     }
-	}
-  
+  }
+
   onMount(() => {
     console.log('mount play')
     return () => {
@@ -20,7 +20,7 @@
   })
 </script>
 
-<svelte:window on:keydown={handleKeydown}/>
+<svelte:window on:keydown={handleKeydown} />
 <AboveModal />
 <Board />
 <Modal />
