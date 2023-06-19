@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::{collections::HashMap, sync::Arc};
 use tic_tac_5::{game_state::*, proto::proto_all::*};
 use tokio::sync::Mutex;
@@ -9,6 +9,7 @@ use crate::state::events::{ClientEvent, GameEvent};
 
 use super::listed_game::{JoinedPlayer, ListedGame};
 
+#[derive(Debug)]
 pub struct Subscriber {
     socket_id: u32,
     sender: broadcast::Sender<GameEvent>,
@@ -168,6 +169,22 @@ impl Game {
             ClientEvent::SelectCell() => todo!(),
             ClientEvent::LeaveGame() => todo!(),
             ClientEvent::PlayerJoinGame(_, _) => todo!(),
+            ClientEvent::SubscribeToGame(socket_id, sender) => {
+                self.subscribers.push(Subscriber { socket_id, sender });
+                if self.subscribers.len() == self.joined_players.len() {
+                    self.state.status = GameStatus::X_TURN;
+                    self.send(GameEvent::GameStart(GameStart {
+                        game_id: self.id.to_string(),
+                        players: self.state.players.clone(),
+                        cells: self.state.get_cells(),
+                    }));
+                }
+            }
         }
+    }
+
+    fn send(&mut self, event: GameEvent) {
+        self.subscribers
+            .retain(|sub| sub.sender.send(event.clone()).is_ok());
     }
 }

@@ -11,6 +11,7 @@ use crate::state::events::{ClientEvent, LobbyEvent};
 
 use super::events::GameEvent;
 
+#[derive(Debug)]
 pub struct ClientSubscriber {
     socket_id: u32,
     game_sender: broadcast::Sender<GameEvent>,
@@ -93,6 +94,7 @@ impl LobbyActor {
         info!("Lobby -> ClientEvent {:?}", msg);
         match msg {
             ClientEvent::Connected(socket_id, lobby_sender, game_sender) => {
+                info!("connected {}", socket_id);
                 let _ = lobby_sender.send(LobbyEvent::LobbyState(LobbyState {
                     games: self.lobby_state(),
                     players: self.lobby_players.clone(),
@@ -114,18 +116,24 @@ impl LobbyActor {
                     name: create_game.name,
                     options: create_game.options,
                 };
+                info!("player {} create game", socket_id);
                 for game in self.lobby_games.iter_mut() {
                     if game.id == game_id {
                         game.handle_player_join(&player_join, socket_id);
                     }
                 }
                 let sub = self.subscribers.iter().find(|s| s.socket_id == socket_id);
-                // TODO broadcast lobby state
                 if sub.is_some() {
                     let _ = sub
                         .unwrap()
                         .lobby_sender
                         .send(LobbyEvent::PlayerJoinGame(player_join));
+                }
+                for sub in &self.subscribers {
+                    let _ = sub.lobby_sender.send(LobbyEvent::LobbyState(LobbyState {
+                        games: self.lobby_state(),
+                        players: self.lobby_players.clone(),
+                    }));
                 }
             }
             ClientEvent::PlayerJoinGame(socket_id, payload) => {
@@ -136,35 +144,28 @@ impl LobbyActor {
                     return;
                 }
                 let listed = found.unwrap();
-                let subscribed: Vec<&ClientSubscriber> = self
-                    .subscribers
-                    .iter()
-                    .filter(|s| {
-                        listed
-                            .joined_players
-                            .iter()
-                            .find(|p| p.socket_id == Some(s.socket_id))
-                            .is_some()
-                    })
-                    .collect();
                 if listed.handle_player_join(&payload, socket_id) {
                     let game = GameHandle::new(&listed);
-                    debug!("Start game");
-                    for sub in &subscribed {
-                        let _ = game.subscribe(&sub.game_sender);
-                        // sub.lobby_sender.send()
-                        let _ = sub.game_sender.send(GameEvent::Subscribe(
-                            game.id.to_string(),
-                            game.client_sender.clone(),
-                        ));
+                    let mut left: Vec<u32> = Vec::new();
+                    for sub in &self.subscribers {
+                        let found = listed
+                            .joined_players
+                            .iter()
+                            .find(|p| p.socket_id == Some(sub.socket_id))
+                            .is_some();
+                        if found {
+                            let _ = sub.game_sender.send(GameEvent::Subscribe(
+                                game.id.to_string(),
+                                game.client_sender.clone(),
+                            ));
+                            left.push(sub.socket_id);
+                        }
                     }
-                    let left: Vec<u32> = subscribed.iter().map(|s| s.socket_id).collect();
                     self.send(LobbyEvent::LeaveLobby(left.clone()));
                     self.subscribers
                         .retain(|sub| left.iter().find(|s| *s == &sub.socket_id).is_none());
                     // TODO subscribe game to players and vice-versa
                     // also leave lobby
-                    debug!("Insert game");
                     self.running_games.insert(game.id, game);
                 }
             }
@@ -179,6 +180,7 @@ impl LobbyActor {
                     },
                 );
             }
+            ClientEvent::SubscribeToGame(_, _) => todo!(),
         }
     }
     fn send(&mut self, event: LobbyEvent) {

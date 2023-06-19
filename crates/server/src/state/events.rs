@@ -28,6 +28,7 @@ pub enum ClientEvent {
         broadcast::Sender<GameEvent>,
     ),
     Disconnected(u32),
+    SubscribeToGame(u32, broadcast::Sender<GameEvent>),
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),
     PlayerJoinGame(u32, PlayerJoinGame),
@@ -45,7 +46,7 @@ pub enum GameEvent {
     Subscribe(String, broadcast::Sender<ClientEvent>),
     PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
-    GameStart(),
+    GameStart(GameStart),
     GameEnd(),
     GameUpdate(),
 }

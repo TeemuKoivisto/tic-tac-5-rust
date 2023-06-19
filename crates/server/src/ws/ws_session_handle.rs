@@ -25,6 +25,7 @@ impl WsSessionHandle {
             socket,
             client_sender.clone(),
             lobby_receiver,
+            game_sender.clone(),
             game_receiver,
         );
         let socket_id = actor.socket_id;
