@@ -3,7 +3,7 @@ use tokio::sync::broadcast::error::SendError;
 use tokio::{sync::broadcast, task::JoinHandle};
 use uuid::Uuid;
 
-use crate::state::events::{ClientEvent, GameEvent};
+use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, GameToLobbyEvent};
 use crate::state::lobby_actor::ClientSubscriber;
 
 use super::game::Game;
@@ -11,8 +11,8 @@ use super::listed_game::ListedGame;
 
 pub struct GameHandle {
     pub id: Uuid,
-    pub client_sender: broadcast::Sender<ClientEvent>,
-    pub game_receiver: broadcast::Receiver<GameEvent>,
+    pub client_sender: broadcast::Sender<ClientToLobbyEvent>,
+    pub game_receiver: broadcast::Receiver<GameToClientEvent>,
     // Use this and trait Broadcastable to send messages either to game or lobby depending who has the connection?
     // problem -> lot of moving of connections
     // plus -> no need to loop players in games when broadcasting lobby state
@@ -20,10 +20,19 @@ pub struct GameHandle {
 }
 
 impl GameHandle {
-    pub fn new(lobby_game: &ListedGame) -> Self {
+    pub fn new(
+        lobby_game: &ListedGame,
+        game_to_lobby_sender: broadcast::Sender<GameToLobbyEvent>,
+    ) -> Self {
         let (client_sender, client_receiver) = broadcast::channel(64);
         let (game_sender, game_receiver) = broadcast::channel(64);
-        let actor = Game::new(lobby_game, None, game_sender, client_receiver);
+        let actor = Game::new(
+            lobby_game,
+            None,
+            game_sender,
+            game_to_lobby_sender,
+            client_receiver,
+        );
         let id = actor.id;
         run_game(actor);
         Self {
@@ -35,9 +44,9 @@ impl GameHandle {
 
     pub fn subscribe(
         &self,
-        sender: &broadcast::Sender<GameEvent>,
-    ) -> Result<usize, SendError<GameEvent>> {
-        sender.send(GameEvent::Subscribe(
+        sender: &broadcast::Sender<GameToClientEvent>,
+    ) -> Result<usize, SendError<GameToClientEvent>> {
+        sender.send(GameToClientEvent::Subscribe(
             self.id.to_string(),
             self.client_sender.clone(),
         ))

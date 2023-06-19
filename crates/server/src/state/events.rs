@@ -1,5 +1,6 @@
 use tic_tac_5::proto::proto_all::*;
 use tokio::sync::{broadcast, mpsc};
+use uuid::Uuid;
 
 use super::client::Client;
 
@@ -9,8 +10,8 @@ use super::client::Client;
 // join_lobby_game = 3;
 // leave_lobby_game = 4;
 #[derive(Debug, Clone)]
-pub enum LobbyEvent {
-    Subscribe(broadcast::Sender<ClientEvent>),
+pub enum LobbyToClientEvent {
+    Subscribe(broadcast::Sender<ClientToLobbyEvent>),
     JoinLobby(u32),
     LobbyMsg(u32),
     LeaveLobby(Vec<u32>),
@@ -23,14 +24,14 @@ pub enum LobbyEvent {
 // player_select_cell = 5;
 // leave_game = 6;
 #[derive(Debug, Clone)]
-pub enum ClientEvent {
+pub enum ClientToLobbyEvent {
     Connected(
         u32,
-        broadcast::Sender<LobbyEvent>,
-        broadcast::Sender<GameEvent>,
+        broadcast::Sender<LobbyToClientEvent>,
+        broadcast::Sender<GameToClientEvent>,
     ),
     Disconnected(u32),
-    SubscribeToGame(Client, broadcast::Sender<GameEvent>),
+    SubscribeToGame(Client, broadcast::Sender<GameToClientEvent>),
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),
     PlayerJoinGame(u32, PlayerJoinGame),
@@ -44,11 +45,16 @@ pub enum ClientEvent {
 // game_end = 8;
 // game_player_move = 9;
 #[derive(Debug, Clone)]
-pub enum GameEvent {
-    Subscribe(String, broadcast::Sender<ClientEvent>),
+pub enum GameToClientEvent {
+    Subscribe(String, broadcast::Sender<ClientToLobbyEvent>),
     PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
     GameStart(GameStart),
     GameEnd(GameEnd),
     GameUpdate(PlayerSelectCell),
+}
+
+#[derive(Debug, Clone)]
+pub enum GameToLobbyEvent {
+    GameEnded(Uuid),
 }

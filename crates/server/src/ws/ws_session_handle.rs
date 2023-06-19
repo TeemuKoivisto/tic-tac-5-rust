@@ -2,17 +2,17 @@ use tokio::net::TcpStream;
 use tokio::sync::broadcast::{self, error::SendError};
 use tokio_tungstenite::WebSocketStream;
 
-use crate::state::events::{ClientEvent, GameEvent, LobbyEvent};
+use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent};
 
 use super::ws_session::WsSession;
 
 pub struct WsSessionHandle {
     pub socket_id: u32,
     pub actor: WsSession,
-    pub client_sender: broadcast::Sender<ClientEvent>,
-    pub client_receiver: broadcast::Receiver<ClientEvent>,
-    pub lobby_sender: broadcast::Sender<LobbyEvent>,
-    pub game_sender: broadcast::Sender<GameEvent>,
+    pub client_sender: broadcast::Sender<ClientToLobbyEvent>,
+    pub client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
+    pub lobby_sender: broadcast::Sender<LobbyToClientEvent>,
+    pub game_sender: broadcast::Sender<GameToClientEvent>,
 }
 
 impl WsSessionHandle {
@@ -41,9 +41,9 @@ impl WsSessionHandle {
 
     pub fn subscribe(
         &self,
-        sender: &broadcast::Sender<ClientEvent>,
-    ) -> Result<usize, SendError<ClientEvent>> {
-        sender.send(ClientEvent::Connected(
+        sender: &broadcast::Sender<ClientToLobbyEvent>,
+    ) -> Result<usize, SendError<ClientToLobbyEvent>> {
+        sender.send(ClientToLobbyEvent::Connected(
             self.socket_id,
             self.lobby_sender.clone(),
             self.game_sender.clone(),

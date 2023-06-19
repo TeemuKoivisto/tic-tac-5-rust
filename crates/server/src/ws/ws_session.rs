@@ -10,12 +10,12 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::state::client::Client;
-use crate::state::events::{ClientEvent, GameEvent, LobbyEvent};
+use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent};
 use crate::ws::serialize_server_event::serialize_server_event;
 
 pub struct SubscribedGame {
     game_id: String,
-    sender: broadcast::Sender<ClientEvent>,
+    sender: broadcast::Sender<ClientToLobbyEvent>,
 }
 
 pub struct WsSession {
@@ -23,11 +23,11 @@ pub struct WsSession {
     pub socket_id: u32,
     ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
-    client_sender: broadcast::Sender<ClientEvent>,
-    lobby_receiver: broadcast::Receiver<LobbyEvent>,
-    game_sender: broadcast::Sender<GameEvent>,
-    game_receiver: broadcast::Receiver<GameEvent>,
-    subscribed_lobby: Option<broadcast::Sender<ClientEvent>>,
+    client_sender: broadcast::Sender<ClientToLobbyEvent>,
+    lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
+    game_sender: broadcast::Sender<GameToClientEvent>,
+    game_receiver: broadcast::Receiver<GameToClientEvent>,
+    subscribed_lobby: Option<broadcast::Sender<ClientToLobbyEvent>>,
     subscribed_games: Vec<SubscribedGame>,
 }
 
@@ -35,10 +35,10 @@ impl WsSession {
     pub fn new(
         socket_id: u32,
         socket: WebSocketStream<TcpStream>,
-        client_sender: broadcast::Sender<ClientEvent>,
-        lobby_receiver: broadcast::Receiver<LobbyEvent>,
-        game_sender: broadcast::Sender<GameEvent>,
-        game_receiver: broadcast::Receiver<GameEvent>,
+        client_sender: broadcast::Sender<ClientToLobbyEvent>,
+        lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
+        game_sender: broadcast::Sender<GameToClientEvent>,
+        game_receiver: broadcast::Receiver<GameToClientEvent>,
     ) -> Self {
         let (ws_sender, ws_receiver) = socket.split();
         Self {
@@ -60,8 +60,8 @@ impl WsSession {
     }
 
     pub fn send_disconnect(&mut self) {
-        self.send_to_lobby(ClientEvent::Disconnected(self.socket_id));
-        self.send_to_game(ClientEvent::Disconnected(self.socket_id));
+        self.send_to_lobby(ClientToLobbyEvent::Disconnected(self.socket_id));
+        self.send_to_game(ClientToLobbyEvent::Disconnected(self.socket_id));
     }
 
     fn set_player(&mut self, player_join: &PlayerJoinLobby) {
@@ -88,13 +88,16 @@ impl WsSession {
                     // ctx.broadcast_lobby_state().await;
                     // println!("sending to {} subscribers", self.subscribed_games.len());
                     self.set_player(&player_join);
-                    self.send_to_lobby(ClientEvent::PlayerJoinLobby(player_join));
+                    self.send_to_lobby(ClientToLobbyEvent::PlayerJoinLobby(player_join));
                 }
             }
             Ok(ClientMsgType::create_lobby_game) => {
                 if let Ok(payload) = PlayerCreateGame::from_reader(&mut reader, &msg) {
                     debug!("ClientMsgType::create_lobby_game {:#?}", payload);
-                    self.send_to_lobby(ClientEvent::PlayerCreateGame(self.socket_id, payload));
+                    self.send_to_lobby(ClientToLobbyEvent::PlayerCreateGame(
+                        self.socket_id,
+                        payload,
+                    ));
                     // let (started, game_mut) = ctx.create_lobby_game(socket_id, create_game).await;
                     // game_mut
                     //     .lock()
@@ -110,7 +113,10 @@ impl WsSession {
             Ok(ClientMsgType::join_lobby_game) => {
                 if let Ok(player_join) = PlayerJoinGame::from_reader(&mut reader, &msg) {
                     debug!("ClientMsgType::join_lobby_game {:#?}", player_join);
-                    self.send_to_lobby(ClientEvent::PlayerJoinGame(self.socket_id, player_join));
+                    self.send_to_lobby(ClientToLobbyEvent::PlayerJoinGame(
+                        self.socket_id,
+                        player_join,
+                    ));
                     // let (started, game_mut) = ctx.join_lobby_game(socket_id, player_join).await;
                     // game_mut
                     //     .lock()
@@ -126,7 +132,7 @@ impl WsSession {
             Ok(ClientMsgType::player_select_cell) => {
                 if let Ok(payload) = PlayerSelectCell::from_reader(&mut reader, &msg) {
                     debug!("ClientMsgType::player_select_cell {:#?}", payload);
-                    self.send_to_game(ClientEvent::SelectCell(self.socket_id, payload));
+                    self.send_to_game(ClientToLobbyEvent::SelectCell(self.socket_id, payload));
                     // let ended = player.player_select_cell(&payload).await;
                     // if ended {
                     //     player.remove_joined_game().await;
@@ -154,24 +160,24 @@ impl WsSession {
         };
         Ok(())
     }
-    pub async fn handle_lobby_event(&mut self, msg: LobbyEvent) {
+    pub async fn handle_lobby_event(&mut self, msg: LobbyToClientEvent) {
         info!("Client {} -> LobbyEvent {:?}", self.socket_id, msg);
         match msg {
-            LobbyEvent::Subscribe(sender) => {
+            LobbyToClientEvent::Subscribe(sender) => {
                 self.subscribed_lobby = Some(sender);
             }
-            LobbyEvent::JoinLobby(_) => todo!(),
-            LobbyEvent::LobbyMsg(_) => todo!(),
-            LobbyEvent::LeaveLobby(payload) => {}
-            LobbyEvent::LobbyState(payload) => {
+            LobbyToClientEvent::JoinLobby(_) => todo!(),
+            LobbyToClientEvent::LobbyMsg(_) => todo!(),
+            LobbyToClientEvent::LeaveLobby(payload) => {}
+            LobbyToClientEvent::LobbyState(payload) => {
                 let _ = self
                     .ws_sender
                     .send(serialize_server_event(ServerMsgType::lobby_state, &payload))
                     .await;
             }
-            LobbyEvent::JoinLobbyGame(_) => todo!(),
-            LobbyEvent::LeaveLobbyGame(_) => todo!(),
-            LobbyEvent::PlayerJoinGame(payload) => {
+            LobbyToClientEvent::JoinLobbyGame(_) => todo!(),
+            LobbyToClientEvent::LeaveLobbyGame(_) => todo!(),
+            LobbyToClientEvent::PlayerJoinGame(payload) => {
                 let _ = self
                     .ws_sender
                     .send(serialize_server_event(ServerMsgType::player_join, &payload))
@@ -179,16 +185,16 @@ impl WsSession {
             }
         }
     }
-    pub async fn handle_game_event(&mut self, msg: GameEvent) {
+    pub async fn handle_game_event(&mut self, msg: GameToClientEvent) {
         // info!("Client -> GameEvent {:?}", msg);
         info!("Client {} -> GameEvent", self.socket_id);
         match msg {
-            GameEvent::Subscribe(game_id, client_sender) => {
+            GameToClientEvent::Subscribe(game_id, client_sender) => {
                 info!(
                     "ClientEvent::SubscribeToGame (socket_id {} game_id {})",
                     self.socket_id, game_id
                 );
-                let _ = client_sender.send(ClientEvent::SubscribeToGame(
+                let _ = client_sender.send(ClientToLobbyEvent::SubscribeToGame(
                     self.client.clone(),
                     self.game_sender.clone(),
                 ));
@@ -197,21 +203,21 @@ impl WsSession {
                     sender: client_sender,
                 });
             }
-            GameEvent::PlayerJoin(_) => todo!(),
-            GameEvent::PlayerLeave() => todo!(),
-            GameEvent::GameStart(payload) => {
+            GameToClientEvent::PlayerJoin(_) => todo!(),
+            GameToClientEvent::PlayerLeave() => todo!(),
+            GameToClientEvent::GameStart(payload) => {
                 let _ = self
                     .ws_sender
                     .send(serialize_server_event(ServerMsgType::game_start, &payload))
                     .await;
             }
-            GameEvent::GameEnd(payload) => {
+            GameToClientEvent::GameEnd(payload) => {
                 let _ = self
                     .ws_sender
                     .send(serialize_server_event(ServerMsgType::game_end, &payload))
                     .await;
             }
-            GameEvent::GameUpdate(payload) => {
+            GameToClientEvent::GameUpdate(payload) => {
                 let _ = self
                     .ws_sender
                     .send(serialize_server_event(
@@ -226,10 +232,10 @@ impl WsSession {
             }
         }
     }
-    fn send_to_lobby(&mut self, event: ClientEvent) {
+    fn send_to_lobby(&mut self, event: ClientToLobbyEvent) {
         let _ = self.subscribed_lobby.as_ref().unwrap().send(event.clone());
     }
-    fn send_to_game(&mut self, event: ClientEvent) {
+    fn send_to_game(&mut self, event: ClientToLobbyEvent) {
         self.subscribed_games
             .retain(|sub| sub.sender.send(event.clone()).is_ok());
     }

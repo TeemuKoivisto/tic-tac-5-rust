@@ -1,15 +1,14 @@
-use tic_tac_5::proto::proto_all::*;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::SendError;
 
 use super::{
-    events::{ClientEvent, LobbyEvent},
+    events::{ClientToLobbyEvent, LobbyToClientEvent},
     lobby_actor::{run_lobby, LobbyActor},
 };
 
 pub struct Lobby {
-    pub client_sender: broadcast::Sender<ClientEvent>,
-    pub lobby_receiver: broadcast::Receiver<LobbyEvent>,
+    pub client_sender: broadcast::Sender<ClientToLobbyEvent>,
+    pub lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
 }
 
 impl Lobby {
@@ -26,8 +25,8 @@ impl Lobby {
 
     pub fn subscribe(
         &self,
-        sender: &broadcast::Sender<LobbyEvent>,
-    ) -> Result<usize, SendError<LobbyEvent>> {
-        sender.send(LobbyEvent::Subscribe(self.client_sender.clone()))
+        sender: &broadcast::Sender<LobbyToClientEvent>,
+    ) -> Result<usize, SendError<LobbyToClientEvent>> {
+        sender.send(LobbyToClientEvent::Subscribe(self.client_sender.clone()))
     }
 }

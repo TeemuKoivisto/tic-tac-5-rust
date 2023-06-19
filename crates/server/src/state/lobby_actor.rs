@@ -7,15 +7,15 @@ use uuid::Uuid;
 
 use crate::game::game_handle::GameHandle;
 use crate::game::listed_game::ListedGame;
-use crate::state::events::{ClientEvent, LobbyEvent};
+use crate::state::events::{ClientToLobbyEvent, LobbyToClientEvent};
 
-use super::events::GameEvent;
+use super::events::{GameToClientEvent, GameToLobbyEvent};
 
 #[derive(Debug)]
 pub struct ClientSubscriber {
     socket_id: u32,
-    game_sender: broadcast::Sender<GameEvent>,
-    lobby_sender: broadcast::Sender<LobbyEvent>,
+    game_sender: broadcast::Sender<GameToClientEvent>,
+    lobby_sender: broadcast::Sender<LobbyToClientEvent>,
 }
 
 pub struct LobbyActor {
@@ -23,16 +23,19 @@ pub struct LobbyActor {
     pub lobby_games: Vec<ListedGame>,
     pub lobby_players: Vec<LobbyPlayer>,
     pub lobby_chat: Vec<String>,
-    lobby_sender: broadcast::Sender<LobbyEvent>,
-    client_receiver: broadcast::Receiver<ClientEvent>,
+    lobby_sender: broadcast::Sender<LobbyToClientEvent>,
+    client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
+    game_sender: broadcast::Sender<GameToLobbyEvent>,
+    game_receiver: broadcast::Receiver<GameToLobbyEvent>,
     subscribers: Vec<ClientSubscriber>,
 }
 
 impl LobbyActor {
     pub fn new(
-        lobby_sender: broadcast::Sender<LobbyEvent>,
-        client_receiver: broadcast::Receiver<ClientEvent>,
+        lobby_sender: broadcast::Sender<LobbyToClientEvent>,
+        client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
     ) -> Self {
+        let (game_sender, game_receiver) = broadcast::channel(64);
         Self {
             running_games: HashMap::new(),
             lobby_games: Vec::new(),
@@ -40,6 +43,8 @@ impl LobbyActor {
             lobby_chat: Vec::new(),
             lobby_sender,
             client_receiver,
+            game_sender,
+            game_receiver,
             subscribers: Vec::new(),
         }
     }
@@ -90,12 +95,12 @@ impl LobbyActor {
         }
     }
 
-    pub async fn handle_client_event(&mut self, msg: ClientEvent) {
-        info!("Lobby -> ClientEvent {:?}", msg);
+    pub async fn handle_client_event(&mut self, msg: ClientToLobbyEvent) {
+        info!("Lobby -> ClientToLobbyEvent {:?}", msg);
         match msg {
-            ClientEvent::Connected(socket_id, lobby_sender, game_sender) => {
+            ClientToLobbyEvent::Connected(socket_id, lobby_sender, game_sender) => {
                 info!("connected {}", socket_id);
-                let _ = lobby_sender.send(LobbyEvent::LobbyState(LobbyState {
+                let _ = lobby_sender.send(LobbyToClientEvent::LobbyState(LobbyState {
                     games: self.lobby_state(),
                     players: self.lobby_players.clone(),
                 }));
@@ -105,10 +110,10 @@ impl LobbyActor {
                     game_sender,
                 });
             }
-            ClientEvent::Disconnected(socket_id) => {
+            ClientToLobbyEvent::Disconnected(socket_id) => {
                 self.subscribers.retain(|sub| sub.socket_id != socket_id);
             }
-            ClientEvent::PlayerCreateGame(socket_id, create_game) => {
+            ClientToLobbyEvent::PlayerCreateGame(socket_id, create_game) => {
                 let game_id = self.find_or_create_game(create_game.options.as_ref().unwrap());
                 let player_join = PlayerJoinGame {
                     game_id: game_id.to_string(),
@@ -127,16 +132,18 @@ impl LobbyActor {
                     let _ = sub
                         .unwrap()
                         .lobby_sender
-                        .send(LobbyEvent::PlayerJoinGame(player_join));
+                        .send(LobbyToClientEvent::PlayerJoinGame(player_join));
                 }
                 for sub in &self.subscribers {
-                    let _ = sub.lobby_sender.send(LobbyEvent::LobbyState(LobbyState {
-                        games: self.lobby_state(),
-                        players: self.lobby_players.clone(),
-                    }));
+                    let _ = sub
+                        .lobby_sender
+                        .send(LobbyToClientEvent::LobbyState(LobbyState {
+                            games: self.lobby_state(),
+                            players: self.lobby_players.clone(),
+                        }));
                 }
             }
-            ClientEvent::PlayerJoinGame(socket_id, payload) => {
+            ClientToLobbyEvent::PlayerJoinGame(socket_id, payload) => {
                 let game_id = Uuid::parse_str(&payload.game_id).unwrap();
                 let found = self.lobby_games.iter_mut().find(|g| g.id == game_id);
                 debug!("Found game {:?}", found);
@@ -145,7 +152,7 @@ impl LobbyActor {
                 }
                 let listed = found.unwrap();
                 if listed.handle_player_join(&payload, socket_id) {
-                    let game = GameHandle::new(&listed);
+                    let game = GameHandle::new(&listed, self.game_sender.clone());
                     let mut left: Vec<u32> = Vec::new();
                     for sub in &self.subscribers {
                         let found = listed
@@ -154,14 +161,14 @@ impl LobbyActor {
                             .find(|p| p.socket_id == Some(sub.socket_id))
                             .is_some();
                         if found {
-                            let _ = sub.game_sender.send(GameEvent::Subscribe(
+                            let _ = sub.game_sender.send(GameToClientEvent::Subscribe(
                                 game.id.to_string(),
                                 game.client_sender.clone(),
                             ));
                             left.push(sub.socket_id);
                         }
                     }
-                    self.send(LobbyEvent::LeaveLobby(left.clone()));
+                    self.send(LobbyToClientEvent::LeaveLobby(left.clone()));
                     self.subscribers
                         .retain(|sub| left.iter().find(|s| *s == &sub.socket_id).is_none());
                     // TODO subscribe game to players and vice-versa
@@ -169,9 +176,9 @@ impl LobbyActor {
                     self.running_games.insert(game.id, game);
                 }
             }
-            ClientEvent::SelectCell(_, _) => todo!(),
-            ClientEvent::LeaveGame() => todo!(),
-            ClientEvent::PlayerJoinLobby(data) => {
+            ClientToLobbyEvent::SelectCell(_, _) => todo!(),
+            ClientToLobbyEvent::LeaveGame() => todo!(),
+            ClientToLobbyEvent::PlayerJoinLobby(data) => {
                 self.lobby_players.insert(
                     0,
                     LobbyPlayer {
@@ -180,10 +187,29 @@ impl LobbyActor {
                     },
                 );
             }
-            ClientEvent::SubscribeToGame(_, _) => todo!(),
+            ClientToLobbyEvent::SubscribeToGame(_, _) => todo!(),
         }
     }
-    fn send(&mut self, event: LobbyEvent) {
+
+    pub async fn handle_game_event(&mut self, msg: GameToLobbyEvent) {
+        info!("Lobby -> GameToLobbyEvent {:?}", msg);
+        match msg {
+            GameToLobbyEvent::GameEnded(game_id) => {
+                self.running_games.remove(&game_id);
+                self.lobby_games.retain(|g| g.id != game_id);
+                for sub in &self.subscribers {
+                    let _ = sub
+                        .lobby_sender
+                        .send(LobbyToClientEvent::LobbyState(LobbyState {
+                            games: self.lobby_state(),
+                            players: self.lobby_players.clone(),
+                        }));
+                }
+            }
+        }
+    }
+
+    fn send(&mut self, event: LobbyToClientEvent) {
         self.subscribers
             .retain(|sub| sub.lobby_sender.send(event.clone()).is_ok());
     }
@@ -195,6 +221,9 @@ pub fn run_lobby(mut actor: LobbyActor) -> JoinHandle<()> {
             tokio::select! {
                 Ok(ev) = actor.client_receiver.recv() => {
                     actor.handle_client_event(ev).await;
+                },
+                Ok(ev) = actor.game_receiver.recv() => {
+                    actor.handle_game_event(ev).await;
                 },
                 else => {
                     break;

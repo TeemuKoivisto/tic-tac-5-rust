@@ -5,22 +5,25 @@ use tokio::sync::Mutex;
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
-use crate::state::events::{ClientEvent, GameEvent};
+use crate::state::events::{
+    ClientToLobbyEvent, GameToClientEvent, GameToLobbyEvent, LobbyToClientEvent,
+};
 
 use super::listed_game::{JoinedPlayer, ListedGame};
 
 #[derive(Debug)]
 pub struct Subscriber {
     socket_id: u32,
-    sender: broadcast::Sender<GameEvent>,
+    sender: broadcast::Sender<GameToClientEvent>,
 }
 
 pub struct Game {
     pub id: Uuid,
     pub state: GameState,
     pub joined_players: Vec<JoinedPlayer>,
-    game_sender: broadcast::Sender<GameEvent>,
-    pub client_receiver: broadcast::Receiver<ClientEvent>,
+    game_sender: broadcast::Sender<GameToClientEvent>,
+    game_to_lobby_sender: broadcast::Sender<GameToLobbyEvent>,
+    pub client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
     subscribers: Vec<Subscriber>,
 }
 
@@ -28,14 +31,16 @@ impl Game {
     pub fn new(
         lobby_game: &ListedGame,
         rng_seed: Option<[u8; 32]>,
-        game_sender: broadcast::Sender<GameEvent>,
-        client_receiver: broadcast::Receiver<ClientEvent>,
+        game_sender: broadcast::Sender<GameToClientEvent>,
+        game_to_lobby_sender: broadcast::Sender<GameToLobbyEvent>,
+        client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
     ) -> Self {
         Self {
             id: lobby_game.id,
             state: GameState::new(&lobby_game.options, rng_seed),
             joined_players: lobby_game.joined_players.clone(),
             game_sender,
+            game_to_lobby_sender,
             client_receiver,
             subscribers: Vec::new(),
         }
@@ -167,14 +172,14 @@ impl Game {
         }
     }
 
-    pub async fn handle_client_event(&mut self, msg: ClientEvent) {
+    pub async fn handle_client_event(&mut self, msg: ClientToLobbyEvent) {
         info!("Game -> ClientEvent {:?}", msg);
         match msg {
-            ClientEvent::Connected(_, _, _) => todo!(),
-            ClientEvent::Disconnected(_) => todo!(),
-            ClientEvent::PlayerJoinLobby(_) => todo!(),
-            ClientEvent::PlayerCreateGame(_, _) => todo!(),
-            ClientEvent::SelectCell(socket_id, payload) => {
+            ClientToLobbyEvent::Connected(_, _, _) => todo!(),
+            ClientToLobbyEvent::Disconnected(_) => todo!(),
+            ClientToLobbyEvent::PlayerJoinLobby(_) => todo!(),
+            ClientToLobbyEvent::PlayerCreateGame(_, _) => todo!(),
+            ClientToLobbyEvent::SelectCell(socket_id, payload) => {
                 let result = self.handle_player_move(&payload);
                 if result.is_ok() {
                     if result.unwrap() {
@@ -185,17 +190,20 @@ impl Game {
                         //     ctx.broadcast_lobby_state().await;
                         // }
                         self.send_multiple(vec![
-                            GameEvent::GameUpdate(payload),
-                            GameEvent::GameEnd(self.get_game_end()),
+                            GameToClientEvent::GameUpdate(payload),
+                            GameToClientEvent::GameEnd(self.get_game_end()),
                         ]);
+                        let _ = self
+                            .game_to_lobby_sender
+                            .send(GameToLobbyEvent::GameEnded(self.id));
                     } else {
-                        self.send(GameEvent::GameUpdate(payload));
+                        self.send(GameToClientEvent::GameUpdate(payload));
                     }
                 }
             }
-            ClientEvent::LeaveGame() => todo!(),
-            ClientEvent::PlayerJoinGame(_, _) => todo!(),
-            ClientEvent::SubscribeToGame(client, sender) => {
+            ClientToLobbyEvent::LeaveGame() => todo!(),
+            ClientToLobbyEvent::PlayerJoinGame(_, _) => todo!(),
+            ClientToLobbyEvent::SubscribeToGame(client, sender) => {
                 self.subscribers.push(Subscriber {
                     socket_id: client.socket_id,
                     sender,
@@ -204,8 +212,7 @@ impl Game {
                     .add_player(&client.player_id, client.name, Some(client.socket_id));
                 if self.subscribers.len() == self.joined_players.len() {
                     self.state.status = GameStatus::X_TURN;
-                    println!("players {:?}", self.state.players.clone());
-                    self.send(GameEvent::GameStart(GameStart {
+                    self.send(GameToClientEvent::GameStart(GameStart {
                         game_id: self.id.to_string(),
                         players: self.state.players.clone(),
                         cells: self.state.get_cells(),
@@ -215,12 +222,12 @@ impl Game {
         }
     }
 
-    fn send(&mut self, event: GameEvent) {
+    fn send(&mut self, event: GameToClientEvent) {
         self.subscribers
             .retain(|sub| sub.sender.send(event.clone()).is_ok());
     }
 
-    fn send_multiple(&mut self, events: Vec<GameEvent>) {
+    fn send_multiple(&mut self, events: Vec<GameToClientEvent>) {
         for event in events {
             self.subscribers
                 .retain(|sub| sub.sender.send(event.clone()).is_ok());
