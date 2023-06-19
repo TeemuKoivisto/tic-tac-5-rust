@@ -9,6 +9,7 @@ use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
+use crate::state::client::Client;
 use crate::state::events::{ClientEvent, GameEvent, LobbyEvent};
 use crate::ws::serialize_server_event::serialize_server_event;
 
@@ -18,6 +19,7 @@ pub struct SubscribedGame {
 }
 
 pub struct WsSession {
+    client: Client,
     pub socket_id: u32,
     ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
@@ -40,6 +42,11 @@ impl WsSession {
     ) -> Self {
         let (ws_sender, ws_receiver) = socket.split();
         Self {
+            client: Client {
+                name: "".to_string(),
+                player_id: 0,
+                socket_id,
+            },
             socket_id,
             ws_sender,
             ws_receiver,
@@ -57,6 +64,14 @@ impl WsSession {
         self.send_to_game(ClientEvent::Disconnected(self.socket_id));
     }
 
+    fn set_player(&mut self, player_join: &PlayerJoinLobby) {
+        self.client = Client {
+            name: player_join.name.clone(),
+            player_id: player_join.player_id,
+            socket_id: self.socket_id,
+        }
+    }
+
     pub async fn handle_ws_message(
         &mut self,
         msg: Message,
@@ -72,6 +87,7 @@ impl WsSession {
                     // ctx.join_lobby(socket_id, player_join).await;
                     // ctx.broadcast_lobby_state().await;
                     // println!("sending to {} subscribers", self.subscribed_games.len());
+                    self.set_player(&player_join);
                     self.send_to_lobby(ClientEvent::PlayerJoinLobby(player_join));
                 }
             }
@@ -172,7 +188,7 @@ impl WsSession {
                     self.socket_id, game_id
                 );
                 let _ = client_sender.send(ClientEvent::SubscribeToGame(
-                    self.socket_id,
+                    self.client.clone(),
                     self.game_sender.clone(),
                 ));
                 self.subscribed_games.push(SubscribedGame {

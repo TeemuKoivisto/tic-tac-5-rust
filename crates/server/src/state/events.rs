@@ -1,6 +1,8 @@
 use tic_tac_5::proto::proto_all::*;
 use tokio::sync::{broadcast, mpsc};
 
+use super::client::Client;
+
 // join_lobby = 0;
 // lobby_msg = 1;
 // create_lobby_game = 2;
@@ -28,7 +30,7 @@ pub enum ClientEvent {
         broadcast::Sender<GameEvent>,
     ),
     Disconnected(u32),
-    SubscribeToGame(u32, broadcast::Sender<GameEvent>),
+    SubscribeToGame(Client, broadcast::Sender<GameEvent>),
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),
     PlayerJoinGame(u32, PlayerJoinGame),

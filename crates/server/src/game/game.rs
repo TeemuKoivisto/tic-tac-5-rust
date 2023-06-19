@@ -169,10 +169,16 @@ impl Game {
             ClientEvent::SelectCell() => todo!(),
             ClientEvent::LeaveGame() => todo!(),
             ClientEvent::PlayerJoinGame(_, _) => todo!(),
-            ClientEvent::SubscribeToGame(socket_id, sender) => {
-                self.subscribers.push(Subscriber { socket_id, sender });
+            ClientEvent::SubscribeToGame(client, sender) => {
+                self.subscribers.push(Subscriber {
+                    socket_id: client.socket_id,
+                    sender,
+                });
+                self.state
+                    .add_player(&client.player_id, client.name, Some(client.socket_id));
                 if self.subscribers.len() == self.joined_players.len() {
                     self.state.status = GameStatus::X_TURN;
+                    println!("players {:?}", self.state.players.clone());
                     self.send(GameEvent::GameStart(GameStart {
                         game_id: self.id.to_string(),
                         players: self.state.players.clone(),
