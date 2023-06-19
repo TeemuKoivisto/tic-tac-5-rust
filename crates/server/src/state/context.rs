@@ -2,7 +2,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use crate::connection::Connection;
 use crate::game::game::Game;
 use tic_tac_5::proto::proto_all::*;
 
@@ -19,13 +18,13 @@ impl Context {
         }
     }
 
-    pub async fn player_connect(&self, socket_id: u32, conn: Arc<Mutex<Connection>>) {}
+    pub async fn player_connect(&self, socket_id: u32, conn: Arc<Mutex<u32>>) {}
 
     // @TODO use socket_id, rooms as parameters instead(?)
-    pub async fn player_disconnect(&self, conn_mut: Arc<Mutex<Connection>>) {}
+    pub async fn player_disconnect(&self, conn_mut: Arc<Mutex<u32>>) {}
 
     // @TODO use socket_id, rooms as parameters instead(?)
-    pub async fn remove_player_connection(&self, conn_mut: Arc<Mutex<Connection>>) {}
+    pub async fn remove_player_connection(&self, conn_mut: Arc<Mutex<u32>>) {}
 
     pub async fn join_lobby(&self, socket_id: u32, data: PlayerJoinLobby) {}
 

@@ -1,4 +1,3 @@
-mod connection;
 mod game;
 mod state;
 mod ws;
