@@ -1,22 +1,20 @@
-use hmac::Hmac;
-use sha2::Sha512;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use super::{jwt_manager::JwtManager, lobby_handle::LobbyHandle};
 use crate::ws::session_manager::SessionManager;
 
 pub struct Context {
-    pub session_manager: Arc<Mutex<SessionManager>>,
-    pub lobby: Arc<Mutex<LobbyHandle>>,
-    pub jwt_manager: Arc<Mutex<JwtManager>>,
+    pub session_manager: Arc<RwLock<SessionManager>>,
+    pub lobby: Arc<RwLock<LobbyHandle>>,
+    pub jwt_manager: Arc<RwLock<JwtManager>>,
 }
 
 impl Context {
     pub fn new(
-        d: Arc<Mutex<SessionManager>>,
-        s: Arc<Mutex<LobbyHandle>>,
-        j: Arc<Mutex<JwtManager>>,
+        d: Arc<RwLock<SessionManager>>,
+        s: Arc<RwLock<LobbyHandle>>,
+        j: Arc<RwLock<JwtManager>>,
     ) -> Self {
         Self {
             session_manager: d,

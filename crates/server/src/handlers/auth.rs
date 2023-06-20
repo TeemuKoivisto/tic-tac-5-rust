@@ -30,10 +30,10 @@ pub async fn login(
     State(state): State<Arc<Context>>,
     Json(payload): Json<LoginPayload>,
 ) -> AxumResponse {
-    let player_id = state.session_manager.lock().await.get_next_player_id();
+    let player_id = state.session_manager.write().await.get_next_player_id();
     let token = state
         .jwt_manager
-        .lock()
+        .read()
         .await
         .encode_login(player_id, payload.name);
     tracing::trace!("token {}", token);

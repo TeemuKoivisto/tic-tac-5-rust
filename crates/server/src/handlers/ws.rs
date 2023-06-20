@@ -9,7 +9,7 @@ use axum::{
 // use log::{debug, error};
 use log::warn;
 use serde::Deserialize;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::{
     state::{
@@ -62,8 +62,8 @@ pub async fn ws_handler(
 
 pub async fn websocket(socket: WebSocket, state: Arc<Context>) {
     println!("websocket");
-    let lobby = state.lobby.lock().await;
-    let session = state.session_manager.lock().await.create_session(socket);
+    let lobby = state.lobby.read().await;
+    let session = state.session_manager.write().await.create_session(socket);
     // let session = SessionHandle::new(socket, socket_id);
     let _ = session.subscribe(&lobby.client_sender);
     let _ = lobby.subscribe(&session.lobby_sender);

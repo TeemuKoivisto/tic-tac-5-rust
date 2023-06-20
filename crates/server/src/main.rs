@@ -6,7 +6,7 @@ use std::{
     net::{Ipv4Addr, SocketAddr},
     sync::Arc,
 };
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -44,9 +44,9 @@ async fn main() {
         },
     ));
 
-    let lobby = Arc::new(Mutex::new(LobbyHandle::new()));
-    let session_manager = Arc::new(Mutex::new(SessionManager::new()));
-    let jwt_manager = Arc::new(Mutex::new(JwtManager::new(&jwt_secret)));
+    let lobby = Arc::new(RwLock::new(LobbyHandle::new()));
+    let session_manager = Arc::new(RwLock::new(SessionManager::new()));
+    let jwt_manager = Arc::new(RwLock::new(JwtManager::new(&jwt_secret)));
     let ctx = Arc::new(Context::new(session_manager, lobby, jwt_manager));
 
     let cors = CorsLayer::new()
