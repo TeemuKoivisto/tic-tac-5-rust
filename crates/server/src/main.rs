@@ -1,22 +1,36 @@
+use axum::{routing::get, Router};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
+use tokio::sync::Mutex;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 mod game;
+mod handlers;
 mod state;
 mod ws;
 
-use crate::state::lobby_handle::LobbyHandle;
-use crate::ws::session::run_session;
-use crate::ws::session_handle::SessionHandle;
-use crate::ws::session_manager::SessionManager;
-
-use log::info;
-use std::sync::Arc;
-use tokio::net::TcpListener;
+use crate::state::{context::Context, jwt_manager::JwtManager, lobby_handle::LobbyHandle};
+use crate::{handlers::auth_handlers::login, ws::session_manager::SessionManager};
+use handlers::ws_handler::ws_handler;
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
-    let port = std::env::var("PORT").unwrap_or_else(|_| "6634".to_string());
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "server=trace".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    let port = std::env::var("PORT")
+        .unwrap_or_else(|_| "6634".to_string())
+        .parse::<u16>()
+        .unwrap();
     let sentry_url = std::env::var("SENTRY_URL").unwrap_or_else(|_| "".to_string());
-    let addr = format!("0.0.0.0:{}", port);
+    let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
     let _guard = sentry::init((
         sentry_url,
@@ -26,30 +40,28 @@ async fn main() {
         },
     ));
 
-    let listener = TcpListener::bind(&addr)
-        .await
-        .expect("Listening to TCP failed.");
+    let lobby = Arc::new(Mutex::new(LobbyHandle::new()));
+    let session_manager = Arc::new(Mutex::new(SessionManager::new()));
+    let jwt_manager = Arc::new(Mutex::new(JwtManager::new(&jwt_secret)));
+    let ctx = Arc::new(Context::new(session_manager, lobby, jwt_manager));
 
-    let lobby = Arc::new(LobbyHandle::new());
-    let session_manager = Arc::new(SessionManager::new());
+    let app = Router::new()
+        .route("/login", get(login))
+        .route("/ws", get(ws_handler))
+        .with_state(ctx);
+    // .with_state(app_state);
+
+    let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, port));
+
+    // let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    //     .await
+    //     .unwrap();
+    // tracing::debug!("listening on {}", listener.local_addr().unwrap());
 
     println!("Listening on: {}", addr);
 
-    // A counter to use as client ids.
-    let mut socket_id = 0;
-
-    // Accept new clients.
-    while let Ok((stream, peer)) = listener.accept().await {
-        match tokio_tungstenite::accept_async(stream).await {
-            Err(e) => info!("Websocket connection error : {}", e),
-            Ok(ws_stream) => {
-                socket_id += 1;
-                info!("New Connection {} Socket ID {}", peer, socket_id);
-                let session = SessionHandle::new(ws_stream, socket_id);
-                let _ = session.subscribe(&lobby.client_sender);
-                let _ = lobby.subscribe(&session.lobby_sender);
-                run_session(session.actor);
-            }
-        }
-    }
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }

@@ -1,13 +1,11 @@
+use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
 use quick_protobuf::{BytesReader, MessageRead};
 use tic_tac_5::proto::proto_all::*;
-use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
-use tokio_tungstenite::tungstenite::Message;
-use tokio_tungstenite::WebSocketStream;
 
 use crate::state::client::Client;
 use crate::state::events::{
@@ -23,8 +21,8 @@ pub struct SubscribedGame {
 pub struct Session {
     pub client: Client,
     pub socket_id: u32,
-    ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
-    ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
+    ws_sender: SplitSink<WebSocket, Message>,
+    ws_receiver: SplitStream<WebSocket>,
     client_sender: broadcast::Sender<ClientToLobbyEvent>,
     lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
     game_sender: broadcast::Sender<GameToClientEvent>,
@@ -36,7 +34,7 @@ pub struct Session {
 impl Session {
     pub fn new(
         socket_id: u32,
-        socket: WebSocketStream<TcpStream>,
+        socket: WebSocket,
         client_sender: broadcast::Sender<ClientToLobbyEvent>,
         lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
         game_sender: broadcast::Sender<GameToClientEvent>,
@@ -78,80 +76,98 @@ impl Session {
         &mut self,
         msg: Message,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut msg = msg.into_data();
-        let message_type = msg.remove(0);
-        let mut reader = BytesReader::from_bytes(&msg);
-        // debug!("New message {}", message_type);
-        match ClientMsgType::try_from(message_type) {
-            Ok(ClientMsgType::join_lobby) => {
-                if let Ok(player_join) = PlayerJoinLobby::from_reader(&mut reader, &msg) {
-                    debug!("ClientMsgType::join_lobby {:#?}", player_join);
-                    self.set_player(&player_join);
-                    self.send_to_lobby(ClientToLobbyEvent::PlayerJoinLobby(player_join));
-                }
-            }
-            Ok(ClientMsgType::create_lobby_game) => {
-                if let Ok(payload) = PlayerCreateGame::from_reader(&mut reader, &msg) {
-                    debug!("ClientMsgType::create_lobby_game {:#?}", payload);
-                    self.send_to_lobby(ClientToLobbyEvent::PlayerCreateGame(
-                        self.socket_id,
-                        payload,
-                    ));
-                    // let (started, game_mut) = ctx.create_lobby_game(socket_id, create_game).await;
-                    // game_mut
-                    //     .lock()
-                    //     .await
-                    //     .add_player_connection(socket_id, conn.clone());
-                    // player.set_joined_game(game_mut.clone()).await;
-                    // if started {
-                    //     ctx.start_game(game_mut).await;
-                    // }
-                    // ctx.broadcast_lobby_state().await;
-                }
-            }
-            Ok(ClientMsgType::join_lobby_game) => {
-                if let Ok(player_join) = PlayerJoinGame::from_reader(&mut reader, &msg) {
-                    debug!("ClientMsgType::join_lobby_game {:#?}", player_join);
-                    self.send_to_lobby(ClientToLobbyEvent::PlayerJoinGame(
-                        self.socket_id,
-                        player_join,
-                    ));
-                    // let (started, game_mut) = ctx.join_lobby_game(socket_id, player_join).await;
-                    // game_mut
-                    //     .lock()
-                    //     .await
-                    //     .add_player_connection(socket_id, conn.clone());
-                    // player.set_joined_game(game_mut.clone()).await;
-                    // if started {
-                    //     ctx.start_game(game_mut).await;
-                    // }
-                    // ctx.broadcast_lobby_state().await;
-                }
-            }
-            Ok(ClientMsgType::player_select_cell) => {
-                if let Ok(payload) = PlayerSelectCell::from_reader(&mut reader, &msg) {
-                    debug!("ClientMsgType::player_select_cell {:#?}", payload);
-                    self.send_to_game(ClientToGameEvent::SelectCell(self.socket_id, payload));
-                }
-            }
-            Ok(ClientMsgType::leave_game) => {
-                if let Ok(payload) = PlayerLeaveGame::from_reader(&mut reader, &msg) {
-                    debug!("ClientMsgType::player_leave {:#?}", payload);
+        match msg {
+            Message::Binary(mut raw_buf) => {
+                // let mut msg = msg.into_data();
+                let message_type = raw_buf.remove(0);
+                let mut reader = BytesReader::from_bytes(&raw_buf);
+                // debug!("New message {}", message_type);
+                match ClientMsgType::try_from(message_type) {
+                    Ok(ClientMsgType::join_lobby) => {
+                        if let Ok(player_join) = PlayerJoinLobby::from_reader(&mut reader, &raw_buf)
+                        {
+                            debug!("ClientMsgType::join_lobby {:#?}", player_join);
+                            self.set_player(&player_join);
+                            self.send_to_lobby(ClientToLobbyEvent::PlayerJoinLobby(player_join));
+                        }
+                    }
+                    Ok(ClientMsgType::create_lobby_game) => {
+                        if let Ok(payload) = PlayerCreateGame::from_reader(&mut reader, &raw_buf) {
+                            debug!("ClientMsgType::create_lobby_game {:#?}", payload);
+                            self.send_to_lobby(ClientToLobbyEvent::PlayerCreateGame(
+                                self.socket_id,
+                                payload,
+                            ));
+                            // let (started, game_mut) = ctx.create_lobby_game(socket_id, create_game).await;
+                            // game_mut
+                            //     .lock()
+                            //     .await
+                            //     .add_player_connection(socket_id, conn.clone());
+                            // player.set_joined_game(game_mut.clone()).await;
+                            // if started {
+                            //     ctx.start_game(game_mut).await;
+                            // }
+                            // ctx.broadcast_lobby_state().await;
+                        }
+                    }
+                    Ok(ClientMsgType::join_lobby_game) => {
+                        if let Ok(player_join) = PlayerJoinGame::from_reader(&mut reader, &raw_buf)
+                        {
+                            debug!("ClientMsgType::join_lobby_game {:#?}", player_join);
+                            self.send_to_lobby(ClientToLobbyEvent::PlayerJoinGame(
+                                self.socket_id,
+                                player_join,
+                            ));
+                            // let (started, game_mut) = ctx.join_lobby_game(socket_id, player_join).await;
+                            // game_mut
+                            //     .lock()
+                            //     .await
+                            //     .add_player_connection(socket_id, conn.clone());
+                            // player.set_joined_game(game_mut.clone()).await;
+                            // if started {
+                            //     ctx.start_game(game_mut).await;
+                            // }
+                            // ctx.broadcast_lobby_state().await;
+                        }
+                    }
+                    Ok(ClientMsgType::player_select_cell) => {
+                        if let Ok(payload) = PlayerSelectCell::from_reader(&mut reader, &raw_buf) {
+                            debug!("ClientMsgType::player_select_cell {:#?}", payload);
+                            self.send_to_game(ClientToGameEvent::SelectCell(
+                                self.socket_id,
+                                payload,
+                            ));
+                        }
+                    }
+                    Ok(ClientMsgType::leave_game) => {
+                        if let Ok(payload) = PlayerLeaveGame::from_reader(&mut reader, &raw_buf) {
+                            debug!("ClientMsgType::player_leave {:#?}", payload);
 
-                    // let game_id = Uuid::parse_str(&payload.game_id).unwrap();
-                    // let ended = ctx.player_leave_game(socket_id, payload).await;
-                    // if ended {
-                    //     player.remove_joined_game().await;
-                    //     ctx.end_game(game_id).await;
-                    //     ctx.remove_game(game_id).await;
-                    // }
-                    // ctx.broadcast_lobby_state().await;
+                            // let game_id = Uuid::parse_str(&payload.game_id).unwrap();
+                            // let ended = ctx.player_leave_game(socket_id, payload).await;
+                            // if ended {
+                            //     player.remove_joined_game().await;
+                            //     ctx.end_game(game_id).await;
+                            //     ctx.remove_game(game_id).await;
+                            // }
+                            // ctx.broadcast_lobby_state().await;
+                        }
+                    }
+                    _ => error!("Unknown header: {}", message_type),
                 }
+                Ok(())
             }
-            _ => error!("Unknown header: {}", message_type),
-        };
-        Ok(())
+            // Message::Frame(_) => todo!(),
+            Message::Text(_) => todo!(),
+            Message::Ping(_) => todo!(),
+            Message::Pong(_) => todo!(),
+            Message::Close(_) => {
+                // self.send(ClientToLobbyEvent::Disconnected(self.user_id));
+                Err("Disconnected".into())
+            }
+        }
     }
+
     pub async fn handle_lobby_event(&mut self, msg: LobbyToClientEvent) {
         info!("Client {} -> LobbyToClientEvent {:?}", self.socket_id, msg);
         match msg {
@@ -241,11 +257,7 @@ pub fn run_session(mut actor: Session) -> JoinHandle<()> {
                 Some(msg) = actor.ws_receiver.next() => {
                     match msg {
                         Ok(ev) => {
-                            let mut stop = true;
-                            if ev.is_binary() {
-                                stop = actor.handle_ws_message(ev).await.is_err();
-                            }
-                            if stop {
+                            if actor.handle_ws_message(ev).await.is_err() {
                                 break;
                             }
                         }

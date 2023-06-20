@@ -1,6 +1,6 @@
+use axum::extract::ws::WebSocket;
 use tokio::net::TcpStream;
 use tokio::sync::broadcast::{self, error::SendError};
-use tokio_tungstenite::WebSocketStream;
 
 use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent};
 
@@ -16,7 +16,7 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
-    pub fn new(socket: WebSocketStream<TcpStream>, socket_id: u32) -> Self {
+    pub fn new(socket: WebSocket, socket_id: u32) -> Self {
         let (client_sender, client_receiver) = broadcast::channel(64);
         let (lobby_sender, lobby_receiver) = broadcast::channel(64);
         let (game_sender, game_receiver) = broadcast::channel(64);

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 ROOT_DIR="$(dirname $(readlink -f $0))"
+export JWT_SECRET="very-secret"
 
 run() {
   cd $ROOT_DIR
