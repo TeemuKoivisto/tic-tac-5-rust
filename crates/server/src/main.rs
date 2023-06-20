@@ -3,8 +3,9 @@ mod state;
 mod ws;
 
 use crate::state::lobby_handle::LobbyHandle;
-use crate::ws::ws_session::run_session;
-use crate::ws::ws_session_handle::WsSessionHandle;
+use crate::ws::session::run_session;
+use crate::ws::session_handle::SessionHandle;
+use crate::ws::session_manager::SessionManager;
 
 use log::info;
 use std::sync::Arc;
@@ -30,6 +31,7 @@ async fn main() {
         .expect("Listening to TCP failed.");
 
     let lobby = Arc::new(LobbyHandle::new());
+    let session_manager = Arc::new(SessionManager::new());
 
     println!("Listening on: {}", addr);
 
@@ -43,7 +45,7 @@ async fn main() {
             Ok(ws_stream) => {
                 socket_id += 1;
                 info!("New Connection {} Socket ID {}", peer, socket_id);
-                let session = WsSessionHandle::new(ws_stream, socket_id);
+                let session = SessionHandle::new(ws_stream, socket_id);
                 let _ = session.subscribe(&lobby.client_sender);
                 let _ = lobby.subscribe(&session.lobby_sender);
                 run_session(session.actor);

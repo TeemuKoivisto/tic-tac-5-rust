@@ -1,13 +1,9 @@
 use log::{debug, error, info, warn};
-use std::{collections::HashMap, sync::Arc};
 use tic_tac_5::{game_state::*, proto::proto_all::*};
-use tokio::sync::Mutex;
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
-use crate::state::events::{
-    ClientToGameEvent, GameToClientEvent, GameToLobbyEvent, LobbyToClientEvent,
-};
+use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent};
 
 use super::listed_game::{JoinedPlayer, ListedGame};
 
@@ -135,7 +131,7 @@ impl Game {
             let remaining = self.state.players.iter().filter(|p| !p.dead).count();
             if remaining == 1 {
                 // TODO right player
-                self.state.status = GameStatus::X_WON
+                self.state.status = GameStatus::X_WON;
                 // TODO send winner maybe
             } else if remaining == 0 {
                 self.state.status = GameStatus::TIE;
@@ -146,14 +142,6 @@ impl Game {
     pub fn handle_player_disconnect(&mut self, player_id: &u32) {
         // @TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
         self.handle_player_leave(player_id);
-    }
-
-    pub fn get_game_start(&self) -> GameStart {
-        GameStart {
-            game_id: self.id.to_string(),
-            players: self.state.players.clone(),
-            cells: self.state.get_cells(),
-        }
     }
 
     fn get_game_end(&self) -> GameEnd {
@@ -181,12 +169,6 @@ impl Game {
                 let result = self.handle_player_move(&payload);
                 if result.is_ok() {
                     if result.unwrap() {
-                        //     player.remove_joined_game().await;
-                        //     let game_id = Uuid::parse_str(&payload.game_id).unwrap();
-                        //     ctx.end_game(game_id).await;
-                        //     ctx.remove_game(game_id).await;
-                        //     ctx.broadcast_lobby_state().await;
-                        // }
                         self.send_multiple(vec![
                             GameToClientEvent::GameUpdate(payload),
                             GameToClientEvent::GameEnd(self.get_game_end()),

@@ -20,8 +20,8 @@ pub struct SubscribedGame {
     sender: broadcast::Sender<ClientToGameEvent>,
 }
 
-pub struct WsSession {
-    client: Client,
+pub struct Session {
+    pub client: Client,
     pub socket_id: u32,
     ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
@@ -33,7 +33,7 @@ pub struct WsSession {
     subscribed_games: Vec<SubscribedGame>,
 }
 
-impl WsSession {
+impl Session {
     pub fn new(
         socket_id: u32,
         socket: WebSocketStream<TcpStream>,
@@ -234,7 +234,7 @@ impl WsSession {
     }
 }
 
-pub fn run_session(mut actor: WsSession) -> JoinHandle<()> {
+pub fn run_session(mut actor: Session) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {
             tokio::select! {

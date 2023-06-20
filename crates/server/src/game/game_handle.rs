@@ -4,7 +4,6 @@ use tokio::{sync::broadcast, task::JoinHandle};
 use uuid::Uuid;
 
 use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent};
-use crate::state::lobby::ClientSubscriber;
 
 use super::game::Game;
 use super::listed_game::ListedGame;
@@ -13,10 +12,6 @@ pub struct GameHandle {
     pub id: Uuid,
     pub client_sender: broadcast::Sender<ClientToGameEvent>,
     pub game_receiver: broadcast::Receiver<GameToClientEvent>,
-    // Use this and trait Broadcastable to send messages either to game or lobby depending who has the connection?
-    // problem -> lot of moving of connections
-    // plus -> no need to loop players in games when broadcasting lobby state
-    // pub connections: Vec<Arc<Mutex<Connection>>>,
 }
 
 impl GameHandle {
@@ -42,15 +37,15 @@ impl GameHandle {
         }
     }
 
-    pub fn subscribe(
-        &self,
-        sender: &broadcast::Sender<GameToClientEvent>,
-    ) -> Result<usize, SendError<GameToClientEvent>> {
-        sender.send(GameToClientEvent::Subscribe(
-            self.id.to_string(),
-            self.client_sender.clone(),
-        ))
-    }
+    // pub fn subscribe(
+    //     &self,
+    //     sender: &broadcast::Sender<GameToClientEvent>,
+    // ) -> Result<usize, SendError<GameToClientEvent>> {
+    //     sender.send(GameToClientEvent::Subscribe(
+    //         self.id.to_string(),
+    //         self.client_sender.clone(),
+    //     ))
+    // }
 }
 
 pub fn run_game(mut actor: Game) -> JoinHandle<()> {

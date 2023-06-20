@@ -4,23 +4,23 @@ use tokio_tungstenite::WebSocketStream;
 
 use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent};
 
-use super::ws_session::WsSession;
+use super::session::Session;
 
-pub struct WsSessionHandle {
+pub struct SessionHandle {
     pub socket_id: u32,
-    pub actor: WsSession,
+    pub actor: Session,
     pub client_sender: broadcast::Sender<ClientToLobbyEvent>,
     pub client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
     pub lobby_sender: broadcast::Sender<LobbyToClientEvent>,
     pub game_sender: broadcast::Sender<GameToClientEvent>,
 }
 
-impl WsSessionHandle {
+impl SessionHandle {
     pub fn new(socket: WebSocketStream<TcpStream>, socket_id: u32) -> Self {
         let (client_sender, client_receiver) = broadcast::channel(64);
         let (lobby_sender, lobby_receiver) = broadcast::channel(64);
         let (game_sender, game_receiver) = broadcast::channel(64);
-        let actor = WsSession::new(
+        let actor = Session::new(
             socket_id,
             socket,
             client_sender.clone(),
