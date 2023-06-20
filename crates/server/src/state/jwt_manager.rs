@@ -1,4 +1,5 @@
 use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
 use jwt::VerifyWithKey;
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
@@ -12,6 +13,12 @@ pub struct Claims {
     org_id: String,
     collection_id: String,
     exp: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AnonymousLogin {
+    player_id: u32,
+    name: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -60,6 +67,12 @@ impl JwtManager {
 
     pub fn delete_session(&mut self, jwt: &str) {
         self.sessions.remove(&jwt.to_string());
+    }
+
+    pub fn encode_login(&self, player_id: u32, name: String) -> String {
+        let claims = AnonymousLogin { player_id, name };
+        let token = claims.sign_with_key(&self.jwt_secret).unwrap();
+        token
     }
 
     pub fn decode(&self, jwt: &str) -> Result<TicTac5Token, JwtError> {

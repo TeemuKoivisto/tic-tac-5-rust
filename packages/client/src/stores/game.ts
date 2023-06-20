@@ -15,7 +15,9 @@ import {
   PlayerSelectCell,
   CellType,
 } from '@tt5/prototypes'
+import { wrappedFetch } from '@tt5/types'
 
+import { API_URL } from '../config'
 import { modalActions, EModal } from './modal'
 import { socketActions } from './ws'
 import { log } from '../logger'
@@ -112,6 +114,19 @@ function handleMessages(evt: SocketEvent) {
 export const gameActions = {
   setPlayerName(name: string) {
     playerName.set(name)
+  },
+  async login() {
+    const body = JSON.stringify({
+      name: get(playerName),
+    })
+    const resp = await wrappedFetch(`${API_URL}/login`, {
+      method: 'POST',
+      body,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    console.log('resp', resp)
   },
   runGame() {
     gameState.set('connecting')

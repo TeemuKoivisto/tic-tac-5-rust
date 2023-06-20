@@ -157,7 +157,6 @@ impl Session {
                 }
                 Ok(())
             }
-            // Message::Frame(_) => todo!(),
             Message::Text(_) => todo!(),
             Message::Ping(_) => todo!(),
             Message::Pong(_) => todo!(),

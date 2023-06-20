@@ -9,6 +9,7 @@
   import { gameActions, gameState } from '../stores/game'
 
   onMount(() => {
+    gameActions.login()
     gameActions.runGame()
   })
 </script>

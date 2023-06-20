@@ -1,9 +1,13 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use std::{
     net::{Ipv4Addr, SocketAddr},
     sync::Arc,
 };
 use tokio::sync::Mutex;
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod game;
@@ -12,8 +16,8 @@ mod state;
 mod ws;
 
 use crate::state::{context::Context, jwt_manager::JwtManager, lobby_handle::LobbyHandle};
-use crate::{handlers::auth_handlers::login, ws::session_manager::SessionManager};
-use handlers::ws_handler::ws_handler;
+use crate::{handlers::auth::login, ws::session_manager::SessionManager};
+use handlers::ws::ws_handler;
 
 #[tokio::main]
 async fn main() {
@@ -45,18 +49,18 @@ async fn main() {
     let jwt_manager = Arc::new(Mutex::new(JwtManager::new(&jwt_secret)));
     let ctx = Arc::new(Context::new(session_manager, lobby, jwt_manager));
 
+    let cors = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_origin(Any);
+
     let app = Router::new()
-        .route("/login", get(login))
+        .route("/login", post(login))
         .route("/ws", get(ws_handler))
+        .layer(cors)
         .with_state(ctx);
-    // .with_state(app_state);
 
     let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, port));
-
-    // let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-    //     .await
-    //     .unwrap();
-    // tracing::debug!("listening on {}", listener.local_addr().unwrap());
 
     println!("Listening on: {}", addr);
 

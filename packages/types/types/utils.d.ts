@@ -5,4 +5,4 @@ export type Error = {
   err: string
   code: number
 }
-export type Maybe<T> = Ok<T> | Error
+export type Result<T> = Ok<T> | Error

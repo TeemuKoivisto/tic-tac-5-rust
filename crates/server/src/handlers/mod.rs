@@ -1,2 +1,2 @@
-pub mod auth_handlers;
-pub mod ws_handler;
+pub mod auth;
+pub mod ws;

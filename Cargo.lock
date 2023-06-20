@@ -87,6 +87,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -104,6 +105,7 @@ dependencies = [
  "rustversion",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]

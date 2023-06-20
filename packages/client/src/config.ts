@@ -21,4 +21,5 @@ export const getPrefixedWS_URL = (url?: string) => {
 }
 
 export const DEV = import.meta.env.DEV
+export const API_URL = getEnv('VITE_API_URL')
 export const WS_URL = getEnv('VITE_WS_URL')
