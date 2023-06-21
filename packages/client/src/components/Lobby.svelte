@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { lobbyGames, gameActions, playerName } from '../stores/game'
+  import { authActions, playerName } from '../stores/auth'
+  import { lobbyGames, gameActions } from '../stores/game'
 
   let size: number | undefined = undefined,
     players = 2
@@ -9,7 +10,7 @@
       currentTarget: EventTarget & HTMLInputElement
     }
   ) {
-    gameActions.setPlayerName(e.currentTarget.value)
+    authActions.setPlayerName(e.currentTarget.value)
   }
 
   function handleCreateSubmit() {

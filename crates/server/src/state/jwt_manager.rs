@@ -7,26 +7,11 @@ use std::collections::HashMap;
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    sub: String,
-    org_id: String,
-    collection_id: String,
-    exp: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AnonymousLogin {
-    player_id: u32,
-    name: String,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TicTac5Token {
-    pub exp: i32,
-    pub iat: i32,
-    pub organization_id: i32,
-    pub user_id: i32,
+    pub exp: u64,
+    pub iat: u64,
+    pub player_id: u32,
 }
 
 pub struct JwtManager {
@@ -69,10 +54,16 @@ impl JwtManager {
         self.sessions.remove(&jwt.to_string());
     }
 
-    pub fn encode_login(&self, player_id: u32, name: String) -> String {
-        let claims = AnonymousLogin { player_id, name };
+    pub fn encode_login(&self, player_id: u32) -> (String, u64) {
+        let time = chrono::Utc::now().timestamp_millis() as u64 / 1000;
+        let exp = time + 60 * 60 * 24 * 14; // two weeks in seconds
+        let claims = TicTac5Token {
+            iat: time,
+            exp,
+            player_id,
+        };
         let token = claims.sign_with_key(&self.jwt_secret).unwrap();
-        token
+        (token, exp)
     }
 
     pub fn decode(&self, jwt: &str) -> Result<TicTac5Token, JwtError> {
@@ -83,7 +74,7 @@ impl JwtManager {
         let token = decrypted.unwrap();
         // TODO does verify_with_key check exp already?
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        if token.exp < now.as_secs() as i32 {
+        if token.exp < now.as_secs() {
             return Err(JwtError::Expired);
         } else if !self.sessions.contains_key(jwt) {
             return Err(JwtError::NoSession(token));

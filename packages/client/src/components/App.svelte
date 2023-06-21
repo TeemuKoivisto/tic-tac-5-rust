@@ -6,10 +6,11 @@
   import Play from './Play.svelte'
   import Waiting from './Waiting.svelte'
 
+  import { authActions } from '../stores/auth'
   import { gameActions, gameState } from '../stores/game'
 
-  onMount(() => {
-    gameActions.login()
+  onMount(async () => {
+    await authActions.login()
     gameActions.runGame()
   })
 </script>

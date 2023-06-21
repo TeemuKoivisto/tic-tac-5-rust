@@ -15,9 +15,8 @@ import {
   PlayerSelectCell,
   CellType,
 } from '@tt5/prototypes'
-import { wrappedFetch } from '@tt5/types'
 
-import { API_URL } from '../config'
+import { playerName, playerId } from './auth'
 import { modalActions, EModal } from './modal'
 import { socketActions } from './ws'
 import { log } from '../logger'
@@ -26,8 +25,6 @@ import type { GameState, SocketEvent, Options } from '../types'
 
 export const lobbyGames = writable<LobbyGame[]>([])
 export const lobbyPlayers = writable<LobbyPlayer[]>([])
-
-export const playerName = writable('unknown')
 
 export const gameState = writable<GameState>('connecting')
 export const gameEnd = writable<GameEnd | undefined>(undefined)
@@ -38,7 +35,6 @@ export const gameTurns = writable<number>(0)
 export const players = writable<Player[]>([])
 export const cells = writable<Map<string, Cell>>(new Map())
 export const gridSize = derived(cells, cells => Math.sqrt(cells.size))
-export const playerId = Math.ceil(Math.random() * 100000) // TODO: remove client-side id generation
 export const localPlayer = writable<Player | undefined>(undefined)
 export const retryConnectTimeout = writable<ReturnType<typeof setTimeout> | undefined>()
 export const lastMove = writable<GameMove | undefined>(undefined)
@@ -53,7 +49,7 @@ function handleMessages(evt: SocketEvent) {
   switch (evt.e) {
     case 'connected':
       socketActions.emitJoinLobby({
-        playerId,
+        playerId: get(playerId),
         name: get(playerName),
       })
       gameState.set('lobby')
@@ -71,16 +67,17 @@ function handleMessages(evt: SocketEvent) {
       lobbyPlayers.set(evt.data.players)
       break
     case ServerMsgType.game_start:
+      const pId = get(playerId)
       gameId.set(evt.data.gameId)
       players.set(evt.data.players)
       cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
-      localPlayer.set(evt.data.players.find(p => p.id === playerId))
+      localPlayer.set(evt.data.players.find(p => p.id === pId))
       gameState.set('game-running')
       gameStarted.set(Date.now())
       break
     case ServerMsgType.game_end:
       modalActions.open(EModal.GAME_OVER, {
-        playerWon: evt.data.winnerId === playerId,
+        playerWon: evt.data.winnerId === get(playerId),
         startTime: get(gameStarted),
         turns: get(gameTurns),
       })
@@ -112,22 +109,6 @@ function handleMessages(evt: SocketEvent) {
 }
 
 export const gameActions = {
-  setPlayerName(name: string) {
-    playerName.set(name)
-  },
-  async login() {
-    const body = JSON.stringify({
-      name: get(playerName),
-    })
-    const resp = await wrappedFetch(`${API_URL}/login`, {
-      method: 'POST',
-      body,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-    console.log('resp', resp)
-  },
   runGame() {
     gameState.set('connecting')
     socketActions.connect(handleMessages)
@@ -137,14 +118,14 @@ export const gameActions = {
     socketActions.emit(
       ClientMsgType.join_lobby,
       PlayerJoinLobby.encode({
-        playerId,
+        playerId: get(playerId),
         name: get(playerName),
       }).finish()
     )
   },
   createGame(opts: Options) {
     const payload = {
-      playerId,
+      playerId: get(playerId),
       name: get(playerName),
       preferredSymbol: 'X',
       options: opts,
@@ -155,7 +136,7 @@ export const gameActions = {
   joinGame(game: LobbyGame, opts: Options) {
     const payload = {
       gameId: game.gameId,
-      playerId,
+      playerId: get(playerId),
       name: get(playerName),
       color: 'poop',
       options: opts,
