@@ -8,15 +8,18 @@ import {
   GameEnd,
   GameMove,
 } from '@tt5/prototypes'
+
+import { jwt } from './auth'
 import { WS_URL } from '../config'
 import { log } from '../logger'
 import type { SocketEvent } from '../types/events'
+import { get } from 'svelte/store'
 
 let socket: WebSocket | null = null
 
 export const socketActions = {
   connect(cb: (evt: SocketEvent) => void) {
-    socket = new WebSocket(WS_URL)
+    socket = new WebSocket(`${WS_URL}?jwt=${get(jwt)?.token}`)
     socket.binaryType = 'arraybuffer'
     socket.onopen = () => {
       console.log('Connected')

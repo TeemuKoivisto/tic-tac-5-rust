@@ -13,6 +13,8 @@ use crate::state::events::{
 };
 use crate::ws::serialize_server_event::serialize_server_event;
 
+use super::session_handle::SessionHandle;
+
 pub struct SubscribedGame {
     game_id: String,
     sender: broadcast::Sender<ClientToGameEvent>,
@@ -249,8 +251,9 @@ impl Session {
     }
 }
 
-pub fn run_session(mut actor: Session) -> JoinHandle<()> {
+pub fn run_session(mut session: SessionHandle) -> JoinHandle<SessionHandle> {
     tokio::spawn(async move {
+        let actor = &mut session.actor;
         loop {
             tokio::select! {
                 Some(msg) = actor.ws_receiver.next() => {
@@ -278,5 +281,6 @@ pub fn run_session(mut actor: Session) -> JoinHandle<()> {
             }
         }
         actor.send_disconnect();
+        return session;
     })
 }

@@ -15,7 +15,7 @@ pub struct TicTac5Token {
 }
 
 pub struct JwtManager {
-    sessions: HashMap<String, String>,
+    sessions: HashMap<String, TicTac5Token>,
     jwt_secret: Hmac<Sha512>,
 }
 
@@ -46,15 +46,15 @@ impl JwtManager {
         }
     }
 
-    pub fn insert_session(&mut self, jwt: &str) {
-        self.sessions.insert(jwt.to_string(), jwt.to_string());
+    pub fn insert_session(&mut self, jwt: String, token: &TicTac5Token) {
+        self.sessions.insert(jwt.to_string(), token.clone());
     }
 
     pub fn delete_session(&mut self, jwt: &str) {
         self.sessions.remove(&jwt.to_string());
     }
 
-    pub fn encode_login(&self, player_id: u32) -> (String, u64) {
+    pub fn encode_login(&mut self, player_id: u32) -> (String, u64) {
         let time = chrono::Utc::now().timestamp_millis() as u64 / 1000;
         let exp = time + 60 * 60 * 24 * 14; // two weeks in seconds
         let claims = TicTac5Token {
@@ -62,8 +62,10 @@ impl JwtManager {
             exp,
             player_id,
         };
-        let token = claims.sign_with_key(&self.jwt_secret).unwrap();
-        (token, exp)
+        let cref = &claims;
+        let token = &cref.sign_with_key(&self.jwt_secret).unwrap();
+        self.sessions.insert(token.to_string(), claims);
+        (token.to_string(), exp)
     }
 
     pub fn decode(&self, jwt: &str) -> Result<TicTac5Token, JwtError> {
