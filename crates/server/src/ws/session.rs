@@ -3,7 +3,7 @@ use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
 use quick_protobuf::{BytesReader, MessageRead};
-use tic_tac_5::proto::proto_all::*;
+use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
 
@@ -26,9 +26,9 @@ pub struct Session {
     ws_sender: SplitSink<WebSocket, Message>,
     ws_receiver: SplitStream<WebSocket>,
     client_sender: broadcast::Sender<ClientToLobbyEvent>,
-    lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
+    pub lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
     game_sender: broadcast::Sender<GameToClientEvent>,
-    game_receiver: broadcast::Receiver<GameToClientEvent>,
+    pub game_receiver: broadcast::Receiver<GameToClientEvent>,
     subscribed_lobby: Option<broadcast::Sender<ClientToLobbyEvent>>,
     subscribed_games: Vec<SubscribedGame>,
 }
@@ -213,6 +213,16 @@ impl Session {
                     sender: client_sender,
                 });
             }
+            GameToClientEvent::PlayerDisconnected(payload) => {
+                let _ = self
+                    .ws_sender
+                    .send(serialize_server_event(
+                        ServerMsgType::player_disconnected,
+                        &payload,
+                    ))
+                    .await;
+            }
+            GameToClientEvent::PlayerReconnected(player_id) => {}
             GameToClientEvent::PlayerJoin(_) => todo!(),
             GameToClientEvent::PlayerLeave() => todo!(),
             GameToClientEvent::GameStart(payload) => {

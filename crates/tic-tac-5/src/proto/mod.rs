@@ -1,2 +1,4 @@
 // Automatically generated mod.rs
-pub mod proto_all;
+pub mod client_events;
+pub mod game;
+pub mod server_events;

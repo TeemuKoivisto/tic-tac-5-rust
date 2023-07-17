@@ -1,4 +1,4 @@
-use tic_tac_5::proto::proto_all::*;
+use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
@@ -38,7 +38,7 @@ pub enum ClientToLobbyEvent {
 
 #[derive(Debug, Clone)]
 pub enum ClientToGameEvent {
-    Connected(u32),
+    Reconnected(u32),
     Disconnected(u32),
     SubscribeToGame(Client, broadcast::Sender<GameToClientEvent>),
     SelectCell(u32, PlayerSelectCell),
@@ -53,6 +53,8 @@ pub enum ClientToGameEvent {
 #[derive(Debug, Clone)]
 pub enum GameToClientEvent {
     Subscribe(String, broadcast::Sender<ClientToGameEvent>),
+    PlayerDisconnected(GamePlayerConnection),
+    PlayerReconnected(GamePlayerConnection),
     PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
     GameStart(GameStart),

@@ -29,7 +29,6 @@ pub async fn ws_handler(
     Query(params): Query<Params>,
     State(state): State<Arc<Context>>,
 ) -> AxumResponse {
-    tracing::info!("haloo {}", params.jwt);
     let decoded = state.jwt_manager.read().await.decode(&params.jwt);
     let token: TicTac5Token;
     if decoded.as_ref().is_err() {
@@ -42,8 +41,6 @@ pub async fn ws_handler(
                     .await
                     .insert_session(params.jwt, t);
                 tracing::info!("No session found for player {}", t.player_id);
-                // return (StatusCode::UNAUTHORIZED, "No session found").into_response();
-                // return ws.on_upgrade(move |socket| websocket(socket, t.clone(), state));
             }
             JwtError::Expired => {
                 warn!("Bearer token expired");
@@ -63,8 +60,16 @@ pub async fn ws_handler(
 }
 
 pub async fn websocket(socket: WebSocket, token: TicTac5Token, state: Arc<Context>) {
-    let mut sm = &state.session_manager;
-    let session = sm.write().await.create_session(socket, token);
+    let sm = &state.session_manager;
+    let old = sm.write().await.pop_disconnected(&token);
+    let session;
+    if old.is_some() {
+        session = sm.write().await.restore_session(socket, old.unwrap());
+        tracing::info!("RECONNECTED");
+    } else {
+        session = sm.write().await.create_session(socket);
+        tracing::info!("CREATED");
+    }
     let lobby = state.lobby.read().await;
     let _ = session.subscribe(&lobby.client_sender);
     let _ = lobby.subscribe(&session.lobby_sender);

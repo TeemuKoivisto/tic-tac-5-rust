@@ -1,4 +1,4 @@
-use tic_tac_5::proto::proto_all::*;
+use tic_tac_5::proto::client_events::*;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]

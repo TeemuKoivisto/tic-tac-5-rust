@@ -1,0 +1,303 @@
+// Automatically generated rust module for 'server_events.proto' file
+
+#![allow(non_snake_case)]
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(unused_imports)]
+#![allow(unknown_lints)]
+#![allow(clippy::all)]
+#![cfg_attr(rustfmt, rustfmt_skip)]
+
+
+use quick_protobuf::{MessageRead, MessageWrite, BytesReader, Writer, WriterBackend, Result};
+use quick_protobuf::sizeofs::*;
+use super::*;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ServerMsgType {
+    lobby_state = 0,
+    player_msg = 1,
+    player_join_lobby = 2,
+    player_leave_lobby = 3,
+    lobby_game_updated = 4,
+    player_join = 5,
+    player_left = 6,
+    player_disconnected = 7,
+    player_reconnected = 8,
+    game_start = 9,
+    game_end = 10,
+    game_player_move = 11,
+}
+
+impl Default for ServerMsgType {
+    fn default() -> Self {
+        ServerMsgType::lobby_state
+    }
+}
+
+impl From<i32> for ServerMsgType {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => ServerMsgType::lobby_state,
+            1 => ServerMsgType::player_msg,
+            2 => ServerMsgType::player_join_lobby,
+            3 => ServerMsgType::player_leave_lobby,
+            4 => ServerMsgType::lobby_game_updated,
+            5 => ServerMsgType::player_join,
+            6 => ServerMsgType::player_left,
+            7 => ServerMsgType::player_disconnected,
+            8 => ServerMsgType::player_reconnected,
+            9 => ServerMsgType::game_start,
+            10 => ServerMsgType::game_end,
+            11 => ServerMsgType::game_player_move,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for ServerMsgType {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "lobby_state" => ServerMsgType::lobby_state,
+            "player_msg" => ServerMsgType::player_msg,
+            "player_join_lobby" => ServerMsgType::player_join_lobby,
+            "player_leave_lobby" => ServerMsgType::player_leave_lobby,
+            "lobby_game_updated" => ServerMsgType::lobby_game_updated,
+            "player_join" => ServerMsgType::player_join,
+            "player_left" => ServerMsgType::player_left,
+            "player_disconnected" => ServerMsgType::player_disconnected,
+            "player_reconnected" => ServerMsgType::player_reconnected,
+            "game_start" => ServerMsgType::game_start,
+            "game_end" => ServerMsgType::game_end,
+            "game_player_move" => ServerMsgType::game_player_move,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct LobbyPlayer {
+    pub player_id: u32,
+    pub name: String,
+}
+
+impl<'a> MessageRead<'a> for LobbyPlayer {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(16) => msg.player_id = r.read_uint32(bytes)?,
+                Ok(26) => msg.name = r.read_string(bytes)?.to_owned(),
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for LobbyPlayer {
+    fn get_size(&self) -> usize {
+        0
+        + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
+        + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
+        if self.name != String::default() { w.write_with_tag(26, |w| w.write_string(&**&self.name))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct LobbyState {
+    pub games: Vec<game::LobbyGame>,
+    pub players: Vec<LobbyPlayer>,
+}
+
+impl<'a> MessageRead<'a> for LobbyState {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(10) => msg.games.push(r.read_message::<game::LobbyGame>(bytes)?),
+                Ok(18) => msg.players.push(r.read_message::<LobbyPlayer>(bytes)?),
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for LobbyState {
+    fn get_size(&self) -> usize {
+        0
+        + self.games.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+        + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        for s in &self.games { w.write_with_tag(10, |w| w.write_message(s))?; }
+        for s in &self.players { w.write_with_tag(18, |w| w.write_message(s))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct GameStart {
+    pub game_id: String,
+    pub players: Vec<game::Player>,
+    pub cells: Vec<game::Cell>,
+}
+
+impl<'a> MessageRead<'a> for GameStart {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
+                Ok(18) => msg.players.push(r.read_message::<game::Player>(bytes)?),
+                Ok(26) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for GameStart {
+    fn get_size(&self) -> usize {
+        0
+        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
+        + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+        + self.cells.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
+        for s in &self.players { w.write_with_tag(18, |w| w.write_message(s))?; }
+        for s in &self.cells { w.write_with_tag(26, |w| w.write_message(s))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct GameEnd {
+    pub game_id: String,
+    pub result: game::GameStatus,
+    pub winner_id: u32,
+}
+
+impl<'a> MessageRead<'a> for GameEnd {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
+                Ok(16) => msg.result = r.read_enum(bytes)?,
+                Ok(24) => msg.winner_id = r.read_uint32(bytes)?,
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for GameEnd {
+    fn get_size(&self) -> usize {
+        0
+        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
+        + if self.result == game::GameStatus::WAITING { 0 } else { 1 + sizeof_varint(*(&self.result) as u64) }
+        + if self.winner_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.winner_id) as u64) }
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
+        if self.result != game::GameStatus::WAITING { w.write_with_tag(16, |w| w.write_enum(*&self.result as i32))?; }
+        if self.winner_id != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.winner_id))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct GameMove {
+    pub player: u32,
+    pub x: u32,
+    pub y: u32,
+}
+
+impl<'a> MessageRead<'a> for GameMove {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(8) => msg.player = r.read_uint32(bytes)?,
+                Ok(16) => msg.x = r.read_uint32(bytes)?,
+                Ok(24) => msg.y = r.read_uint32(bytes)?,
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for GameMove {
+    fn get_size(&self) -> usize {
+        0
+        + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
+        + if self.x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.x) as u64) }
+        + if self.y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.y) as u64) }
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.player != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player))?; }
+        if self.x != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.x))?; }
+        if self.y != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.y))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct GamePlayerConnection {
+    pub game_id: String,
+    pub player_id: u32,
+    pub connected: bool,
+}
+
+impl<'a> MessageRead<'a> for GamePlayerConnection {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
+                Ok(16) => msg.player_id = r.read_uint32(bytes)?,
+                Ok(24) => msg.connected = r.read_bool(bytes)?,
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for GamePlayerConnection {
+    fn get_size(&self) -> usize {
+        0
+        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
+        + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
+        + if self.connected == false { 0 } else { 1 + sizeof_varint(*(&self.connected) as u64) }
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
+        if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
+        if self.connected != false { w.write_with_tag(24, |w| w.write_bool(*&self.connected))?; }
+        Ok(())
+    }
+}
+

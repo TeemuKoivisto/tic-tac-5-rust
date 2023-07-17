@@ -7,6 +7,7 @@ import {
   GameStart,
   GameEnd,
   GameMove,
+  GamePlayerConnection,
 } from '@tt5/prototypes'
 
 import { jwt } from './auth'
@@ -60,6 +61,14 @@ export const socketActions = {
         }
         case ServerMsgType.game_player_move: {
           cb({ e: ServerMsgType.game_player_move, data: GameMove.decode(payload) })
+          break
+        }
+        case ServerMsgType.player_disconnected: {
+          cb({ e: ServerMsgType.player_disconnected, data: GamePlayerConnection.decode(payload) })
+          break
+        }
+        case ServerMsgType.player_reconnected: {
+          cb({ e: ServerMsgType.player_reconnected, data: GamePlayerConnection.decode(payload) })
           break
         }
         default:

@@ -105,6 +105,14 @@ function handleMessages(evt: SocketEvent) {
         return cells
       })
       break
+    case ServerMsgType.player_disconnected:
+      modalActions.open(EModal.PLAYER_DISCONNECTED, {
+        playerName: 'poop',
+      })
+      break
+    case ServerMsgType.player_reconnected:
+      modalActions.close()
+      break
   }
 }
 

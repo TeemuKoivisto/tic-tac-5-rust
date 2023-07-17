@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+import "game.proto";
+
+enum ClientMsgType {
+    // lobby
+    join_lobby = 0;
+    lobby_msg = 1;
+    create_lobby_game = 2;
+    join_lobby_game = 3;
+    leave_lobby_game = 4;
+    // game
+    player_select_cell = 5;
+    leave_game = 6;
+}
+
+// Values are zero if not specified.
+message GameOptions {
+    uint32 size = 1;
+    uint32 players = 2;
+}
+
+message PlayerJoinLobby {
+    uint32 player_id = 1;
+    string name = 2;
+}
+
+message PlayerCreateGame {
+    uint32 player_id = 1;
+    string name = 2;
+    string preferred_symbol = 3;
+    GameOptions options = 4;
+}
+
+message PlayerJoinGame {
+    optional string game_id = 1;
+    uint32 player_id = 2;
+    string name = 3;
+    GameOptions options = 4;
+}
+
+message PlayerSelectCell {
+    string game_id = 1;
+    uint32 player_number = 2;
+    uint32 x = 3;
+    uint32 y = 4;
+}
+
+message PlayerLeaveGame {
+    string game_id = 1;
+    uint32 player_id = 2;
+}

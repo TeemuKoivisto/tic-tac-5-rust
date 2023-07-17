@@ -1,5 +1,8 @@
 use log::{debug, error, info, warn};
-use tic_tac_5::{game_state::*, proto::proto_all::*};
+use tic_tac_5::{
+    game_state::*,
+    proto::{client_events::*, game::*, server_events::*},
+};
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
@@ -163,8 +166,35 @@ impl Game {
     pub async fn handle_client_event(&mut self, msg: ClientToGameEvent) {
         info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
-            ClientToGameEvent::Connected(_) => todo!(),
-            ClientToGameEvent::Disconnected(_) => todo!(),
+            ClientToGameEvent::Disconnected(socket_id) => {
+                println!(">>> DISCONNECTED");
+                self.subscribers.retain(|sub| sub.socket_id != socket_id);
+                let player = self
+                    .joined_players
+                    .iter()
+                    .find(|p| p.socket_id == Some(socket_id));
+                self.send(GameToClientEvent::PlayerDisconnected(
+                    GamePlayerConnection {
+                        game_id: self.id.to_string(),
+                        player_id: player.unwrap().player_id,
+                        connected: false,
+                    },
+                ));
+            }
+            ClientToGameEvent::Reconnected(socket_id) => {
+                println!(">>> RECONNECTED");
+                let player = self
+                    .joined_players
+                    .iter()
+                    .find(|p| p.socket_id == Some(socket_id));
+                self.send(GameToClientEvent::PlayerDisconnected(
+                    GamePlayerConnection {
+                        game_id: self.id.to_string(),
+                        player_id: player.unwrap().player_id,
+                        connected: true,
+                    },
+                ));
+            }
             ClientToGameEvent::SelectCell(socket_id, payload) => {
                 let result = self.handle_player_move(&payload);
                 if result.is_ok() {

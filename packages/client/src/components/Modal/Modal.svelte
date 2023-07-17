@@ -3,11 +3,13 @@
   import { modalActions, openModal, modals, EModal } from '../../stores/modal'
 
   import GameOverModal from './GameOver.svelte'
+  import WaitingPlayer from './WaitingPlayer.svelte'
 
   const MODAL_DURATION = 400
 
   const components = {
     [EModal.GAME_OVER]: GameOverModal,
+    [EModal.PLAYER_DISCONNECTED]: WaitingPlayer,
   }
 
   function handleOverlayClick() {

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+message Player {
+    uint32 id = 1;
+    uint32 socket_id = 2;
+    uint32 player_number = 3;
+    string symbol = 4;
+    string name = 5;
+    bool dead = 6;
+    bool ai = 8;
+}
+
+enum CellType {
+    EMPTY = 0;
+    PLAYER_CELL = 1;
+}
+
+message Cell {
+    uint32 x = 1;
+    uint32 y = 2;
+    CellType cell_type = 3;
+    uint32 player = 4;
+}
+
+message LobbyGame {
+    string game_id = 1;
+    uint32 players = 2;
+    uint32 max_players = 3;
+}
+
+enum GameStatus {
+    WAITING = 0;
+    X_TURN = 1;
+    O_TURN = 2;
+    X_WON = 3;
+    O_WON = 4;
+    TIE = 5;
+}

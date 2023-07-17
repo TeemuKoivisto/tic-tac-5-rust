@@ -38,6 +38,18 @@ impl SessionHandle {
         }
     }
 
+    pub fn reconnect(&mut self, socket: WebSocket) {
+        let actor = Session::new(
+            self.socket_id,
+            socket,
+            self.client_sender.clone(),
+            self.actor.lobby_receiver.resubscribe(),
+            self.game_sender.clone(),
+            self.actor.game_receiver.resubscribe(),
+        );
+        self.actor = actor;
+    }
+
     pub fn subscribe(
         &self,
         sender: &broadcast::Sender<ClientToLobbyEvent>,

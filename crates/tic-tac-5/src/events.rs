@@ -1,6 +1,7 @@
-use crate::proto::proto_all::*;
+use crate::proto::client_events::*;
+use crate::proto::server_events::*;
 
-// NOTE: must match packages/prototypes/protos/proto_all.proto ClientMsgType
+// NOTE: must match packages/prototypes/protos/client_events.proto ClientMsgType
 impl TryFrom<u8> for ClientMsgType {
     type Error = ();
     fn try_from(v: u8) -> Result<Self, Self::Error> {
@@ -26,7 +27,7 @@ pub enum GameEvent {
     Move(PlayerSelectCell),
 }
 
-// NOTE: must match packages/prototypes/protos/proto_all.proto ServerMsgType
+// NOTE: must match packages/prototypes/protos/server_events.proto ServerMsgType
 #[derive(Debug)]
 pub enum ServerEvent {
     ClientConnected(u32),
@@ -57,9 +58,11 @@ impl TryInto<u8> for ServerMsgType {
             Self::lobby_game_updated => Ok(4),
             Self::player_join => Ok(5),
             Self::player_left => Ok(6),
-            Self::game_start => Ok(7),
-            Self::game_end => Ok(8),
-            Self::game_player_move => Ok(9),
+            Self::player_disconnected => Ok(7),
+            Self::player_reconnected => Ok(8),
+            Self::game_start => Ok(9),
+            Self::game_end => Ok(10),
+            Self::game_player_move => Ok(11),
         }
     }
 }

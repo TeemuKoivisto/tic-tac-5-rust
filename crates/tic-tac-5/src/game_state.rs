@@ -2,7 +2,8 @@ use rand::{rngs::OsRng, rngs::StdRng, Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 
 use crate::board::{Adjacency, Adjancies, Board};
-use crate::proto::proto_all::*;
+use crate::proto::client_events::*;
+use crate::proto::game::*;
 
 // impl std::fmt::Display for PlayerSymbol {
 //     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

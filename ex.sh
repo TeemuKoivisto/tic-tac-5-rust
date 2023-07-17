@@ -11,10 +11,11 @@ run() {
 
 protos() {
   cd $ROOT_DIR
-  pb-rs --dont_use_cow -o crates/tic-tac-5/src/proto/proto_all.rs protos/proto_all.proto
+  # pb-rs --dont_use_cow --include . --output_directory crates/tic-tac-5/src/proto protos/*.proto
+  pb-rs --dont_use_cow --output_directory crates/tic-tac-5/src/proto protos/*.proto
   protoc --plugin=./packages/prototypes/node_modules/.bin/protoc-gen-ts_proto \
     --ts_proto_opt=exportCommonSymbols=false \
-    --ts_proto_out=./packages/prototypes ./protos/proto_all.proto
+    --ts_proto_out=./packages/prototypes/protos -Iprotos protos/*.proto
   pnpm --filter prototypes build
 }
 

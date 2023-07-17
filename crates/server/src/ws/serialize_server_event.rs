@@ -1,6 +1,6 @@
 use axum::extract::ws::Message;
 use quick_protobuf::{MessageWrite, Writer};
-use tic_tac_5::proto::proto_all::*;
+use tic_tac_5::proto::server_events::*;
 
 // Serialize a server event and a header byte into bytes to send through websocket.
 pub fn serialize_server_event<M: MessageWrite>(header: ServerMsgType, payload: &M) -> Message {

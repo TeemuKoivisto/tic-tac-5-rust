@@ -2,15 +2,20 @@ import { get, writable } from 'svelte/store'
 
 export enum EModal {
   GAME_OVER = 'GAME_OVER_MODAL',
+  PLAYER_DISCONNECTED = 'PLAYER_DISCONNECTED',
 }
 export interface GameOverParams {
   playerWon: boolean
   startTime: number
   turns: number
 }
+export interface PlayerDisconnectParams {
+  playerName: string
+}
 
 export type ModalParams = {
   [EModal.GAME_OVER]: GameOverParams
+  [EModal.PLAYER_DISCONNECTED]: PlayerDisconnectParams
 }
 
 export const modals = writable<ModalParams>({
@@ -18,6 +23,9 @@ export const modals = writable<ModalParams>({
     playerWon: true,
     startTime: 0,
     turns: 0,
+  },
+  [EModal.PLAYER_DISCONNECTED]: {
+    playerName: '',
   },
 })
 export const openModal = writable<EModal | null>(null)

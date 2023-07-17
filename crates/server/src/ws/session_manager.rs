@@ -11,7 +11,7 @@ use crate::state::jwt_manager::TicTac5Token;
 use super::{session::Session, session_handle::SessionHandle};
 
 pub struct Connection {
-    handle: SessionHandle,
+    pub handle: SessionHandle,
     player_id: u32,
     socket_id: u32,
     connected: bool,
@@ -52,7 +52,7 @@ impl SessionManager {
         })
     }
 
-    pub fn get_disconnected(&mut self, token: TicTac5Token) -> Option<Connection> {
+    pub fn pop_disconnected(&mut self, token: &TicTac5Token) -> Option<Connection> {
         let idx = self
             .disconnected
             .iter()
@@ -64,21 +64,16 @@ impl SessionManager {
         }
     }
 
-    pub fn find_session(&self, token: TicTac5Token) -> Option<&SessionHandle> {
-        self.sessions
-            .iter()
-            .find(|s| s.actor.client.player_id == token.player_id)
-    }
-
-    pub fn create_session(&mut self, socket: WebSocket, token: TicTac5Token) -> SessionHandle {
-        let mut socket_id = self.next_socket_id;
+    pub fn create_session(&mut self, socket: WebSocket) -> SessionHandle {
+        let socket_id = self.next_socket_id;
         self.next_socket_id += 1;
         let handle = SessionHandle::new(socket, socket_id);
         handle
     }
 
-    pub fn find_connection(&self, player_id: u32) -> Option<&Connection> {
-        self.disconnected.iter().find(|c| c.player_id == player_id)
+    pub fn restore_session(&mut self, socket: WebSocket, conn: Connection) -> SessionHandle {
+        let handle = SessionHandle::new(socket, conn.socket_id);
+        handle
     }
 
     pub fn get_next_player_id(&mut self) -> u32 {

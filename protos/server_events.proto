@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+import "game.proto";
+
+enum ServerMsgType {
+    // lobby
+    lobby_state = 0;
+    player_msg = 1;
+    player_join_lobby = 2;
+    player_leave_lobby = 3;
+    lobby_game_updated = 4;
+    // game
+    player_join = 5;
+    player_left = 6;
+    player_disconnected = 7;
+    player_reconnected = 8;
+    game_start = 9;
+    game_end = 10;
+    game_player_move = 11;
+}
+
+message LobbyPlayer {
+    uint32 player_id = 2;
+    string name = 3;
+}
+
+message LobbyState {
+    repeated LobbyGame games = 1;
+    repeated LobbyPlayer players = 2;
+}
+
+message GameStart {
+    string game_id = 1;
+    repeated Player players = 2;
+    repeated Cell cells = 3;
+}
+
+message GameEnd {
+    string game_id = 1;
+    GameStatus result = 2;
+    optional uint32 winner_id = 3;
+}
+
+message GameMove {
+    uint32 player = 1;
+    uint32 x = 2;
+    uint32 y = 3;
+    // string symbol = 4;
+}
+
+message GamePlayerConnection {
+    string game_id = 1;
+    uint32 player_id = 2;
+    bool connected = 3;
+}
