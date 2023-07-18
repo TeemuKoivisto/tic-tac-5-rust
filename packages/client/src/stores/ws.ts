@@ -12,6 +12,7 @@ import {
   GamePlayerConnection,
   PlayerCreateGame,
   PlayerSelectCell,
+  PlayerRejoinGame,
 } from '@tt5/prototypes'
 
 import { jwt } from './auth'
@@ -85,7 +86,6 @@ export const socketActions = {
   },
   emit<K extends keyof ClientEventMap>(...args: ClientEventMap[K]) {
     let data: Uint8Array | undefined
-    console.log('type', args[0])
     switch (args[0]) {
       case ClientMsgType.join_lobby:
         data = PlayerJoinLobby.encode(args[1]).finish()
@@ -100,7 +100,7 @@ export const socketActions = {
         data = PlayerSelectCell.encode(args[1]).finish()
         break
       case ClientMsgType.player_rejoin:
-        data = PlayerJoinGame.encode(args[1]).finish()
+        data = PlayerRejoinGame.encode(args[1]).finish()
         break
     }
     if (!data) {

@@ -2,7 +2,7 @@ use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
-use quick_protobuf::{BytesReader, MessageRead};
+use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
 use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
@@ -61,17 +61,18 @@ impl Session {
         }
     }
 
-    pub fn restore(&mut self, socket: WebSocket) {
+    pub async fn restore(&mut self, socket: WebSocket) {
         let (ws_sender, ws_receiver) = socket.split();
         self.ws_sender = ws_sender;
         self.ws_receiver = ws_receiver;
-        let _ = self.ws_sender.send(serialize_server_event(
+        self.send_to_ws(
             ServerMsgType::player_status,
             &PlayerStatus {
                 waiting_games: self.get_game_ids(),
                 ended_games: Vec::new(),
             },
-        ));
+        )
+        .await;
     }
 
     pub fn send_disconnect(&mut self) {
@@ -164,6 +165,17 @@ impl Session {
                             ));
                         }
                     }
+                    Ok(ClientMsgType::player_rejoin) => {
+                        if let Ok(payload) = PlayerRejoinGame::from_reader(&mut reader, &raw_buf) {
+                            debug!("ClientMsgType::player_rejoin {:#?}", payload);
+                            self.send_to_game(ClientToGameEvent::Reconnected(
+                                self.socket_id,
+                                self.client.player_id,
+                            ));
+                            self.send_to_ws(ServerMsgType::player_reconnected, &payload)
+                                .await;
+                        }
+                    }
                     Ok(ClientMsgType::leave_game) => {
                         if let Ok(payload) = PlayerLeaveGame::from_reader(&mut reader, &raw_buf) {
                             debug!("ClientMsgType::player_leave {:#?}", payload);
@@ -185,10 +197,7 @@ impl Session {
             Message::Text(_) => todo!(),
             Message::Ping(_) => todo!(),
             Message::Pong(_) => todo!(),
-            Message::Close(_) => {
-                // self.send(ClientToLobbyEvent::Disconnected(self.user_id));
-                Err("Disconnected".into())
-            }
+            Message::Close(_) => Err("Disconnected".into()),
         }
     }
 
@@ -237,43 +246,39 @@ impl Session {
                 });
             }
             GameToClientEvent::PlayerDisconnected(payload) => {
-                let _ = self
-                    .ws_sender
-                    .send(serialize_server_event(
-                        ServerMsgType::player_disconnected,
-                        &payload,
-                    ))
+                self.send_to_ws(ServerMsgType::player_disconnected, &payload)
                     .await;
             }
-            GameToClientEvent::PlayerReconnected(player_id) => {}
+            GameToClientEvent::PlayerReconnected(payload) => {
+                self.send_to_ws(ServerMsgType::player_reconnected, &payload)
+                    .await;
+            }
             GameToClientEvent::PlayerJoin(_) => todo!(),
             GameToClientEvent::PlayerLeave() => todo!(),
             GameToClientEvent::GameStart(payload) => {
-                let _ = self
-                    .ws_sender
-                    .send(serialize_server_event(ServerMsgType::game_start, &payload))
-                    .await;
+                self.send_to_ws(ServerMsgType::game_start, &payload).await;
             }
             GameToClientEvent::GameEnd(payload) => {
-                let _ = self
-                    .ws_sender
-                    .send(serialize_server_event(ServerMsgType::game_end, &payload))
-                    .await;
+                self.send_to_ws(ServerMsgType::game_end, &payload).await;
             }
             GameToClientEvent::GameUpdate(payload) => {
-                let _ = self
-                    .ws_sender
-                    .send(serialize_server_event(
-                        ServerMsgType::game_player_move,
-                        &GameMove {
-                            player: payload.player_number,
-                            x: payload.x,
-                            y: payload.y,
-                        },
-                    ))
-                    .await;
+                self.send_to_ws(
+                    ServerMsgType::game_player_move,
+                    &GameMove {
+                        player: payload.player_number,
+                        x: payload.x,
+                        y: payload.y,
+                    },
+                )
+                .await;
             }
         }
+    }
+    async fn send_to_ws<M: MessageWrite>(&mut self, header: ServerMsgType, payload: &M) {
+        let _ = self
+            .ws_sender
+            .send(serialize_server_event(header, payload))
+            .await;
     }
     fn send_to_lobby(&mut self, event: ClientToLobbyEvent) {
         let _ = self.subscribed_lobby.as_ref().unwrap().send(event.clone());

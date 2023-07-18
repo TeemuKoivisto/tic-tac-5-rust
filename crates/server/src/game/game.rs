@@ -181,7 +181,6 @@ impl Game {
         info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
             ClientToGameEvent::Disconnected(socket_id, player_id) => {
-                println!(">>> DISCONNECTED");
                 // self.subscribers.retain(|sub| sub.socket_id != socket_id);
                 self.handle_player_disconnect(&player_id);
                 self.send(GameToClientEvent::PlayerDisconnected(
@@ -193,15 +192,20 @@ impl Game {
                 ));
             }
             ClientToGameEvent::Reconnected(socket_id, player_id) => {
-                println!(">>> RECONNECTED");
                 self.handle_player_reconnect(&player_id);
-                self.send(GameToClientEvent::PlayerDisconnected(
-                    GamePlayerConnection {
+                self.send_to(
+                    GameToClientEvent::GameStart(GameStart {
                         game_id: self.id.to_string(),
-                        player_id,
-                        connected: true,
-                    },
-                ));
+                        players: self.state.players.clone(),
+                        cells: self.state.get_cells(),
+                    }),
+                    socket_id,
+                );
+                self.send(GameToClientEvent::PlayerReconnected(GamePlayerConnection {
+                    game_id: self.id.to_string(),
+                    player_id,
+                    connected: true,
+                }));
             }
             ClientToGameEvent::SelectCell(socket_id, payload) => {
                 let result = self.handle_player_move(&payload);
@@ -227,6 +231,7 @@ impl Game {
                 });
                 self.state
                     .add_player(&client.player_id, client.name, Some(client.socket_id));
+                println!(">>> ClientToGameEvent::SubscribeToGame");
                 if self.subscribers.len() == self.joined_players.len() {
                     self.state.status = GameStatus::X_TURN;
                     self.send(GameToClientEvent::GameStart(GameStart {
@@ -242,6 +247,11 @@ impl Game {
     fn send(&mut self, event: GameToClientEvent) {
         self.subscribers
             .retain(|sub| sub.sender.send(event.clone()).is_ok());
+    }
+
+    fn send_to(&mut self, event: GameToClientEvent, socket_id: u32) {
+        self.subscribers
+            .retain(|sub| sub.socket_id != socket_id || sub.sender.send(event.clone()).is_ok());
     }
 
     fn send_multiple(&mut self, events: Vec<GameToClientEvent>) {

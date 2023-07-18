@@ -67,7 +67,13 @@ function handleMessages(evt: SocketEvent) {
       lobbyPlayers.set(evt.data.players)
       break
     case ServerMsgType.player_status:
-      console.log('RECEIVED STATUS', evt.data)
+      const waitingGameId = evt.data.waitingGames[0]
+      if (waitingGameId) {
+        socketActions.emit(ClientMsgType.player_rejoin, {
+          gameId: waitingGameId,
+        })
+        gameState.set('waiting-game-start')
+      }
       break
     case ServerMsgType.game_start:
       const pId = get(playerId)
@@ -76,6 +82,7 @@ function handleMessages(evt: SocketEvent) {
       cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
       localPlayer.set(evt.data.players.find(p => p.id === pId))
       gameState.set('game-running')
+      // @TODO initialize properly to handle disconnects
       gameStarted.set(Date.now())
       break
     case ServerMsgType.game_end:
@@ -125,42 +132,38 @@ export const gameActions = {
     socketActions.connect(handleMessages)
   },
   joinLobby() {
-    gameState.set('lobby')
     socketActions.emit(ClientMsgType.join_lobby, {
       playerId: get(playerId),
       name: get(playerName),
     })
+    gameState.set('lobby')
   },
   createGame(opts: Options) {
-    const payload = {
+    socketActions.emit(ClientMsgType.create_lobby_game, {
       playerId: get(playerId),
       name: get(playerName),
       preferredSymbol: 'X',
       options: opts,
-    }
-    socketActions.emit(ClientMsgType.create_lobby_game, payload)
+    })
     gameState.set('waiting-game-start')
   },
   joinGame(game: LobbyGame, opts: Options) {
-    const payload = {
+    socketActions.emit(ClientMsgType.join_lobby_game, {
       gameId: game.gameId,
       playerId: get(playerId),
       name: get(playerName),
-      color: 'poop',
       options: opts,
-    }
-    socketActions.emit(ClientMsgType.join_lobby_game, payload)
+    })
     gameState.set('waiting-game-start')
     // Set lobbyGames empty so that old games won't show up when returning to front page
     lobbyGames.set([])
   },
   playerSelectCell(x: number, y: number) {
-    const payload = {
+    socketActions.emit(ClientMsgType.player_select_cell, {
       gameId: get(gameId),
       playerNumber: get(localPlayer)?.playerNumber || 0,
       x,
       y,
-    }
-    socketActions.emit(ClientMsgType.player_select_cell, payload)
+    })
   },
 }

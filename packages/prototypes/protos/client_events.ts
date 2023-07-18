@@ -97,6 +97,10 @@ export interface PlayerJoinGame {
   options: GameOptions | undefined
 }
 
+export interface PlayerRejoinGame {
+  gameId: string
+}
+
 export interface PlayerSelectCell {
   gameId: string
   playerNumber: number
@@ -397,6 +401,57 @@ export const PlayerJoinGame = {
       object.options !== undefined && object.options !== null
         ? GameOptions.fromPartial(object.options)
         : undefined
+    return message
+  },
+}
+
+function createBasePlayerRejoinGame(): PlayerRejoinGame {
+  return { gameId: '' }
+}
+
+export const PlayerRejoinGame = {
+  encode(message: PlayerRejoinGame, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.gameId !== '') {
+      writer.uint32(10).string(message.gameId)
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerRejoinGame {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBasePlayerRejoinGame()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 1:
+          message.gameId = reader.string()
+          break
+        default:
+          reader.skipType(tag & 7)
+          break
+      }
+    }
+    return message
+  },
+
+  fromJSON(object: any): PlayerRejoinGame {
+    return { gameId: isSet(object.gameId) ? String(object.gameId) : '' }
+  },
+
+  toJSON(message: PlayerRejoinGame): unknown {
+    const obj: any = {}
+    message.gameId !== undefined && (obj.gameId = message.gameId)
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<PlayerRejoinGame>, I>>(base?: I): PlayerRejoinGame {
+    return PlayerRejoinGame.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PlayerRejoinGame>, I>>(object: I): PlayerRejoinGame {
+    const message = createBasePlayerRejoinGame()
+    message.gameId = object.gameId ?? ''
     return message
   },
 }

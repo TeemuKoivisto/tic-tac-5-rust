@@ -38,8 +38,8 @@ impl SessionHandle {
         }
     }
 
-    pub fn restore(&mut self, socket: WebSocket) {
-        self.actor.restore(socket);
+    pub async fn restore(&mut self, socket: WebSocket) {
+        self.actor.restore(socket).await;
     }
 
     pub fn subscribe(
@@ -53,6 +53,4 @@ impl SessionHandle {
             self.game_sender.clone(),
         ))
     }
-
-    // pub fn send_reconnect
 }

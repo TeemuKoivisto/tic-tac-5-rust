@@ -91,9 +91,6 @@ impl Lobby {
         info!("Lobby -> ClientToLobbyEvent {:?}", msg);
         match msg {
             ClientToLobbyEvent::Connected(socket_id, game_ids, lobby_sender, game_sender) => {
-                // TODO check whether in any pending games
-                //
-
                 let _ = lobby_sender.send(LobbyToClientEvent::LobbyState(LobbyState {
                     games: self.lobby_state(),
                     players: self.lobby_players.clone(),
@@ -103,21 +100,10 @@ impl Lobby {
                     lobby_sender,
                     game_sender,
                 });
-                // self.running_games.insert(game.id, game);
                 for game_id in game_ids {
                     let found = self.running_games.get(&game_id);
                     if found.is_some() {}
                 }
-
-                // for game in self.lobby_games.iter_mut() {
-                //     let player = game
-                //         .joined_players
-                //         .iter()
-                //         .find(|p| p.socket_id == Some(socket_id));
-                //     if player.is_some() {
-                //         game.handle_player_reconnect(&player_id);
-                //     }
-                // }
             }
             ClientToLobbyEvent::Disconnected(socket_id) => {
                 self.subscribers.retain(|sub| sub.socket_id != socket_id);

@@ -92,7 +92,11 @@ impl GameState {
             .map(|c| Cell {
                 x: c.x,
                 y: c.y,
-                cell_type: CellType::EMPTY,
+                cell_type: if c.owner == 0 {
+                    CellType::EMPTY
+                } else {
+                    CellType::PLAYER_CELL
+                },
                 player: c.owner,
             })
             .collect::<Vec<Cell>>()

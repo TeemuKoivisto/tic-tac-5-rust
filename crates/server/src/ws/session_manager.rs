@@ -71,9 +71,12 @@ impl SessionManager {
         handle
     }
 
-    pub fn restore_session(&mut self, socket: WebSocket, mut conn: Connection) -> SessionHandle {
-        conn.handle.restore(socket);
-        // let handle = SessionHandle::new(socket, conn.socket_id);
+    pub async fn restore_session(
+        &mut self,
+        socket: WebSocket,
+        mut conn: Connection,
+    ) -> SessionHandle {
+        conn.handle.restore(socket).await;
         conn.handle
     }
 

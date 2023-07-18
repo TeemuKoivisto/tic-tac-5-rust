@@ -40,6 +40,10 @@ message PlayerJoinGame {
     GameOptions options = 4;
 }
 
+message PlayerRejoinGame {
+    string game_id = 1;
+}
+
 message PlayerSelectCell {
     string game_id = 1;
     uint32 player_number = 2;
