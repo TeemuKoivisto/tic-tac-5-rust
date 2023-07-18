@@ -31,7 +31,7 @@ ENV INSTALL_PATH /usr/local/tic-tac-5
 WORKDIR ${INSTALL_PATH}
 COPY --from=builder /usr/local/cargo/bin/server ${INSTALL_PATH}
 
-ENV RUST_LOG warn
+ENV RUST_LOG info
 
 EXPOSE ${PORT}
 
