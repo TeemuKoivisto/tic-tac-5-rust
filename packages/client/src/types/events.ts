@@ -5,6 +5,7 @@ import {
   GameMove,
   ServerMsgType,
   GamePlayerConnection,
+  PlayerStatus,
 } from '@tt5/prototypes'
 
 export type SocketEvent =
@@ -17,6 +18,10 @@ export type SocketEvent =
   | {
       e: ServerMsgType.lobby_state
       data: LobbyState
+    }
+  | {
+      e: ServerMsgType.player_status
+      data: PlayerStatus
     }
   | {
       e: ServerMsgType.game_start

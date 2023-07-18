@@ -16,17 +16,18 @@ use super::*;
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ServerMsgType {
     lobby_state = 0,
-    player_msg = 1,
-    player_join_lobby = 2,
-    player_leave_lobby = 3,
-    lobby_game_updated = 4,
-    player_join = 5,
-    player_left = 6,
-    player_disconnected = 7,
-    player_reconnected = 8,
-    game_start = 9,
-    game_end = 10,
-    game_player_move = 11,
+    player_status = 1,
+    player_msg = 2,
+    player_join_lobby = 3,
+    player_leave_lobby = 4,
+    lobby_game_updated = 5,
+    player_join = 6,
+    player_left = 7,
+    player_disconnected = 8,
+    player_reconnected = 9,
+    game_start = 10,
+    game_end = 11,
+    game_player_move = 12,
 }
 
 impl Default for ServerMsgType {
@@ -39,17 +40,18 @@ impl From<i32> for ServerMsgType {
     fn from(i: i32) -> Self {
         match i {
             0 => ServerMsgType::lobby_state,
-            1 => ServerMsgType::player_msg,
-            2 => ServerMsgType::player_join_lobby,
-            3 => ServerMsgType::player_leave_lobby,
-            4 => ServerMsgType::lobby_game_updated,
-            5 => ServerMsgType::player_join,
-            6 => ServerMsgType::player_left,
-            7 => ServerMsgType::player_disconnected,
-            8 => ServerMsgType::player_reconnected,
-            9 => ServerMsgType::game_start,
-            10 => ServerMsgType::game_end,
-            11 => ServerMsgType::game_player_move,
+            1 => ServerMsgType::player_status,
+            2 => ServerMsgType::player_msg,
+            3 => ServerMsgType::player_join_lobby,
+            4 => ServerMsgType::player_leave_lobby,
+            5 => ServerMsgType::lobby_game_updated,
+            6 => ServerMsgType::player_join,
+            7 => ServerMsgType::player_left,
+            8 => ServerMsgType::player_disconnected,
+            9 => ServerMsgType::player_reconnected,
+            10 => ServerMsgType::game_start,
+            11 => ServerMsgType::game_end,
+            12 => ServerMsgType::game_player_move,
             _ => Self::default(),
         }
     }
@@ -59,6 +61,7 @@ impl<'a> From<&'a str> for ServerMsgType {
     fn from(s: &'a str) -> Self {
         match s {
             "lobby_state" => ServerMsgType::lobby_state,
+            "player_status" => ServerMsgType::player_status,
             "player_msg" => ServerMsgType::player_msg,
             "player_join_lobby" => ServerMsgType::player_join_lobby,
             "player_leave_lobby" => ServerMsgType::player_leave_lobby,
@@ -141,6 +144,41 @@ impl MessageWrite for LobbyState {
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         for s in &self.games { w.write_with_tag(10, |w| w.write_message(s))?; }
         for s in &self.players { w.write_with_tag(18, |w| w.write_message(s))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct PlayerStatus {
+    pub waiting_games: Vec<String>,
+    pub ended_games: Vec<GameEnd>,
+}
+
+impl<'a> MessageRead<'a> for PlayerStatus {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(26) => msg.waiting_games.push(r.read_string(bytes)?.to_owned()),
+                Ok(34) => msg.ended_games.push(r.read_message::<GameEnd>(bytes)?),
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for PlayerStatus {
+    fn get_size(&self) -> usize {
+        0
+        + self.waiting_games.iter().map(|s| 1 + sizeof_len((s).len())).sum::<usize>()
+        + self.ended_games.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        for s in &self.waiting_games { w.write_with_tag(26, |w| w.write_string(&**s))?; }
+        for s in &self.ended_games { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())
     }
 }

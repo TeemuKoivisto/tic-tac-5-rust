@@ -14,7 +14,7 @@
 </script>
 
 <div class="flex flex-col text-center items-center">
-  <h1 class="text-4xl font-semibold text-black">Waiting for player {playerName}</h1>
+  <h1 class="text-4xl font-semibold text-black">Waiting for X player {playerName}</h1>
 </div>
 
 <div class="mt-6 mb-10 w-full text-xl space-y-2">

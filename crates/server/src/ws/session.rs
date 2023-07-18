@@ -61,9 +61,25 @@ impl Session {
         }
     }
 
+    pub fn restore(&mut self, socket: WebSocket) {
+        let (ws_sender, ws_receiver) = socket.split();
+        self.ws_sender = ws_sender;
+        self.ws_receiver = ws_receiver;
+        let _ = self.ws_sender.send(serialize_server_event(
+            ServerMsgType::player_status,
+            &PlayerStatus {
+                waiting_games: self.get_game_ids(),
+                ended_games: Vec::new(),
+            },
+        ));
+    }
+
     pub fn send_disconnect(&mut self) {
         self.send_to_lobby(ClientToLobbyEvent::Disconnected(self.socket_id));
-        self.send_to_game(ClientToGameEvent::Disconnected(self.socket_id));
+        self.send_to_game(ClientToGameEvent::Disconnected(
+            self.socket_id,
+            self.client.player_id,
+        ));
     }
 
     fn set_player(&mut self, player_join: &PlayerJoinLobby) {
@@ -72,6 +88,13 @@ impl Session {
             player_id: player_join.player_id,
             socket_id: self.socket_id,
         }
+    }
+
+    pub fn get_game_ids(&self) -> Vec<String> {
+        self.subscribed_games
+            .iter()
+            .map(|g| g.game_id.clone())
+            .collect()
     }
 
     pub async fn handle_ws_message(

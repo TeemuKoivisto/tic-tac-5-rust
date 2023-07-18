@@ -27,6 +27,7 @@ pub enum LobbyToClientEvent {
 pub enum ClientToLobbyEvent {
     Connected(
         u32,
+        Vec<String>,
         broadcast::Sender<LobbyToClientEvent>,
         broadcast::Sender<GameToClientEvent>,
     ),
@@ -38,8 +39,8 @@ pub enum ClientToLobbyEvent {
 
 #[derive(Debug, Clone)]
 pub enum ClientToGameEvent {
-    Reconnected(u32),
-    Disconnected(u32),
+    Reconnected(u32, u32),
+    Disconnected(u32, u32),
     SubscribeToGame(Client, broadcast::Sender<GameToClientEvent>),
     SelectCell(u32, PlayerSelectCell),
     LeaveGame(),

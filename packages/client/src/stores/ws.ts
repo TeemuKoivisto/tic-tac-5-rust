@@ -1,13 +1,17 @@
 import {
+  ClientEventMap,
   ClientMsgType,
   ServerMsgType,
   LobbyState,
   PlayerJoinGame,
   PlayerJoinLobby,
+  PlayerStatus,
   GameStart,
   GameEnd,
   GameMove,
   GamePlayerConnection,
+  PlayerCreateGame,
+  PlayerSelectCell,
 } from '@tt5/prototypes'
 
 import { jwt } from './auth'
@@ -44,6 +48,9 @@ export const socketActions = {
         case ServerMsgType.lobby_state:
           cb({ e: ServerMsgType.lobby_state, data: LobbyState.decode(payload) })
           break
+        case ServerMsgType.player_status:
+          cb({ e: ServerMsgType.player_status, data: PlayerStatus.decode(payload) })
+          break
         case ServerMsgType.player_msg:
         case ServerMsgType.player_join_lobby:
         case ServerMsgType.player_leave_lobby:
@@ -76,25 +83,32 @@ export const socketActions = {
       }
     }
   },
-  emit(type: ClientMsgType, data: Uint8Array) {
+  emit<K extends keyof ClientEventMap>(...args: ClientEventMap[K]) {
+    let data: Uint8Array | undefined
+    console.log('type', args[0])
+    switch (args[0]) {
+      case ClientMsgType.join_lobby:
+        data = PlayerJoinLobby.encode(args[1]).finish()
+        break
+      case ClientMsgType.create_lobby_game:
+        data = PlayerCreateGame.encode(args[1]).finish()
+        break
+      case ClientMsgType.join_lobby_game:
+        data = PlayerJoinGame.encode(args[1]).finish()
+        break
+      case ClientMsgType.player_select_cell:
+        data = PlayerSelectCell.encode(args[1]).finish()
+        break
+      case ClientMsgType.player_rejoin:
+        data = PlayerJoinGame.encode(args[1]).finish()
+        break
+    }
+    if (!data) {
+      throw Error(`Unknown event! ${args[0]}, ${JSON.stringify(args[1])}`)
+    }
     const withType = new Uint8Array(data.length + 1)
-    withType.set([type], 0)
+    withType.set([args[0]], 0)
     withType.set(data, 1)
     socket?.send(withType)
-  },
-  emitJoinLobby(payload: PlayerJoinLobby) {
-    const data = PlayerJoinLobby.encode(payload).finish()
-    const poop = new Uint8Array(data.length + 1)
-    poop.set([ClientMsgType.join_lobby], 0)
-    poop.set(data, 1)
-    socket?.send(poop)
-  },
-  emitJoinGame(payload: PlayerJoinGame) {
-    console.log('emitJoin: ', payload)
-    const data = PlayerJoinGame.encode(payload).finish()
-    const poop = new Uint8Array(data.length + 1)
-    poop.set([ClientMsgType.join_lobby_game], 0)
-    poop.set(data, 1)
-    socket?.send(poop)
   },
 }

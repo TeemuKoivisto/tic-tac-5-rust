@@ -6,6 +6,8 @@ pub struct JoinedPlayer {
     pub player_id: u32,
     pub name: String,
     pub socket_id: Option<u32>, // None if AI
+    pub connected: bool,
+    pub last_seen: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +46,8 @@ impl ListedGame {
                 player_id: payload.player_id,
                 name: payload.name.clone(),
                 socket_id: Some(socket_id),
+                connected: true,
+                last_seen: None,
             },
         );
         self.joined_players.len() == self.options.players as usize
@@ -51,11 +55,6 @@ impl ListedGame {
 
     pub fn handle_player_leave(&mut self, player_id: &u32) {
         // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
-        self.joined_players.retain(|p| p.player_id != *player_id);
-    }
-
-    pub fn handle_player_disconnect(&mut self, player_id: &u32) {
-        // @TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
-        self.handle_player_leave(player_id);
+        self.joined_players.retain(|p| &p.player_id != player_id);
     }
 }

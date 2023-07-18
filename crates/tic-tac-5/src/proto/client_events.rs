@@ -21,7 +21,8 @@ pub enum ClientMsgType {
     join_lobby_game = 3,
     leave_lobby_game = 4,
     player_select_cell = 5,
-    leave_game = 6,
+    player_rejoin = 6,
+    leave_game = 7,
 }
 
 impl Default for ClientMsgType {
@@ -39,7 +40,8 @@ impl From<i32> for ClientMsgType {
             3 => ClientMsgType::join_lobby_game,
             4 => ClientMsgType::leave_lobby_game,
             5 => ClientMsgType::player_select_cell,
-            6 => ClientMsgType::leave_game,
+            6 => ClientMsgType::player_rejoin,
+            7 => ClientMsgType::leave_game,
             _ => Self::default(),
         }
     }
@@ -54,6 +56,7 @@ impl<'a> From<&'a str> for ClientMsgType {
             "join_lobby_game" => ClientMsgType::join_lobby_game,
             "leave_lobby_game" => ClientMsgType::leave_lobby_game,
             "player_select_cell" => ClientMsgType::player_select_cell,
+            "player_rejoin" => ClientMsgType::player_rejoin,
             "leave_game" => ClientMsgType::leave_game,
             _ => Self::default(),
         }

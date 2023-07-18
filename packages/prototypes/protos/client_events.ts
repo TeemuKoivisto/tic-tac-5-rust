@@ -10,7 +10,8 @@ export enum ClientMsgType {
   leave_lobby_game = 4,
   /** player_select_cell - game */
   player_select_cell = 5,
-  leave_game = 6,
+  player_rejoin = 6,
+  leave_game = 7,
   UNRECOGNIZED = -1,
 }
 
@@ -35,6 +36,9 @@ export function clientMsgTypeFromJSON(object: any): ClientMsgType {
     case 'player_select_cell':
       return ClientMsgType.player_select_cell
     case 6:
+    case 'player_rejoin':
+      return ClientMsgType.player_rejoin
+    case 7:
     case 'leave_game':
       return ClientMsgType.leave_game
     case -1:
@@ -58,6 +62,8 @@ export function clientMsgTypeToJSON(object: ClientMsgType): string {
       return 'leave_lobby_game'
     case ClientMsgType.player_select_cell:
       return 'player_select_cell'
+    case ClientMsgType.player_rejoin:
+      return 'player_rejoin'
     case ClientMsgType.leave_game:
       return 'leave_game'
     case ClientMsgType.UNRECOGNIZED:

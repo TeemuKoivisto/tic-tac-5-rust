@@ -48,7 +48,7 @@ function handleMessages(evt: SocketEvent) {
   console.log('event', evt)
   switch (evt.e) {
     case 'connected':
-      socketActions.emitJoinLobby({
+      socketActions.emit(ClientMsgType.join_lobby, {
         playerId: get(playerId),
         name: get(playerName),
       })
@@ -65,6 +65,9 @@ function handleMessages(evt: SocketEvent) {
     case ServerMsgType.lobby_state:
       lobbyGames.set(evt.data.games)
       lobbyPlayers.set(evt.data.players)
+      break
+    case ServerMsgType.player_status:
+      console.log('RECEIVED STATUS', evt.data)
       break
     case ServerMsgType.game_start:
       const pId = get(playerId)
@@ -123,13 +126,10 @@ export const gameActions = {
   },
   joinLobby() {
     gameState.set('lobby')
-    socketActions.emit(
-      ClientMsgType.join_lobby,
-      PlayerJoinLobby.encode({
-        playerId: get(playerId),
-        name: get(playerName),
-      }).finish()
-    )
+    socketActions.emit(ClientMsgType.join_lobby, {
+      playerId: get(playerId),
+      name: get(playerName),
+    })
   },
   createGame(opts: Options) {
     const payload = {
@@ -138,7 +138,7 @@ export const gameActions = {
       preferredSymbol: 'X',
       options: opts,
     }
-    socketActions.emit(ClientMsgType.create_lobby_game, PlayerCreateGame.encode(payload).finish())
+    socketActions.emit(ClientMsgType.create_lobby_game, payload)
     gameState.set('waiting-game-start')
   },
   joinGame(game: LobbyGame, opts: Options) {
@@ -149,7 +149,7 @@ export const gameActions = {
       color: 'poop',
       options: opts,
     }
-    socketActions.emit(ClientMsgType.join_lobby_game, PlayerJoinGame.encode(payload).finish())
+    socketActions.emit(ClientMsgType.join_lobby_game, payload)
     gameState.set('waiting-game-start')
     // Set lobbyGames empty so that old games won't show up when returning to front page
     lobbyGames.set([])
@@ -161,6 +161,6 @@ export const gameActions = {
       x,
       y,
     }
-    socketActions.emit(ClientMsgType.player_select_cell, PlayerSelectCell.encode(payload).finish())
+    socketActions.emit(ClientMsgType.player_select_cell, payload)
   },
 }

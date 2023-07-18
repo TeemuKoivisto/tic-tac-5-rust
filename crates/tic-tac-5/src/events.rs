@@ -16,6 +16,7 @@ impl TryFrom<u8> for ClientMsgType {
             x if x == ClientMsgType::player_select_cell as u8 => {
                 Ok(ClientMsgType::player_select_cell)
             }
+            x if x == ClientMsgType::player_rejoin as u8 => Ok(ClientMsgType::player_rejoin),
             x if x == ClientMsgType::leave_game as u8 => Ok(ClientMsgType::leave_game),
             _ => Err(()),
         }
@@ -52,17 +53,18 @@ impl TryInto<u8> for ServerMsgType {
     fn try_into(self) -> Result<u8, Self::Error> {
         match self {
             Self::lobby_state => Ok(0),
-            Self::player_msg => Ok(1),
-            Self::player_join_lobby => Ok(2),
-            Self::player_leave_lobby => Ok(3),
-            Self::lobby_game_updated => Ok(4),
-            Self::player_join => Ok(5),
-            Self::player_left => Ok(6),
-            Self::player_disconnected => Ok(7),
-            Self::player_reconnected => Ok(8),
-            Self::game_start => Ok(9),
-            Self::game_end => Ok(10),
-            Self::game_player_move => Ok(11),
+            Self::player_status => Ok(1),
+            Self::player_msg => Ok(2),
+            Self::player_join_lobby => Ok(3),
+            Self::player_leave_lobby => Ok(4),
+            Self::lobby_game_updated => Ok(5),
+            Self::player_join => Ok(6),
+            Self::player_left => Ok(7),
+            Self::player_disconnected => Ok(8),
+            Self::player_reconnected => Ok(9),
+            Self::game_start => Ok(10),
+            Self::game_end => Ok(11),
+            Self::game_player_move => Ok(12),
         }
     }
 }

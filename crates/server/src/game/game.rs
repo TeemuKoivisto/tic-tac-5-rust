@@ -143,8 +143,22 @@ impl Game {
     }
 
     pub fn handle_player_disconnect(&mut self, player_id: &u32) {
-        // @TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
-        self.handle_player_leave(player_id);
+        // @TODO remove later in game_loop if not reconnected before eg 15s timeout
+        for mut player in self.joined_players.iter_mut() {
+            if &player.player_id == player_id {
+                player.connected = false;
+                player.last_seen = Some(chrono::Utc::now().timestamp_millis() as u64 / 1000);
+            }
+        }
+    }
+
+    pub fn handle_player_reconnect(&mut self, player_id: &u32) {
+        for mut player in self.joined_players.iter_mut() {
+            if &player.player_id == player_id {
+                player.connected = true;
+                player.last_seen = None;
+            }
+        }
     }
 
     fn get_game_end(&self) -> GameEnd {
@@ -166,31 +180,25 @@ impl Game {
     pub async fn handle_client_event(&mut self, msg: ClientToGameEvent) {
         info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
-            ClientToGameEvent::Disconnected(socket_id) => {
+            ClientToGameEvent::Disconnected(socket_id, player_id) => {
                 println!(">>> DISCONNECTED");
-                self.subscribers.retain(|sub| sub.socket_id != socket_id);
-                let player = self
-                    .joined_players
-                    .iter()
-                    .find(|p| p.socket_id == Some(socket_id));
+                // self.subscribers.retain(|sub| sub.socket_id != socket_id);
+                self.handle_player_disconnect(&player_id);
                 self.send(GameToClientEvent::PlayerDisconnected(
                     GamePlayerConnection {
                         game_id: self.id.to_string(),
-                        player_id: player.unwrap().player_id,
+                        player_id,
                         connected: false,
                     },
                 ));
             }
-            ClientToGameEvent::Reconnected(socket_id) => {
+            ClientToGameEvent::Reconnected(socket_id, player_id) => {
                 println!(">>> RECONNECTED");
-                let player = self
-                    .joined_players
-                    .iter()
-                    .find(|p| p.socket_id == Some(socket_id));
+                self.handle_player_reconnect(&player_id);
                 self.send(GameToClientEvent::PlayerDisconnected(
                     GamePlayerConnection {
                         game_id: self.id.to_string(),
-                        player_id: player.unwrap().player_id,
+                        player_id,
                         connected: true,
                     },
                 ));

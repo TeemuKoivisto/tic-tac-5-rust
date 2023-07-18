@@ -22,7 +22,7 @@ pub struct Connection {
 // SessionManagerToClient
 
 pub struct SessionManager {
-    sessions: Vec<SessionHandle>,
+    sessions: HashMap<u32, SessionHandle>,
     session_map: HashMap<String, u32>,
     next_socket_id: u32,
     rng: StdRng,
@@ -32,7 +32,7 @@ pub struct SessionManager {
 impl SessionManager {
     pub fn new() -> Self {
         Self {
-            sessions: Vec::new(),
+            sessions: HashMap::new(),
             session_map: HashMap::new(),
             next_socket_id: 0,
             rng: StdRng::from_seed(OsRng.gen()),
@@ -71,9 +71,10 @@ impl SessionManager {
         handle
     }
 
-    pub fn restore_session(&mut self, socket: WebSocket, conn: Connection) -> SessionHandle {
-        let handle = SessionHandle::new(socket, conn.socket_id);
-        handle
+    pub fn restore_session(&mut self, socket: WebSocket, mut conn: Connection) -> SessionHandle {
+        conn.handle.restore(socket);
+        // let handle = SessionHandle::new(socket, conn.socket_id);
+        conn.handle
     }
 
     pub fn get_next_player_id(&mut self) -> u32 {

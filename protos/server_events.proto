@@ -5,18 +5,19 @@ import "game.proto";
 enum ServerMsgType {
     // lobby
     lobby_state = 0;
-    player_msg = 1;
-    player_join_lobby = 2;
-    player_leave_lobby = 3;
-    lobby_game_updated = 4;
+    player_status = 1;
+    player_msg = 2;
+    player_join_lobby = 3;
+    player_leave_lobby = 4;
+    lobby_game_updated = 5;
     // game
-    player_join = 5;
-    player_left = 6;
-    player_disconnected = 7;
-    player_reconnected = 8;
-    game_start = 9;
-    game_end = 10;
-    game_player_move = 11;
+    player_join = 6;
+    player_left = 7;
+    player_disconnected = 8;
+    player_reconnected = 9;
+    game_start = 10;
+    game_end = 11;
+    game_player_move = 12;
 }
 
 message LobbyPlayer {
@@ -27,6 +28,11 @@ message LobbyPlayer {
 message LobbyState {
     repeated LobbyGame games = 1;
     repeated LobbyPlayer players = 2;
+}
+
+message PlayerStatus {
+    repeated string waiting_games = 3;
+    repeated GameEnd ended_games = 4;
 }
 
 message GameStart {

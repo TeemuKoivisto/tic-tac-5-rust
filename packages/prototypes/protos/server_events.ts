@@ -5,18 +5,19 @@ import { Cell, GameStatus, gameStatusFromJSON, gameStatusToJSON, LobbyGame, Play
 export enum ServerMsgType {
   /** lobby_state - lobby */
   lobby_state = 0,
-  player_msg = 1,
-  player_join_lobby = 2,
-  player_leave_lobby = 3,
-  lobby_game_updated = 4,
+  player_status = 1,
+  player_msg = 2,
+  player_join_lobby = 3,
+  player_leave_lobby = 4,
+  lobby_game_updated = 5,
   /** player_join - game */
-  player_join = 5,
-  player_left = 6,
-  player_disconnected = 7,
-  player_reconnected = 8,
-  game_start = 9,
-  game_end = 10,
-  game_player_move = 11,
+  player_join = 6,
+  player_left = 7,
+  player_disconnected = 8,
+  player_reconnected = 9,
+  game_start = 10,
+  game_end = 11,
+  game_player_move = 12,
   UNRECOGNIZED = -1,
 }
 
@@ -26,36 +27,39 @@ export function serverMsgTypeFromJSON(object: any): ServerMsgType {
     case 'lobby_state':
       return ServerMsgType.lobby_state
     case 1:
+    case 'player_status':
+      return ServerMsgType.player_status
+    case 2:
     case 'player_msg':
       return ServerMsgType.player_msg
-    case 2:
+    case 3:
     case 'player_join_lobby':
       return ServerMsgType.player_join_lobby
-    case 3:
+    case 4:
     case 'player_leave_lobby':
       return ServerMsgType.player_leave_lobby
-    case 4:
+    case 5:
     case 'lobby_game_updated':
       return ServerMsgType.lobby_game_updated
-    case 5:
+    case 6:
     case 'player_join':
       return ServerMsgType.player_join
-    case 6:
+    case 7:
     case 'player_left':
       return ServerMsgType.player_left
-    case 7:
+    case 8:
     case 'player_disconnected':
       return ServerMsgType.player_disconnected
-    case 8:
+    case 9:
     case 'player_reconnected':
       return ServerMsgType.player_reconnected
-    case 9:
+    case 10:
     case 'game_start':
       return ServerMsgType.game_start
-    case 10:
+    case 11:
     case 'game_end':
       return ServerMsgType.game_end
-    case 11:
+    case 12:
     case 'game_player_move':
       return ServerMsgType.game_player_move
     case -1:
@@ -69,6 +73,8 @@ export function serverMsgTypeToJSON(object: ServerMsgType): string {
   switch (object) {
     case ServerMsgType.lobby_state:
       return 'lobby_state'
+    case ServerMsgType.player_status:
+      return 'player_status'
     case ServerMsgType.player_msg:
       return 'player_msg'
     case ServerMsgType.player_join_lobby:
@@ -105,6 +111,11 @@ export interface LobbyPlayer {
 export interface LobbyState {
   games: LobbyGame[]
   players: LobbyPlayer[]
+}
+
+export interface PlayerStatus {
+  waitingGames: string[]
+  endedGames: GameEnd[]
 }
 
 export interface GameStart {
@@ -264,6 +275,80 @@ export const LobbyState = {
     const message = createBaseLobbyState()
     message.games = object.games?.map(e => LobbyGame.fromPartial(e)) || []
     message.players = object.players?.map(e => LobbyPlayer.fromPartial(e)) || []
+    return message
+  },
+}
+
+function createBasePlayerStatus(): PlayerStatus {
+  return { waitingGames: [], endedGames: [] }
+}
+
+export const PlayerStatus = {
+  encode(message: PlayerStatus, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.waitingGames) {
+      writer.uint32(26).string(v!)
+    }
+    for (const v of message.endedGames) {
+      GameEnd.encode(v!, writer.uint32(34).fork()).ldelim()
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerStatus {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBasePlayerStatus()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 3:
+          message.waitingGames.push(reader.string())
+          break
+        case 4:
+          message.endedGames.push(GameEnd.decode(reader, reader.uint32()))
+          break
+        default:
+          reader.skipType(tag & 7)
+          break
+      }
+    }
+    return message
+  },
+
+  fromJSON(object: any): PlayerStatus {
+    return {
+      waitingGames: Array.isArray(object?.waitingGames)
+        ? object.waitingGames.map((e: any) => String(e))
+        : [],
+      endedGames: Array.isArray(object?.endedGames)
+        ? object.endedGames.map((e: any) => GameEnd.fromJSON(e))
+        : [],
+    }
+  },
+
+  toJSON(message: PlayerStatus): unknown {
+    const obj: any = {}
+    if (message.waitingGames) {
+      obj.waitingGames = message.waitingGames.map(e => e)
+    } else {
+      obj.waitingGames = []
+    }
+    if (message.endedGames) {
+      obj.endedGames = message.endedGames.map(e => (e ? GameEnd.toJSON(e) : undefined))
+    } else {
+      obj.endedGames = []
+    }
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<PlayerStatus>, I>>(base?: I): PlayerStatus {
+    return PlayerStatus.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PlayerStatus>, I>>(object: I): PlayerStatus {
+    const message = createBasePlayerStatus()
+    message.waitingGames = object.waitingGames?.map(e => e) || []
+    message.endedGames = object.endedGames?.map(e => GameEnd.fromPartial(e)) || []
     return message
   },
 }

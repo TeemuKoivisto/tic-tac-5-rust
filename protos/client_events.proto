@@ -11,7 +11,8 @@ enum ClientMsgType {
     leave_lobby_game = 4;
     // game
     player_select_cell = 5;
-    leave_game = 6;
+    player_rejoin = 6;
+    leave_game = 7;
 }
 
 // Values are zero if not specified.

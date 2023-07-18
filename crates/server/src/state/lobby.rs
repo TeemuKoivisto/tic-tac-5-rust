@@ -19,7 +19,7 @@ pub struct ClientSubscriber {
 }
 
 pub struct Lobby {
-    pub running_games: HashMap<Uuid, GameHandle>,
+    pub running_games: HashMap<String, GameHandle>,
     pub lobby_games: Vec<ListedGame>,
     pub lobby_players: Vec<LobbyPlayer>,
     pub lobby_chat: Vec<String>,
@@ -90,8 +90,10 @@ impl Lobby {
     pub async fn handle_client_event(&mut self, msg: ClientToLobbyEvent) {
         info!("Lobby -> ClientToLobbyEvent {:?}", msg);
         match msg {
-            ClientToLobbyEvent::Connected(socket_id, lobby_sender, game_sender) => {
-                info!("connected {}", socket_id);
+            ClientToLobbyEvent::Connected(socket_id, game_ids, lobby_sender, game_sender) => {
+                // TODO check whether in any pending games
+                //
+
                 let _ = lobby_sender.send(LobbyToClientEvent::LobbyState(LobbyState {
                     games: self.lobby_state(),
                     players: self.lobby_players.clone(),
@@ -101,6 +103,21 @@ impl Lobby {
                     lobby_sender,
                     game_sender,
                 });
+                // self.running_games.insert(game.id, game);
+                for game_id in game_ids {
+                    let found = self.running_games.get(&game_id);
+                    if found.is_some() {}
+                }
+
+                // for game in self.lobby_games.iter_mut() {
+                //     let player = game
+                //         .joined_players
+                //         .iter()
+                //         .find(|p| p.socket_id == Some(socket_id));
+                //     if player.is_some() {
+                //         game.handle_player_reconnect(&player_id);
+                //     }
+                // }
             }
             ClientToLobbyEvent::Disconnected(socket_id) => {
                 self.subscribers.retain(|sub| sub.socket_id != socket_id);
@@ -158,7 +175,7 @@ impl Lobby {
                         .retain(|sub| left.iter().find(|s| *s == &sub.socket_id).is_none());
                     // TODO subscribe game to players and vice-versa
                     // also leave lobby
-                    self.running_games.insert(game.id, game);
+                    self.running_games.insert(game.id.to_string(), game);
                 }
                 self.send_lobby_state();
             }
@@ -179,7 +196,7 @@ impl Lobby {
         info!("Lobby -> GameToLobbyEvent {:?}", msg);
         match msg {
             GameToLobbyEvent::GameEnded(game_id) => {
-                self.running_games.remove(&game_id);
+                self.running_games.remove(&game_id.to_string());
                 self.lobby_games.retain(|g| g.id != game_id);
                 self.send_lobby_state();
             }
