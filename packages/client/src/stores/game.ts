@@ -8,11 +8,6 @@ import {
   ClientMsgType,
   LobbyGame,
   LobbyPlayer,
-  LobbyState,
-  PlayerCreateGame,
-  PlayerJoinGame,
-  PlayerJoinLobby,
-  PlayerSelectCell,
   CellType,
 } from '@tt5/prototypes'
 
@@ -86,8 +81,13 @@ function handleMessages(evt: SocketEvent) {
       gameStarted.set(Date.now())
       break
     case ServerMsgType.game_end:
+      const player = get(localPlayer)
       modalActions.open(EModal.GAME_OVER, {
-        playerWon: evt.data.winnerId === get(playerId),
+        player: {
+          symbol: player?.symbol === 'X' ? 'X' : 'O',
+          name: get(playerName),
+        },
+        result: evt.data.result,
         startTime: get(gameStarted),
         turns: get(gameTurns),
       })
@@ -116,9 +116,7 @@ function handleMessages(evt: SocketEvent) {
       })
       break
     case ServerMsgType.player_disconnected:
-      modalActions.open(EModal.PLAYER_DISCONNECTED, {
-        playerName: 'poop',
-      })
+      modalActions.open(EModal.PLAYER_DISCONNECTED, evt.data)
       break
     case ServerMsgType.player_reconnected:
       modalActions.close()

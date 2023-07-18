@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use axum::extract::ws::WebSocket;
 use rand::{
     rngs::{OsRng, StdRng},
@@ -8,22 +6,16 @@ use rand::{
 
 use crate::state::jwt_manager::TicTac5Token;
 
-use super::{session::Session, session_handle::SessionHandle};
+use super::session_handle::SessionHandle;
 
 pub struct Connection {
     pub handle: SessionHandle,
     player_id: u32,
     socket_id: u32,
-    connected: bool,
-    last_seen: u32,
+    last_seen: u64,
 }
 
-// list of session_senders
-// SessionManagerToClient
-
 pub struct SessionManager {
-    sessions: HashMap<u32, SessionHandle>,
-    session_map: HashMap<String, u32>,
     next_socket_id: u32,
     rng: StdRng,
     disconnected: Vec<Connection>,
@@ -32,8 +24,6 @@ pub struct SessionManager {
 impl SessionManager {
     pub fn new() -> Self {
         Self {
-            sessions: HashMap::new(),
-            session_map: HashMap::new(),
             next_socket_id: 0,
             rng: StdRng::from_seed(OsRng.gen()),
             disconnected: Vec::new(),
@@ -47,8 +37,7 @@ impl SessionManager {
             handle: session,
             player_id,
             socket_id,
-            connected: false,
-            last_seen: 0,
+            last_seen: chrono::Utc::now().timestamp_millis() as u64 / 1000,
         })
     }
 

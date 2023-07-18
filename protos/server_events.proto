@@ -37,8 +37,9 @@ message PlayerStatus {
 
 message GameStart {
     string game_id = 1;
-    repeated Player players = 2;
-    repeated Cell cells = 3;
+    // uint64 start_time = 2;
+    repeated Player players = 3;
+    repeated Cell cells = 4;
 }
 
 message GameEnd {
@@ -54,8 +55,14 @@ message GameMove {
     // string symbol = 4;
 }
 
-message GamePlayerConnection {
+message GamePlayerDisconnected {
     string game_id = 1;
     uint32 player_id = 2;
-    bool connected = 3;
+    string symbol = 4;
+    string name = 5;
+}
+
+message GamePlayerReconnected {
+    string game_id = 1;
+    uint32 player_id = 2;
 }

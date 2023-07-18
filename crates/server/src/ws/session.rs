@@ -124,16 +124,6 @@ impl Session {
                                 self.socket_id,
                                 payload,
                             ));
-                            // let (started, game_mut) = ctx.create_lobby_game(socket_id, create_game).await;
-                            // game_mut
-                            //     .lock()
-                            //     .await
-                            //     .add_player_connection(socket_id, conn.clone());
-                            // player.set_joined_game(game_mut.clone()).await;
-                            // if started {
-                            //     ctx.start_game(game_mut).await;
-                            // }
-                            // ctx.broadcast_lobby_state().await;
                         }
                     }
                     Ok(ClientMsgType::join_lobby_game) => {
@@ -144,16 +134,6 @@ impl Session {
                                 self.socket_id,
                                 player_join,
                             ));
-                            // let (started, game_mut) = ctx.join_lobby_game(socket_id, player_join).await;
-                            // game_mut
-                            //     .lock()
-                            //     .await
-                            //     .add_player_connection(socket_id, conn.clone());
-                            // player.set_joined_game(game_mut.clone()).await;
-                            // if started {
-                            //     ctx.start_game(game_mut).await;
-                            // }
-                            // ctx.broadcast_lobby_state().await;
                         }
                     }
                     Ok(ClientMsgType::player_select_cell) => {

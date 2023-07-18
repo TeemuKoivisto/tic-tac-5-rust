@@ -12,3 +12,12 @@ RUST_LOG=server=trace,tower_http=trace ./ex.sh run
 pnpm utils # run once
 pnpm cli
 ```
+
+## TODO
+
+- remove expired sessions
+- allow leaving games when waiting on disconnected
+- remove game correctly when all have left & game still running
+- fix not showing WaitingPlayer modal when refreshed when it's open
+- better error messages (eg when establishing ws connection with 403)
+- generic GameMenu modal that opens with escape, allows leaving / setting settings or whatever

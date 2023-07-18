@@ -1,11 +1,12 @@
 <script lang="ts">
-  import type { PlayerDisconnectParams } from '../../stores/modal'
+  import type { GamePlayerDisconnected } from '@tt5/prototypes'
+
   // import { gameActions } from '../../stores/game'
 
-  export let params: PlayerDisconnectParams
+  export let params: GamePlayerDisconnected
   export const hideModal: () => void = () => undefined
 
-  const { playerName } = params
+  const { symbol, name } = params
   let waited_s = 0
 
   setInterval(() => {
@@ -14,7 +15,7 @@
 </script>
 
 <div class="flex flex-col text-center items-center">
-  <h1 class="text-4xl font-semibold text-black">Waiting for X player {playerName}</h1>
+  <h1 class="text-4xl font-semibold text-black">Waiting for {symbol} player {name}</h1>
 </div>
 
 <div class="mt-6 mb-10 w-full text-xl space-y-2">

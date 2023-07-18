@@ -9,7 +9,8 @@ import {
   GameStart,
   GameEnd,
   GameMove,
-  GamePlayerConnection,
+  GamePlayerDisconnected,
+  GamePlayerReconnected,
   PlayerCreateGame,
   PlayerSelectCell,
   PlayerRejoinGame,
@@ -72,11 +73,11 @@ export const socketActions = {
           break
         }
         case ServerMsgType.player_disconnected: {
-          cb({ e: ServerMsgType.player_disconnected, data: GamePlayerConnection.decode(payload) })
+          cb({ e: ServerMsgType.player_disconnected, data: GamePlayerDisconnected.decode(payload) })
           break
         }
         case ServerMsgType.player_reconnected: {
-          cb({ e: ServerMsgType.player_reconnected, data: GamePlayerConnection.decode(payload) })
+          cb({ e: ServerMsgType.player_reconnected, data: GamePlayerReconnected.decode(payload) })
           break
         }
         default:

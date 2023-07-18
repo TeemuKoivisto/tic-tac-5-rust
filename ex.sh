@@ -5,7 +5,7 @@ export JWT_SECRET="very-secret"
 
 run() {
   cd $ROOT_DIR
-  cargo run -p server --release
+  RUST_LOG=server=warn cargo run -p server --release
   # cargo build -p tic-tac-5 && cargo run -p server --release
 }
 

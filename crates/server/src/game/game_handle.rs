@@ -48,10 +48,18 @@ impl GameHandle {
 
 pub fn run_game(mut actor: Game) -> JoinHandle<()> {
     tokio::spawn(async move {
+        let dur = std::time::Duration::from_secs_f64(2.0);
+        let mut interval = tokio::time::interval(dur);
         loop {
             tokio::select! {
                 Ok(ev) = actor.client_receiver.recv() => {
                     actor.handle_client_event(ev).await;
+                },
+                _ = interval.tick() => {
+                    if !actor.check_if_running() {
+                        actor.send_end_game();
+                        break;
+                    }
                 },
                 else => {
                     break;

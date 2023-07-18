@@ -1,3 +1,4 @@
+import { GamePlayerDisconnected, GameStatus } from '@tt5/prototypes'
 import { get, writable } from 'svelte/store'
 
 export enum EModal {
@@ -5,27 +6,35 @@ export enum EModal {
   PLAYER_DISCONNECTED = 'PLAYER_DISCONNECTED',
 }
 export interface GameOverParams {
-  playerWon: boolean
+  player: {
+    symbol: 'X' | 'O'
+    name: string
+  }
+  result: GameStatus
   startTime: number
   turns: number
-}
-export interface PlayerDisconnectParams {
-  playerName: string
 }
 
 export type ModalParams = {
   [EModal.GAME_OVER]: GameOverParams
-  [EModal.PLAYER_DISCONNECTED]: PlayerDisconnectParams
+  [EModal.PLAYER_DISCONNECTED]: GamePlayerDisconnected
 }
 
 export const modals = writable<ModalParams>({
   [EModal.GAME_OVER]: {
-    playerWon: true,
+    player: {
+      symbol: 'X',
+      name: '',
+    },
+    result: GameStatus.WAITING,
     startTime: 0,
     turns: 0,
   },
   [EModal.PLAYER_DISCONNECTED]: {
-    playerName: '',
+    gameId: '',
+    playerId: 0,
+    symbol: '',
+    name: '',
   },
 })
 export const openModal = writable<EModal | null>(null)

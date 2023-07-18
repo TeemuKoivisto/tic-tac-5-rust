@@ -129,22 +129,31 @@ export const GameOptions = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): GameOptions {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseGameOptions()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 8) {
+            break
+          }
+
           message.size = reader.uint32()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.players = reader.uint32()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -158,8 +167,12 @@ export const GameOptions = {
 
   toJSON(message: GameOptions): unknown {
     const obj: any = {}
-    message.size !== undefined && (obj.size = Math.round(message.size))
-    message.players !== undefined && (obj.players = Math.round(message.players))
+    if (message.size !== 0) {
+      obj.size = Math.round(message.size)
+    }
+    if (message.players !== 0) {
+      obj.players = Math.round(message.players)
+    }
     return obj
   },
 
@@ -191,22 +204,31 @@ export const PlayerJoinLobby = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerJoinLobby {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerJoinLobby()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 8) {
+            break
+          }
+
           message.playerId = reader.uint32()
-          break
+          continue
         case 2:
+          if (tag !== 18) {
+            break
+          }
+
           message.name = reader.string()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -220,8 +242,12 @@ export const PlayerJoinLobby = {
 
   toJSON(message: PlayerJoinLobby): unknown {
     const obj: any = {}
-    message.playerId !== undefined && (obj.playerId = Math.round(message.playerId))
-    message.name !== undefined && (obj.name = message.name)
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
+    if (message.name !== '') {
+      obj.name = message.name
+    }
     return obj
   },
 
@@ -259,28 +285,45 @@ export const PlayerCreateGame = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerCreateGame {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerCreateGame()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 8) {
+            break
+          }
+
           message.playerId = reader.uint32()
-          break
+          continue
         case 2:
+          if (tag !== 18) {
+            break
+          }
+
           message.name = reader.string()
-          break
+          continue
         case 3:
+          if (tag !== 26) {
+            break
+          }
+
           message.preferredSymbol = reader.string()
-          break
+          continue
         case 4:
+          if (tag !== 34) {
+            break
+          }
+
           message.options = GameOptions.decode(reader, reader.uint32())
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -296,11 +339,18 @@ export const PlayerCreateGame = {
 
   toJSON(message: PlayerCreateGame): unknown {
     const obj: any = {}
-    message.playerId !== undefined && (obj.playerId = Math.round(message.playerId))
-    message.name !== undefined && (obj.name = message.name)
-    message.preferredSymbol !== undefined && (obj.preferredSymbol = message.preferredSymbol)
-    message.options !== undefined &&
-      (obj.options = message.options ? GameOptions.toJSON(message.options) : undefined)
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
+    if (message.name !== '') {
+      obj.name = message.name
+    }
+    if (message.preferredSymbol !== '') {
+      obj.preferredSymbol = message.preferredSymbol
+    }
+    if (message.options !== undefined) {
+      obj.options = GameOptions.toJSON(message.options)
+    }
     return obj
   },
 
@@ -343,28 +393,45 @@ export const PlayerJoinGame = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerJoinGame {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerJoinGame()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.playerId = reader.uint32()
-          break
+          continue
         case 3:
+          if (tag !== 26) {
+            break
+          }
+
           message.name = reader.string()
-          break
+          continue
         case 4:
+          if (tag !== 34) {
+            break
+          }
+
           message.options = GameOptions.decode(reader, reader.uint32())
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -380,11 +447,18 @@ export const PlayerJoinGame = {
 
   toJSON(message: PlayerJoinGame): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
-    message.playerId !== undefined && (obj.playerId = Math.round(message.playerId))
-    message.name !== undefined && (obj.name = message.name)
-    message.options !== undefined &&
-      (obj.options = message.options ? GameOptions.toJSON(message.options) : undefined)
+    if (message.gameId !== undefined) {
+      obj.gameId = message.gameId
+    }
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
+    if (message.name !== '') {
+      obj.name = message.name
+    }
+    if (message.options !== undefined) {
+      obj.options = GameOptions.toJSON(message.options)
+    }
     return obj
   },
 
@@ -418,19 +492,24 @@ export const PlayerRejoinGame = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerRejoinGame {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerRejoinGame()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -441,7 +520,9 @@ export const PlayerRejoinGame = {
 
   toJSON(message: PlayerRejoinGame): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
+    }
     return obj
   },
 
@@ -478,28 +559,45 @@ export const PlayerSelectCell = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerSelectCell {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerSelectCell()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.playerNumber = reader.uint32()
-          break
+          continue
         case 3:
+          if (tag !== 24) {
+            break
+          }
+
           message.x = reader.uint32()
-          break
+          continue
         case 4:
+          if (tag !== 32) {
+            break
+          }
+
           message.y = reader.uint32()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -515,10 +613,18 @@ export const PlayerSelectCell = {
 
   toJSON(message: PlayerSelectCell): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
-    message.playerNumber !== undefined && (obj.playerNumber = Math.round(message.playerNumber))
-    message.x !== undefined && (obj.x = Math.round(message.x))
-    message.y !== undefined && (obj.y = Math.round(message.y))
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
+    }
+    if (message.playerNumber !== 0) {
+      obj.playerNumber = Math.round(message.playerNumber)
+    }
+    if (message.x !== 0) {
+      obj.x = Math.round(message.x)
+    }
+    if (message.y !== 0) {
+      obj.y = Math.round(message.y)
+    }
     return obj
   },
 
@@ -552,22 +658,31 @@ export const PlayerLeaveGame = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerLeaveGame {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerLeaveGame()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.playerId = reader.uint32()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -581,8 +696,12 @@ export const PlayerLeaveGame = {
 
   toJSON(message: PlayerLeaveGame): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
-    message.playerId !== undefined && (obj.playerId = Math.round(message.playerId))
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
+    }
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
     return obj
   },
 

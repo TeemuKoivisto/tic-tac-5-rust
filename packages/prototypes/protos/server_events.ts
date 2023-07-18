@@ -120,6 +120,7 @@ export interface PlayerStatus {
 
 export interface GameStart {
   gameId: string
+  /** uint64 start_time = 2; */
   players: Player[]
   cells: Cell[]
 }
@@ -137,10 +138,16 @@ export interface GameMove {
   y: number
 }
 
-export interface GamePlayerConnection {
+export interface GamePlayerDisconnected {
   gameId: string
   playerId: number
-  connected: boolean
+  symbol: string
+  name: string
+}
+
+export interface GamePlayerReconnected {
+  gameId: string
+  playerId: number
 }
 
 function createBaseLobbyPlayer(): LobbyPlayer {
@@ -159,22 +166,31 @@ export const LobbyPlayer = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): LobbyPlayer {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseLobbyPlayer()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.playerId = reader.uint32()
-          break
+          continue
         case 3:
+          if (tag !== 26) {
+            break
+          }
+
           message.name = reader.string()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -188,8 +204,12 @@ export const LobbyPlayer = {
 
   toJSON(message: LobbyPlayer): unknown {
     const obj: any = {}
-    message.playerId !== undefined && (obj.playerId = Math.round(message.playerId))
-    message.name !== undefined && (obj.name = message.name)
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
+    if (message.name !== '') {
+      obj.name = message.name
+    }
     return obj
   },
 
@@ -221,22 +241,31 @@ export const LobbyState = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): LobbyState {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseLobbyState()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.games.push(LobbyGame.decode(reader, reader.uint32()))
-          break
+          continue
         case 2:
+          if (tag !== 18) {
+            break
+          }
+
           message.players.push(LobbyPlayer.decode(reader, reader.uint32()))
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -254,15 +283,11 @@ export const LobbyState = {
 
   toJSON(message: LobbyState): unknown {
     const obj: any = {}
-    if (message.games) {
-      obj.games = message.games.map(e => (e ? LobbyGame.toJSON(e) : undefined))
-    } else {
-      obj.games = []
+    if (message.games?.length) {
+      obj.games = message.games.map(e => LobbyGame.toJSON(e))
     }
-    if (message.players) {
-      obj.players = message.players.map(e => (e ? LobbyPlayer.toJSON(e) : undefined))
-    } else {
-      obj.players = []
+    if (message.players?.length) {
+      obj.players = message.players.map(e => LobbyPlayer.toJSON(e))
     }
     return obj
   },
@@ -295,22 +320,31 @@ export const PlayerStatus = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): PlayerStatus {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBasePlayerStatus()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 3:
+          if (tag !== 26) {
+            break
+          }
+
           message.waitingGames.push(reader.string())
-          break
+          continue
         case 4:
+          if (tag !== 34) {
+            break
+          }
+
           message.endedGames.push(GameEnd.decode(reader, reader.uint32()))
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -328,15 +362,11 @@ export const PlayerStatus = {
 
   toJSON(message: PlayerStatus): unknown {
     const obj: any = {}
-    if (message.waitingGames) {
-      obj.waitingGames = message.waitingGames.map(e => e)
-    } else {
-      obj.waitingGames = []
+    if (message.waitingGames?.length) {
+      obj.waitingGames = message.waitingGames
     }
-    if (message.endedGames) {
-      obj.endedGames = message.endedGames.map(e => (e ? GameEnd.toJSON(e) : undefined))
-    } else {
-      obj.endedGames = []
+    if (message.endedGames?.length) {
+      obj.endedGames = message.endedGames.map(e => GameEnd.toJSON(e))
     }
     return obj
   },
@@ -363,34 +393,47 @@ export const GameStart = {
       writer.uint32(10).string(message.gameId)
     }
     for (const v of message.players) {
-      Player.encode(v!, writer.uint32(18).fork()).ldelim()
+      Player.encode(v!, writer.uint32(26).fork()).ldelim()
     }
     for (const v of message.cells) {
-      Cell.encode(v!, writer.uint32(26).fork()).ldelim()
+      Cell.encode(v!, writer.uint32(34).fork()).ldelim()
     }
     return writer
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): GameStart {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseGameStart()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
-        case 2:
-          message.players.push(Player.decode(reader, reader.uint32()))
-          break
+          continue
         case 3:
+          if (tag !== 26) {
+            break
+          }
+
+          message.players.push(Player.decode(reader, reader.uint32()))
+          continue
+        case 4:
+          if (tag !== 34) {
+            break
+          }
+
           message.cells.push(Cell.decode(reader, reader.uint32()))
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -407,16 +450,14 @@ export const GameStart = {
 
   toJSON(message: GameStart): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
-    if (message.players) {
-      obj.players = message.players.map(e => (e ? Player.toJSON(e) : undefined))
-    } else {
-      obj.players = []
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
     }
-    if (message.cells) {
-      obj.cells = message.cells.map(e => (e ? Cell.toJSON(e) : undefined))
-    } else {
-      obj.cells = []
+    if (message.players?.length) {
+      obj.players = message.players.map(e => Player.toJSON(e))
+    }
+    if (message.cells?.length) {
+      obj.cells = message.cells.map(e => Cell.toJSON(e))
     }
     return obj
   },
@@ -453,25 +494,38 @@ export const GameEnd = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): GameEnd {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseGameEnd()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.result = reader.int32() as any
-          break
+          continue
         case 3:
+          if (tag !== 24) {
+            break
+          }
+
           message.winnerId = reader.uint32()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -486,9 +540,15 @@ export const GameEnd = {
 
   toJSON(message: GameEnd): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
-    message.result !== undefined && (obj.result = gameStatusToJSON(message.result))
-    message.winnerId !== undefined && (obj.winnerId = Math.round(message.winnerId))
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
+    }
+    if (message.result !== 0) {
+      obj.result = gameStatusToJSON(message.result)
+    }
+    if (message.winnerId !== undefined) {
+      obj.winnerId = Math.round(message.winnerId)
+    }
     return obj
   },
 
@@ -524,25 +584,38 @@ export const GameMove = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): GameMove {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseGameMove()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 8) {
+            break
+          }
+
           message.player = reader.uint32()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.x = reader.uint32()
-          break
+          continue
         case 3:
+          if (tag !== 24) {
+            break
+          }
+
           message.y = reader.uint32()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
@@ -557,9 +630,15 @@ export const GameMove = {
 
   toJSON(message: GameMove): unknown {
     const obj: any = {}
-    message.player !== undefined && (obj.player = Math.round(message.player))
-    message.x !== undefined && (obj.x = Math.round(message.x))
-    message.y !== undefined && (obj.y = Math.round(message.y))
+    if (message.player !== 0) {
+      obj.player = Math.round(message.player)
+    }
+    if (message.x !== 0) {
+      obj.x = Math.round(message.x)
+    }
+    if (message.y !== 0) {
+      obj.y = Math.round(message.y)
+    }
     return obj
   },
 
@@ -576,75 +655,188 @@ export const GameMove = {
   },
 }
 
-function createBaseGamePlayerConnection(): GamePlayerConnection {
-  return { gameId: '', playerId: 0, connected: false }
+function createBaseGamePlayerDisconnected(): GamePlayerDisconnected {
+  return { gameId: '', playerId: 0, symbol: '', name: '' }
 }
 
-export const GamePlayerConnection = {
-  encode(message: GamePlayerConnection, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const GamePlayerDisconnected = {
+  encode(message: GamePlayerDisconnected, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.gameId !== '') {
       writer.uint32(10).string(message.gameId)
     }
     if (message.playerId !== 0) {
       writer.uint32(16).uint32(message.playerId)
     }
-    if (message.connected === true) {
-      writer.uint32(24).bool(message.connected)
+    if (message.symbol !== '') {
+      writer.uint32(34).string(message.symbol)
+    }
+    if (message.name !== '') {
+      writer.uint32(42).string(message.name)
     }
     return writer
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): GamePlayerConnection {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input)
+  decode(input: _m0.Reader | Uint8Array, length?: number): GamePlayerDisconnected {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
-    const message = createBaseGamePlayerConnection()
+    const message = createBaseGamePlayerDisconnected()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
+          if (tag !== 10) {
+            break
+          }
+
           message.gameId = reader.string()
-          break
+          continue
         case 2:
+          if (tag !== 16) {
+            break
+          }
+
           message.playerId = reader.uint32()
-          break
-        case 3:
-          message.connected = reader.bool()
-          break
-        default:
-          reader.skipType(tag & 7)
-          break
+          continue
+        case 4:
+          if (tag !== 34) {
+            break
+          }
+
+          message.symbol = reader.string()
+          continue
+        case 5:
+          if (tag !== 42) {
+            break
+          }
+
+          message.name = reader.string()
+          continue
       }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
     }
     return message
   },
 
-  fromJSON(object: any): GamePlayerConnection {
+  fromJSON(object: any): GamePlayerDisconnected {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
-      connected: isSet(object.connected) ? Boolean(object.connected) : false,
+      symbol: isSet(object.symbol) ? String(object.symbol) : '',
+      name: isSet(object.name) ? String(object.name) : '',
     }
   },
 
-  toJSON(message: GamePlayerConnection): unknown {
+  toJSON(message: GamePlayerDisconnected): unknown {
     const obj: any = {}
-    message.gameId !== undefined && (obj.gameId = message.gameId)
-    message.playerId !== undefined && (obj.playerId = Math.round(message.playerId))
-    message.connected !== undefined && (obj.connected = message.connected)
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
+    }
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
+    if (message.symbol !== '') {
+      obj.symbol = message.symbol
+    }
+    if (message.name !== '') {
+      obj.name = message.name
+    }
     return obj
   },
 
-  create<I extends Exact<DeepPartial<GamePlayerConnection>, I>>(base?: I): GamePlayerConnection {
-    return GamePlayerConnection.fromPartial(base ?? {})
+  create<I extends Exact<DeepPartial<GamePlayerDisconnected>, I>>(
+    base?: I
+  ): GamePlayerDisconnected {
+    return GamePlayerDisconnected.fromPartial(base ?? {})
   },
 
-  fromPartial<I extends Exact<DeepPartial<GamePlayerConnection>, I>>(
+  fromPartial<I extends Exact<DeepPartial<GamePlayerDisconnected>, I>>(
     object: I
-  ): GamePlayerConnection {
-    const message = createBaseGamePlayerConnection()
+  ): GamePlayerDisconnected {
+    const message = createBaseGamePlayerDisconnected()
     message.gameId = object.gameId ?? ''
     message.playerId = object.playerId ?? 0
-    message.connected = object.connected ?? false
+    message.symbol = object.symbol ?? ''
+    message.name = object.name ?? ''
+    return message
+  },
+}
+
+function createBaseGamePlayerReconnected(): GamePlayerReconnected {
+  return { gameId: '', playerId: 0 }
+}
+
+export const GamePlayerReconnected = {
+  encode(message: GamePlayerReconnected, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.gameId !== '') {
+      writer.uint32(10).string(message.gameId)
+    }
+    if (message.playerId !== 0) {
+      writer.uint32(16).uint32(message.playerId)
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GamePlayerReconnected {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBaseGamePlayerReconnected()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break
+          }
+
+          message.gameId = reader.string()
+          continue
+        case 2:
+          if (tag !== 16) {
+            break
+          }
+
+          message.playerId = reader.uint32()
+          continue
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break
+      }
+      reader.skipType(tag & 7)
+    }
+    return message
+  },
+
+  fromJSON(object: any): GamePlayerReconnected {
+    return {
+      gameId: isSet(object.gameId) ? String(object.gameId) : '',
+      playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
+    }
+  },
+
+  toJSON(message: GamePlayerReconnected): unknown {
+    const obj: any = {}
+    if (message.gameId !== '') {
+      obj.gameId = message.gameId
+    }
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
+    }
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<GamePlayerReconnected>, I>>(base?: I): GamePlayerReconnected {
+    return GamePlayerReconnected.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GamePlayerReconnected>, I>>(
+    object: I
+  ): GamePlayerReconnected {
+    const message = createBaseGamePlayerReconnected()
+    message.gameId = object.gameId ?? ''
+    message.playerId = object.playerId ?? 0
     return message
   },
 }

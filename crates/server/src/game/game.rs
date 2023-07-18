@@ -20,6 +20,7 @@ pub struct Game {
     pub id: Uuid,
     pub state: GameState,
     pub joined_players: Vec<JoinedPlayer>,
+    start_time: u64,
     game_sender: broadcast::Sender<GameToClientEvent>,
     game_to_lobby_sender: broadcast::Sender<GameToLobbyEvent>,
     pub client_receiver: broadcast::Receiver<ClientToGameEvent>,
@@ -38,6 +39,7 @@ impl Game {
             id: lobby_game.id,
             state: GameState::new(&lobby_game.options, rng_seed),
             joined_players: lobby_game.joined_players.clone(),
+            start_time: chrono::Utc::now().timestamp_millis() as u64 / 1000,
             game_sender,
             game_to_lobby_sender,
             client_receiver,
@@ -54,6 +56,27 @@ impl Game {
     }
     pub fn get_player_in_turn(&self) -> &Player {
         &self.state.players[(self.state.player_in_turn - 1) as usize]
+    }
+
+    pub fn check_if_running(&mut self) -> bool {
+        if self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN {
+            let time = chrono::Utc::now().timestamp_millis() as u64 / 1000;
+            let mut disconnected = 0;
+            for player in self.joined_players.iter() {
+                if !player.connected && time > player.last_seen.unwrap() + 10 {
+                    let game_player = self.state.get_player(player.player_id);
+                    disconnected += 1;
+                    if disconnected == 2 {
+                        self.state.status = GameStatus::TIE
+                    } else if game_player.symbol == "X" {
+                        self.state.status = GameStatus::O_WON
+                    } else if game_player.symbol == "O" {
+                        self.state.status = GameStatus::X_WON
+                    }
+                }
+            }
+        }
+        self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN
     }
 
     pub fn is_valid_move(&mut self, payload: &PlayerSelectCell) -> Option<String> {
@@ -105,26 +128,6 @@ impl Game {
         Ok(did_win)
     }
 
-    pub fn handle_game_start(&mut self) {
-        for player in &self.joined_players {
-            self.state
-                .add_player(&player.player_id, player.name.clone(), player.socket_id);
-        }
-        self.state.status = GameStatus::X_TURN;
-    }
-
-    pub fn end_game(&mut self) -> (GameStatus, Option<&Player>) {
-        let status = self.state.status;
-        if status == GameStatus::X_WON {
-            return (GameStatus::X_WON, Some(&self.state.players[0]));
-        } else if status == GameStatus::O_WON {
-            return (GameStatus::O_WON, Some(&self.state.players[1]));
-        } else {
-            self.state.status = GameStatus::TIE;
-        }
-        (GameStatus::TIE, None)
-    }
-
     pub fn handle_player_leave(&mut self, player_id: &u32) {
         // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
         self.joined_players.retain(|p| p.player_id != *player_id);
@@ -170,6 +173,7 @@ impl Game {
         } else {
             winner_id = 0;
         }
+        println!("game end {:?}", self.state.status);
         GameEnd {
             game_id: self.id.to_string(),
             result: self.state.status,
@@ -183,11 +187,14 @@ impl Game {
             ClientToGameEvent::Disconnected(socket_id, player_id) => {
                 // self.subscribers.retain(|sub| sub.socket_id != socket_id);
                 self.handle_player_disconnect(&player_id);
+                let player = self.state.get_player(player_id);
+                println!("disconnected {:?}", player);
                 self.send(GameToClientEvent::PlayerDisconnected(
-                    GamePlayerConnection {
+                    GamePlayerDisconnected {
                         game_id: self.id.to_string(),
                         player_id,
-                        connected: false,
+                        symbol: player.symbol.clone(),
+                        name: player.name.clone(),
                     },
                 ));
             }
@@ -201,11 +208,12 @@ impl Game {
                     }),
                     socket_id,
                 );
-                self.send(GameToClientEvent::PlayerReconnected(GamePlayerConnection {
-                    game_id: self.id.to_string(),
-                    player_id,
-                    connected: true,
-                }));
+                self.send(GameToClientEvent::PlayerReconnected(
+                    GamePlayerReconnected {
+                        game_id: self.id.to_string(),
+                        player_id,
+                    },
+                ));
             }
             ClientToGameEvent::SelectCell(socket_id, payload) => {
                 let result = self.handle_player_move(&payload);
@@ -247,6 +255,13 @@ impl Game {
     fn send(&mut self, event: GameToClientEvent) {
         self.subscribers
             .retain(|sub| sub.sender.send(event.clone()).is_ok());
+    }
+
+    pub fn send_end_game(&mut self) {
+        self.send(GameToClientEvent::GameEnd(self.get_game_end()));
+        let _ = self
+            .game_to_lobby_sender
+            .send(GameToLobbyEvent::GameEnded(self.id));
     }
 
     fn send_to(&mut self, event: GameToClientEvent, socket_id: u32) {

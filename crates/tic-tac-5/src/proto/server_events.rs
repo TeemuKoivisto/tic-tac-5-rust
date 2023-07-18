@@ -196,8 +196,8 @@ impl<'a> MessageRead<'a> for GameStart {
         while !r.is_eof() {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
-                Ok(18) => msg.players.push(r.read_message::<game::Player>(bytes)?),
-                Ok(26) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
+                Ok(26) => msg.players.push(r.read_message::<game::Player>(bytes)?),
+                Ok(34) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -216,8 +216,8 @@ impl MessageWrite for GameStart {
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
-        for s in &self.players { w.write_with_tag(18, |w| w.write_message(s))?; }
-        for s in &self.cells { w.write_with_tag(26, |w| w.write_message(s))?; }
+        for s in &self.players { w.write_with_tag(26, |w| w.write_message(s))?; }
+        for s in &self.cells { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())
     }
 }
@@ -301,20 +301,22 @@ impl MessageWrite for GameMove {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct GamePlayerConnection {
+pub struct GamePlayerDisconnected {
     pub game_id: String,
     pub player_id: u32,
-    pub connected: bool,
+    pub symbol: String,
+    pub name: String,
 }
 
-impl<'a> MessageRead<'a> for GamePlayerConnection {
+impl<'a> MessageRead<'a> for GamePlayerDisconnected {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_id = r.read_uint32(bytes)?,
-                Ok(24) => msg.connected = r.read_bool(bytes)?,
+                Ok(34) => msg.symbol = r.read_string(bytes)?.to_owned(),
+                Ok(42) => msg.name = r.read_string(bytes)?.to_owned(),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -323,18 +325,55 @@ impl<'a> MessageRead<'a> for GamePlayerConnection {
     }
 }
 
-impl MessageWrite for GamePlayerConnection {
+impl MessageWrite for GamePlayerDisconnected {
     fn get_size(&self) -> usize {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
-        + if self.connected == false { 0 } else { 1 + sizeof_varint(*(&self.connected) as u64) }
+        + if self.symbol == String::default() { 0 } else { 1 + sizeof_len((&self.symbol).len()) }
+        + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
-        if self.connected != false { w.write_with_tag(24, |w| w.write_bool(*&self.connected))?; }
+        if self.symbol != String::default() { w.write_with_tag(34, |w| w.write_string(&**&self.symbol))?; }
+        if self.name != String::default() { w.write_with_tag(42, |w| w.write_string(&**&self.name))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct GamePlayerReconnected {
+    pub game_id: String,
+    pub player_id: u32,
+}
+
+impl<'a> MessageRead<'a> for GamePlayerReconnected {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
+                Ok(16) => msg.player_id = r.read_uint32(bytes)?,
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for GamePlayerReconnected {
+    fn get_size(&self) -> usize {
+        0
+        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
+        + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
+        if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
         Ok(())
     }
 }

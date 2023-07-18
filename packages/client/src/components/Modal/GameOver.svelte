@@ -1,17 +1,37 @@
 <script lang="ts">
   import type { GameOverParams } from '../../stores/modal'
   import { gameActions } from '../../stores/game'
+  import { GameStatus } from '@tt5/prototypes'
 
   export let params: GameOverParams
   export const hideModal: () => void = () => undefined
 
-  const { playerWon, startTime, turns } = params
+  const { player, result, startTime, turns } = params
   const elapsed = Date.now() - startTime
   const min = Math.floor(elapsed / 1000 / 60) % 60
   const sec = Math.floor(elapsed / 1000) % 60
   const timer = `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`
   const elapsedTurns = turns
-  const titleText = playerWon ? 'You won!' : 'You lost.'
+  let titleText: string
+  if (
+    (result === GameStatus.X_WON && player.symbol === 'X') ||
+    (result == GameStatus.O_WON && player.symbol === 'O')
+  ) {
+    titleText = 'You won!'
+  } else if (result === GameStatus.X_WON || result == GameStatus.O_WON) {
+    titleText = 'You lost'
+  } else if (result === GameStatus.TIE) {
+    titleText = 'Draw'
+  } else if (
+    (result === GameStatus.X_TURN && player.symbol === 'X') ||
+    (result == GameStatus.O_TURN && player.symbol === 'O')
+  ) {
+    titleText = 'It is your turn'
+  } else if (result === GameStatus.X_TURN || result == GameStatus.O_TURN) {
+    titleText = "It is opponent's turn"
+  } else {
+    titleText = 'Game still in progress'
+  }
 
   function handleRematch() {}
   function handleNewGame() {
