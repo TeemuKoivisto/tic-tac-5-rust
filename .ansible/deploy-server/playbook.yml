@@ -15,11 +15,11 @@
         AWS_ACCESS_KEY_ID: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
         AWS_SECRET_ACCESS_KEY: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
 
-    - name: Pull lw-server Docker image
+    - name: Pull Docker image
       shell: docker pull {{ aws_user_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/{{ docker_image }}:latest
 
     - name: Stop container
-      shell: ID=$(docker ps | grep {{ docker_image }} | awk '{print $1}') && [ ! -z $ID ] && docker stop $ID
+      shell: ID=$(docker ps | grep {{ docker_image }} | awk '{print $1}') && ([ ! -z $ID ] && docker stop $ID) || true
 
     - name: Restart it
       community.general.supervisorctl:
