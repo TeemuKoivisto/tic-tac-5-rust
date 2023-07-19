@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { lastMove, wasOwnMove } from '../stores/game'
+  import { localPlayer, playerInTurn } from '../stores/game'
+  import { GameState, gameState } from '../stores/state'
   // import { modalActions, EModal } from '../stores/modal'
 
-  $: hideModal = $lastMove === undefined || !$wasOwnMove
+  $: hideModal = $gameState !== GameState.opponent_turn && $gameState !== GameState.your_turn
+  $: isMyTurn = $localPlayer?.id === $playerInTurn?.id
+  $: titleText = isMyTurn ? "It's your turn" : "It's opponent's turn"
 
-  function onKeyDown(e: KeyboardEvent) {
+  function onKeyDown(_e: KeyboardEvent) {
     // if (e.key === 'Escape') {
     //   isOpen = !isOpen
     //   if (!isOpen) {
@@ -24,7 +27,7 @@
 <section class="h-0 relative">
   <div class="w-full z-20 flex items-center relative justify-center">
     <div class="menu transform flex flex-col justify-center" class:-translate-y-full={hideModal}>
-      <h2 class="text-center text-lg my-1.5 text-black">It's opponent's turn</h2>
+      <h2 class="text-center text-lg my-1.5 text-black">{titleText}</h2>
     </div>
   </div>
 </section>

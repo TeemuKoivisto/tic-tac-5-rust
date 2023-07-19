@@ -74,8 +74,52 @@ impl GameState {
     pub fn remove_player(&mut self, player_number: u32) {
         self.players[(player_number - 1) as usize].dead = true;
     }
-    pub fn player_move(&mut self, x: u32, y: u32, player: u32) {
-        self.board.update_cell_owner(x, y, player);
+    pub fn is_valid_move(&self, x: u32, y: u32, player_number: u32) -> Option<String> {
+        if player_number != self.player_in_turn {
+            return Some(format!(
+                "Player {} tried to move when it was {} turn",
+                player_number, self.player_in_turn
+            ));
+        } else if !self.board.is_within_board(x as i32, y as i32) {
+            return Some("Move's x, y weren't inside the board".to_string());
+        }
+        let cell = self.board.get_cell_at(x, y);
+        if cell.owner != 0 {
+            return Some(format!(
+                "Cell at {} {} was already selected",
+                cell.x, cell.y
+            ));
+        }
+        None
+    }
+    pub fn handle_player_move(
+        &mut self,
+        x: u32,
+        y: u32,
+        player_number: u32,
+    ) -> Result<(bool, u32), Box<dyn std::error::Error>> {
+        let is_valid_err = self.is_valid_move(x, y, player_number);
+        if is_valid_err.is_some() {
+            return Err(is_valid_err.unwrap().into());
+        }
+        self.board.update_cell_owner(x, y, player_number);
+        let did_win = self.check_win(x, y);
+        if player_number == self.options.players {
+            self.player_in_turn = 1;
+            self.status = if did_win {
+                GameStatus::O_WON
+            } else {
+                GameStatus::O_TURN
+            };
+        } else {
+            self.player_in_turn = player_number + 1;
+            self.status = if did_win {
+                GameStatus::X_WON
+            } else {
+                GameStatus::X_TURN
+            };
+        }
+        Ok((did_win, self.player_in_turn))
     }
     pub fn check_win(&self, x: u32, y: u32) -> bool {
         let cell = self.board.get_cell_at(x, y);

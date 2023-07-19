@@ -134,7 +134,7 @@ export interface GameEnd {
 
 export interface GameMove {
   playerNumber: number
-  playerId: number
+  nextInTurn: number
   x: number
   /** string symbol = 4; */
   y: number
@@ -583,7 +583,7 @@ export const GameEnd = {
 }
 
 function createBaseGameMove(): GameMove {
-  return { playerNumber: 0, playerId: 0, x: 0, y: 0 }
+  return { playerNumber: 0, nextInTurn: 0, x: 0, y: 0 }
 }
 
 export const GameMove = {
@@ -591,8 +591,8 @@ export const GameMove = {
     if (message.playerNumber !== 0) {
       writer.uint32(8).uint32(message.playerNumber)
     }
-    if (message.playerId !== 0) {
-      writer.uint32(16).uint32(message.playerId)
+    if (message.nextInTurn !== 0) {
+      writer.uint32(16).uint32(message.nextInTurn)
     }
     if (message.x !== 0) {
       writer.uint32(24).uint32(message.x)
@@ -622,7 +622,7 @@ export const GameMove = {
             break
           }
 
-          message.playerId = reader.uint32()
+          message.nextInTurn = reader.uint32()
           continue
         case 3:
           if (tag !== 24) {
@@ -650,7 +650,7 @@ export const GameMove = {
   fromJSON(object: any): GameMove {
     return {
       playerNumber: isSet(object.playerNumber) ? Number(object.playerNumber) : 0,
-      playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
+      nextInTurn: isSet(object.nextInTurn) ? Number(object.nextInTurn) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
       y: isSet(object.y) ? Number(object.y) : 0,
     }
@@ -661,8 +661,8 @@ export const GameMove = {
     if (message.playerNumber !== 0) {
       obj.playerNumber = Math.round(message.playerNumber)
     }
-    if (message.playerId !== 0) {
-      obj.playerId = Math.round(message.playerId)
+    if (message.nextInTurn !== 0) {
+      obj.nextInTurn = Math.round(message.nextInTurn)
     }
     if (message.x !== 0) {
       obj.x = Math.round(message.x)
@@ -680,7 +680,7 @@ export const GameMove = {
   fromPartial<I extends Exact<DeepPartial<GameMove>, I>>(object: I): GameMove {
     const message = createBaseGameMove()
     message.playerNumber = object.playerNumber ?? 0
-    message.playerId = object.playerId ?? 0
+    message.nextInTurn = object.nextInTurn ?? 0
     message.x = object.x ?? 0
     message.y = object.y ?? 0
     return message

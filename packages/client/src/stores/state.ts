@@ -1,4 +1,5 @@
 import { derived, get, writable } from 'svelte/store'
+import { log } from '../logger'
 
 import type { Result } from '@tt5/types'
 
@@ -84,10 +85,11 @@ export const stateActions = {
   },
   transitGame(to: GameState): Result<undefined> {
     const currentApp = get(appState)
+    const currentGame = get(gameState)
+    log.debug(`transition from ${currentGame} to ${to}`)
     if (currentApp !== AppState.in_game) {
       return { err: `App was not in in_game state! ${currentApp}`, code: 500 }
     }
-    const currentGame = get(gameState)
     const available = gameTransitions[currentGame]
     if (!available.includes(to)) {
       return { err: `Not a valid game state transition! from ${currentGame} to ${to}`, code: 500 }

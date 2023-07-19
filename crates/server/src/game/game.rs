@@ -1,7 +1,7 @@
 use log::{debug, error, info, warn};
 use tic_tac_5::{
     game_state::*,
-    proto::{client_events::*, game::*, server_events::*},
+    proto::{game::*, server_events::*},
 };
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
@@ -81,55 +81,6 @@ impl Game {
         self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN
     }
 
-    pub fn is_valid_move(&self, x: u32, y: u32, player_number: u32) -> Option<String> {
-        if player_number != self.state.player_in_turn {
-            return Some(format!(
-                "Player {} tried to move when it was {} turn",
-                player_number, self.state.player_in_turn
-            ));
-        } else if !self.state.board.is_within_board(x as i32, y as i32) {
-            return Some("Move's x, y weren't inside the board".to_string());
-        }
-        let cell = self.state.board.get_cell_at(x, y);
-        if cell.owner != 0 {
-            return Some(format!(
-                "Cell at {} {} was already selected",
-                cell.x, cell.y
-            ));
-        }
-        None
-    }
-
-    pub fn handle_player_move(
-        &mut self,
-        x: u32,
-        y: u32,
-        player_number: u32,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
-        let is_valid_err = self.is_valid_move(x, y, player_number);
-        if is_valid_err.is_some() {
-            return Err(is_valid_err.unwrap().into());
-        }
-        self.state.player_move(x, y, player_number);
-        let did_win = self.state.check_win(x, y);
-        if player_number == self.state.options.players {
-            self.state.player_in_turn = 1;
-            self.state.status = if did_win {
-                GameStatus::O_WON
-            } else {
-                GameStatus::O_TURN
-            };
-        } else {
-            self.state.player_in_turn = player_number + 1;
-            self.state.status = if did_win {
-                GameStatus::X_WON
-            } else {
-                GameStatus::X_TURN
-            };
-        }
-        Ok(did_win)
-    }
-
     pub fn handle_player_leave(&mut self, player_id: &u32) {
         // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
         self.joined_players.retain(|p| p.player_id != *player_id);
@@ -186,7 +137,7 @@ impl Game {
     pub async fn handle_client_event(&mut self, msg: ClientToGameEvent) {
         info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
-            ClientToGameEvent::Disconnected(socket_id, player_id) => {
+            ClientToGameEvent::Disconnected(_socket_id, player_id) => {
                 // self.subscribers.retain(|sub| sub.socket_id != socket_id);
                 self.handle_player_disconnect(&player_id);
                 let player = self.state.get_player(player_id);
@@ -213,15 +164,18 @@ impl Game {
                     },
                 ));
             }
-            ClientToGameEvent::SelectCell(socket_id, payload) => {
+            ClientToGameEvent::SelectCell(_socket_id, payload) => {
                 let player_number = self.state.get_player(payload.player_id).player_number;
-                let did_win = self.handle_player_move(payload.x, payload.y, player_number);
-                if did_win.is_ok() {
-                    if did_win.unwrap() {
+                let valid_move = self
+                    .state
+                    .handle_player_move(payload.x, payload.y, player_number);
+                if valid_move.is_ok() {
+                    let (did_win, next_in_turn) = valid_move.unwrap();
+                    if did_win {
                         self.send_multiple(vec![
                             GameToClientEvent::GameUpdate(GameMove {
                                 player_number: player_number,
-                                player_id: payload.player_id,
+                                next_in_turn,
                                 x: payload.x,
                                 y: payload.y,
                             }),
@@ -233,7 +187,7 @@ impl Game {
                     } else {
                         self.send(GameToClientEvent::GameUpdate(GameMove {
                             player_number: player_number,
-                            player_id: payload.player_id,
+                            next_in_turn,
                             x: payload.x,
                             y: payload.y,
                         }));

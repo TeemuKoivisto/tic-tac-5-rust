@@ -51,7 +51,7 @@ message GameEnd {
 
 message GameMove {
     uint32 player_number = 1;
-    uint32 player_id = 2;
+    uint32 next_in_turn = 2;
     uint32 x = 3;
     uint32 y = 4;
     // string symbol = 4;

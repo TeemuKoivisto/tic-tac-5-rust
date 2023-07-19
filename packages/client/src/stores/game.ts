@@ -34,10 +34,10 @@ export const localPlayer = writable<Player | undefined>(undefined)
 export const retryConnectTimeout = writable<ReturnType<typeof setTimeout> | undefined>()
 export const lastMove = writable<GameMove | undefined>(undefined)
 export const playerInTurn = writable<Player | undefined>()
-export const wasOwnMove = derived(
-  [lastMove, localPlayer],
-  ([move, player]) => move?.playerId && move.playerId === player?.id
-)
+// export const wasOwnMove = derived(
+//   [lastMove, localPlayer],
+//   ([move, player]) => move?.playerId && move.playerId === player?.id
+// )
 
 export function handleMessages(evt: SocketEvent) {
   log.debug('Event:', evt)
@@ -82,9 +82,12 @@ export function handleMessages(evt: SocketEvent) {
       // @TODO initialize properly to handle disconnects
       gameStarted.set(Date.now())
       playerInTurn.set(evt.data.players.find(p => p.id === evt.data.playerInTurn))
-      // @TODO whose turn
       stateActions.transitApp(AppState.in_game)
-      stateActions.transitGame(GameState.your_turn)
+      if (evt.data.playerInTurn === pId) {
+        stateActions.transitGame(GameState.your_turn)
+      } else {
+        stateActions.transitGame(GameState.opponent_turn)
+      }
       break
     case ServerMsgType.game_end:
       const player = get(localPlayer)
@@ -117,6 +120,7 @@ export function handleMessages(evt: SocketEvent) {
         })
         return cells
       })
+      playerInTurn.set(get(players).find(p => p.playerNumber === evt.data.nextInTurn))
       break
     case ServerMsgType.player_disconnected:
       modalActions.open(EModal.PLAYER_DISCONNECTED, evt.data)
