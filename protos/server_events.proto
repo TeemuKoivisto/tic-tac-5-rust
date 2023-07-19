@@ -35,8 +35,9 @@ message PlayerStatus {
     repeated GameEnd ended_games = 4;
 }
 
-message GameStart {
+message BoardState {
     string game_id = 1;
+    uint32 player_in_turn = 2;
     // uint64 start_time = 2;
     repeated Player players = 3;
     repeated Cell cells = 4;
@@ -49,9 +50,10 @@ message GameEnd {
 }
 
 message GameMove {
-    uint32 player = 1;
-    uint32 x = 2;
-    uint32 y = 3;
+    uint32 player_number = 1;
+    uint32 player_id = 2;
+    uint32 x = 3;
+    uint32 y = 4;
     // string symbol = 4;
 }
 

@@ -184,18 +184,20 @@ impl MessageWrite for PlayerStatus {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct GameStart {
+pub struct BoardState {
     pub game_id: String,
+    pub player_in_turn: u32,
     pub players: Vec<game::Player>,
     pub cells: Vec<game::Cell>,
 }
 
-impl<'a> MessageRead<'a> for GameStart {
+impl<'a> MessageRead<'a> for BoardState {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
+                Ok(16) => msg.player_in_turn = r.read_uint32(bytes)?,
                 Ok(26) => msg.players.push(r.read_message::<game::Player>(bytes)?),
                 Ok(34) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
@@ -206,16 +208,18 @@ impl<'a> MessageRead<'a> for GameStart {
     }
 }
 
-impl MessageWrite for GameStart {
+impl MessageWrite for BoardState {
     fn get_size(&self) -> usize {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
+        + if self.player_in_turn == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_in_turn) as u64) }
         + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
         + self.cells.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
+        if self.player_in_turn != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_in_turn))?; }
         for s in &self.players { w.write_with_tag(26, |w| w.write_message(s))?; }
         for s in &self.cells { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())
@@ -263,7 +267,8 @@ impl MessageWrite for GameEnd {
 
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct GameMove {
-    pub player: u32,
+    pub player_number: u32,
+    pub player_id: u32,
     pub x: u32,
     pub y: u32,
 }
@@ -273,9 +278,10 @@ impl<'a> MessageRead<'a> for GameMove {
         let mut msg = Self::default();
         while !r.is_eof() {
             match r.next_tag(bytes) {
-                Ok(8) => msg.player = r.read_uint32(bytes)?,
-                Ok(16) => msg.x = r.read_uint32(bytes)?,
-                Ok(24) => msg.y = r.read_uint32(bytes)?,
+                Ok(8) => msg.player_number = r.read_uint32(bytes)?,
+                Ok(16) => msg.player_id = r.read_uint32(bytes)?,
+                Ok(24) => msg.x = r.read_uint32(bytes)?,
+                Ok(32) => msg.y = r.read_uint32(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -287,15 +293,17 @@ impl<'a> MessageRead<'a> for GameMove {
 impl MessageWrite for GameMove {
     fn get_size(&self) -> usize {
         0
-        + if self.player == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player) as u64) }
+        + if self.player_number == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_number) as u64) }
+        + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
         + if self.x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.x) as u64) }
         + if self.y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.y) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.player != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player))?; }
-        if self.x != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.x))?; }
-        if self.y != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.y))?; }
+        if self.player_number != 0u32 { w.write_with_tag(8, |w| w.write_uint32(*&self.player_number))?; }
+        if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
+        if self.x != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.x))?; }
+        if self.y != 0u32 { w.write_with_tag(32, |w| w.write_uint32(*&self.y))?; }
         Ok(())
     }
 }

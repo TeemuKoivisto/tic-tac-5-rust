@@ -103,7 +103,6 @@ export interface PlayerRejoinGame {
 
 export interface PlayerSelectCell {
   gameId: string
-  playerNumber: number
   x: number
   y: number
 }
@@ -538,7 +537,7 @@ export const PlayerRejoinGame = {
 }
 
 function createBasePlayerSelectCell(): PlayerSelectCell {
-  return { gameId: '', playerNumber: 0, x: 0, y: 0 }
+  return { gameId: '', x: 0, y: 0 }
 }
 
 export const PlayerSelectCell = {
@@ -546,14 +545,11 @@ export const PlayerSelectCell = {
     if (message.gameId !== '') {
       writer.uint32(10).string(message.gameId)
     }
-    if (message.playerNumber !== 0) {
-      writer.uint32(16).uint32(message.playerNumber)
-    }
     if (message.x !== 0) {
-      writer.uint32(24).uint32(message.x)
+      writer.uint32(16).uint32(message.x)
     }
     if (message.y !== 0) {
-      writer.uint32(32).uint32(message.y)
+      writer.uint32(24).uint32(message.y)
     }
     return writer
   },
@@ -577,17 +573,10 @@ export const PlayerSelectCell = {
             break
           }
 
-          message.playerNumber = reader.uint32()
+          message.x = reader.uint32()
           continue
         case 3:
           if (tag !== 24) {
-            break
-          }
-
-          message.x = reader.uint32()
-          continue
-        case 4:
-          if (tag !== 32) {
             break
           }
 
@@ -605,7 +594,6 @@ export const PlayerSelectCell = {
   fromJSON(object: any): PlayerSelectCell {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
-      playerNumber: isSet(object.playerNumber) ? Number(object.playerNumber) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
       y: isSet(object.y) ? Number(object.y) : 0,
     }
@@ -615,9 +603,6 @@ export const PlayerSelectCell = {
     const obj: any = {}
     if (message.gameId !== '') {
       obj.gameId = message.gameId
-    }
-    if (message.playerNumber !== 0) {
-      obj.playerNumber = Math.round(message.playerNumber)
     }
     if (message.x !== 0) {
       obj.x = Math.round(message.x)
@@ -635,7 +620,6 @@ export const PlayerSelectCell = {
   fromPartial<I extends Exact<DeepPartial<PlayerSelectCell>, I>>(object: I): PlayerSelectCell {
     const message = createBasePlayerSelectCell()
     message.gameId = object.gameId ?? ''
-    message.playerNumber = object.playerNumber ?? 0
     message.x = object.x ?? 0
     message.y = object.y ?? 0
     return message

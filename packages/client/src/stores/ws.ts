@@ -6,7 +6,7 @@ import {
   PlayerJoinGame,
   PlayerJoinLobby,
   PlayerStatus,
-  GameStart,
+  BoardState,
   GameEnd,
   GameMove,
   GamePlayerDisconnected,
@@ -61,7 +61,7 @@ export const socketActions = {
           log.debug(`Read type ${messageType}`)
           break
         case ServerMsgType.game_start: {
-          cb({ e: ServerMsgType.game_start, data: GameStart.decode(payload) })
+          cb({ e: ServerMsgType.game_start, data: BoardState.decode(payload) })
           break
         }
         case ServerMsgType.game_end: {

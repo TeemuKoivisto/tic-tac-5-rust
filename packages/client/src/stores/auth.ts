@@ -3,6 +3,7 @@ import { wrappedFetch } from '@tt5/types'
 
 import { API_URL } from '../config'
 
+import type { Result } from '@tt5/types'
 import type { Jwt, Player, LoginResponse } from '../types'
 
 export const player = persist(
@@ -37,10 +38,10 @@ export const authActions = {
   setPlayerName(name: string) {
     player.update(p => ({ ...p, name }))
   },
-  async login() {
+  async login(): Promise<Result<true | LoginResponse>> {
     const jwtToken = get(jwt)
     if (jwtToken && jwtToken.expires > Date.now() / 1000) {
-      return true
+      return { data: true }
     }
     const resp = await wrappedFetch<LoginResponse>(`${API_URL}/login`, {
       method: 'POST',

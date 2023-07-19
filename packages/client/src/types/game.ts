@@ -1,10 +1,3 @@
-export type GameState =
-  | 'connecting'
-  | 'lobby'
-  | 'waiting-game-start'
-  | 'game-running'
-  | 'game-ended'
-
 export interface Options {
   size: number
   players: number

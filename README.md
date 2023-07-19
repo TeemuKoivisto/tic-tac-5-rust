@@ -17,6 +17,7 @@ pnpm cli
 
 - remove expired sessions
 - allow leaving games when waiting on disconnected
+- send AppState as first payload from server when connected -> lobby | in_game
 - remove game correctly when all have left & game still running
 - fix not showing WaitingPlayer modal when refreshed when it's open
 - better error messages (eg when establishing ws connection with 403)

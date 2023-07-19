@@ -6,24 +6,25 @@
   import Play from './Play.svelte'
   import Waiting from './Waiting.svelte'
 
-  import { authActions } from '../stores/auth'
-  import { gameActions, gameState } from '../stores/game'
+  import { run } from '../stores/app'
+  import { appState, AppState } from '../stores/state'
 
-  onMount(async () => {
-    await authActions.login()
-    gameActions.runGame()
+  onMount(() => {
+    run()
   })
 </script>
 
 <main>
-  {#if $gameState === 'waiting-game-start'}
-    <Waiting />
-  {:else if $gameState === 'lobby'}
-    <Lobby />
-  {:else if $gameState === 'game-running' || $gameState === 'game-ended'}
-    <Play />
-  {:else if $gameState === 'connecting'}
+  {#if $appState === AppState.unauthenticated || $appState === AppState.connecting}
     <Loading />
+  {:else if $appState === AppState.lobby}
+    <Lobby />
+  {:else if $appState === AppState.waiting_game_start}
+    <Waiting />
+  {:else if $appState === AppState.in_game}
+    <Play />
+  {:else if $appState === AppState.errored}
+    The app has crashed 😵‍💫
   {/if}
 </main>
 

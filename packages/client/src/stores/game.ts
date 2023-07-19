@@ -11,17 +11,17 @@ import {
   CellType,
 } from '@tt5/prototypes'
 
+import { AppState, GameState, stateActions } from './state'
 import { playerName, playerId } from './auth'
 import { modalActions, EModal } from './modal'
 import { socketActions } from './ws'
 import { log } from '../logger'
 
-import type { GameState, SocketEvent, Options } from '../types'
+import type { SocketEvent, Options } from '../types'
 
 export const lobbyGames = writable<LobbyGame[]>([])
 export const lobbyPlayers = writable<LobbyPlayer[]>([])
 
-export const gameState = writable<GameState>('connecting')
 export const gameEnd = writable<GameEnd | undefined>(undefined)
 export const gameId = writable<string>('')
 export const gameStarted = writable<number>(0)
@@ -33,12 +33,13 @@ export const gridSize = derived(cells, cells => Math.sqrt(cells.size))
 export const localPlayer = writable<Player | undefined>(undefined)
 export const retryConnectTimeout = writable<ReturnType<typeof setTimeout> | undefined>()
 export const lastMove = writable<GameMove | undefined>(undefined)
+export const playerInTurn = writable<Player | undefined>()
 export const wasOwnMove = derived(
   [lastMove, localPlayer],
-  ([m, p]) => m?.player && m.player === p?.playerNumber
+  ([move, player]) => move?.playerId && move.playerId === player?.id
 )
 
-function handleMessages(evt: SocketEvent) {
+export function handleMessages(evt: SocketEvent) {
   log.debug('Event:', evt)
   console.log('event', evt)
   switch (evt.e) {
@@ -47,19 +48,20 @@ function handleMessages(evt: SocketEvent) {
         playerId: get(playerId),
         name: get(playerName),
       })
-      gameState.set('lobby')
       break
     case 'disconnected':
-      gameState.set('connecting')
       retryConnectTimeout.set(
         setTimeout(() => {
           socketActions.connect(handleMessages)
         }, 1000)
       )
+      stateActions.transitApp(AppState.connecting)
       break
     case ServerMsgType.lobby_state:
       lobbyGames.set(evt.data.games)
       lobbyPlayers.set(evt.data.players)
+      gameActions.reset()
+      stateActions.transitApp(AppState.lobby)
       break
     case ServerMsgType.player_status:
       const waitingGameId = evt.data.waitingGames[0]
@@ -67,18 +69,22 @@ function handleMessages(evt: SocketEvent) {
         socketActions.emit(ClientMsgType.player_rejoin, {
           gameId: waitingGameId,
         })
-        gameState.set('waiting-game-start')
+        stateActions.transitGame(GameState.paused)
       }
       break
     case ServerMsgType.game_start:
+      gameActions.reset()
       const pId = get(playerId)
       gameId.set(evt.data.gameId)
       players.set(evt.data.players)
       cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
       localPlayer.set(evt.data.players.find(p => p.id === pId))
-      gameState.set('game-running')
       // @TODO initialize properly to handle disconnects
       gameStarted.set(Date.now())
+      playerInTurn.set(evt.data.players.find(p => p.id === evt.data.playerInTurn))
+      // @TODO whose turn
+      stateActions.transitApp(AppState.in_game)
+      stateActions.transitGame(GameState.your_turn)
       break
     case ServerMsgType.game_end:
       const player = get(localPlayer)
@@ -91,11 +97,8 @@ function handleMessages(evt: SocketEvent) {
         startTime: get(gameStarted),
         turns: get(gameTurns),
       })
-      gameState.set('game-ended')
       gameEnd.set(evt.data)
-      lastMove.set(undefined)
-      gameStarted.set(0)
-      gameTurns.set(0)
+      stateActions.transitGame(GameState.ended)
       break
     case ServerMsgType.game_player_move:
       const key = `${evt.data.x}:${evt.data.y}`
@@ -108,7 +111,7 @@ function handleMessages(evt: SocketEvent) {
         }
         cells.set(key, {
           cellType: CellType.PLAYER_CELL,
-          player: evt.data.player,
+          player: evt.data.playerNumber,
           x: old.x,
           y: old.y,
         })
@@ -117,24 +120,22 @@ function handleMessages(evt: SocketEvent) {
       break
     case ServerMsgType.player_disconnected:
       modalActions.open(EModal.PLAYER_DISCONNECTED, evt.data)
+      stateActions.transitGame(GameState.waiting_opponent)
       break
     case ServerMsgType.player_reconnected:
       modalActions.close()
+      stateActions.transitGame(GameState.opponent_turn)
       break
   }
 }
 
 export const gameActions = {
-  runGame() {
-    gameState.set('connecting')
-    socketActions.connect(handleMessages)
-  },
   joinLobby() {
     socketActions.emit(ClientMsgType.join_lobby, {
       playerId: get(playerId),
       name: get(playerName),
     })
-    gameState.set('lobby')
+    stateActions.transitApp(AppState.lobby)
   },
   createGame(opts: Options) {
     socketActions.emit(ClientMsgType.create_lobby_game, {
@@ -143,7 +144,7 @@ export const gameActions = {
       preferredSymbol: 'X',
       options: opts,
     })
-    gameState.set('waiting-game-start')
+    stateActions.transitApp(AppState.waiting_game_start)
   },
   joinGame(game: LobbyGame, opts: Options) {
     socketActions.emit(ClientMsgType.join_lobby_game, {
@@ -152,16 +153,27 @@ export const gameActions = {
       name: get(playerName),
       options: opts,
     })
-    gameState.set('waiting-game-start')
     // Set lobbyGames empty so that old games won't show up when returning to front page
     lobbyGames.set([])
+    stateActions.transitApp(AppState.waiting_game_start)
   },
   playerSelectCell(x: number, y: number) {
     socketActions.emit(ClientMsgType.player_select_cell, {
       gameId: get(gameId),
-      playerNumber: get(localPlayer)?.playerNumber || 0,
       x,
       y,
     })
+  },
+  reset() {
+    gameEnd.set(undefined)
+    gameId.set('')
+    gameStarted.set(0)
+    gameTurns.set(0)
+
+    players.set([])
+    cells.set(new Map())
+    localPlayer.set(undefined)
+    lastMove.set(undefined)
+    playerInTurn.set(undefined)
   },
 }

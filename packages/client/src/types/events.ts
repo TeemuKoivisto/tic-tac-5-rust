@@ -1,5 +1,5 @@
 import {
-  GameStart,
+  BoardState,
   GameEnd,
   LobbyState,
   GameMove,
@@ -26,7 +26,7 @@ export type SocketEvent =
     }
   | {
       e: ServerMsgType.game_start
-      data: GameStart
+      data: BoardState
     }
   | {
       e: ServerMsgType.game_end

@@ -31,11 +31,18 @@ pub enum ClientToLobbyEvent {
 }
 
 #[derive(Debug, Clone)]
+pub struct PlayerMove {
+    pub player_id: u32,
+    pub x: u32,
+    pub y: u32,
+}
+
+#[derive(Debug, Clone)]
 pub enum ClientToGameEvent {
     Reconnected(u32, u32),
     Disconnected(u32, u32),
     SubscribeToGame(Client, broadcast::Sender<GameToClientEvent>),
-    SelectCell(u32, PlayerSelectCell),
+    SelectCell(u32, PlayerMove),
     LeaveGame(),
 }
 
@@ -46,9 +53,9 @@ pub enum GameToClientEvent {
     PlayerReconnected(GamePlayerReconnected),
     PlayerJoin(PlayerJoinGame),
     PlayerLeave(),
-    GameStart(GameStart),
+    GameStart(BoardState),
     GameEnd(GameEnd),
-    GameUpdate(PlayerSelectCell),
+    GameUpdate(GameMove),
 }
 
 #[derive(Debug, Clone)]

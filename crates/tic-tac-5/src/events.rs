@@ -42,7 +42,7 @@ pub enum ServerEvent {
     LobbyGameUpdated(u32),
     // game
     PlayerJoin(PlayerJoinGame),
-    GameStart(GameStart),
+    GameStart(BoardState),
     GameEnd(GameEnd),
     GameMove(String, GameMove),
     Quit(PlayerLeaveGame),

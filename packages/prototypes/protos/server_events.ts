@@ -118,8 +118,9 @@ export interface PlayerStatus {
   endedGames: GameEnd[]
 }
 
-export interface GameStart {
+export interface BoardState {
   gameId: string
+  playerInTurn: number
   /** uint64 start_time = 2; */
   players: Player[]
   cells: Cell[]
@@ -132,7 +133,8 @@ export interface GameEnd {
 }
 
 export interface GameMove {
-  player: number
+  playerNumber: number
+  playerId: number
   x: number
   /** string symbol = 4; */
   y: number
@@ -383,14 +385,17 @@ export const PlayerStatus = {
   },
 }
 
-function createBaseGameStart(): GameStart {
-  return { gameId: '', players: [], cells: [] }
+function createBaseBoardState(): BoardState {
+  return { gameId: '', playerInTurn: 0, players: [], cells: [] }
 }
 
-export const GameStart = {
-  encode(message: GameStart, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const BoardState = {
+  encode(message: BoardState, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.gameId !== '') {
       writer.uint32(10).string(message.gameId)
+    }
+    if (message.playerInTurn !== 0) {
+      writer.uint32(16).uint32(message.playerInTurn)
     }
     for (const v of message.players) {
       Player.encode(v!, writer.uint32(26).fork()).ldelim()
@@ -401,10 +406,10 @@ export const GameStart = {
     return writer
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): GameStart {
+  decode(input: _m0.Reader | Uint8Array, length?: number): BoardState {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
-    const message = createBaseGameStart()
+    const message = createBaseBoardState()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -414,6 +419,13 @@ export const GameStart = {
           }
 
           message.gameId = reader.string()
+          continue
+        case 2:
+          if (tag !== 16) {
+            break
+          }
+
+          message.playerInTurn = reader.uint32()
           continue
         case 3:
           if (tag !== 26) {
@@ -438,9 +450,10 @@ export const GameStart = {
     return message
   },
 
-  fromJSON(object: any): GameStart {
+  fromJSON(object: any): BoardState {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
+      playerInTurn: isSet(object.playerInTurn) ? Number(object.playerInTurn) : 0,
       players: Array.isArray(object?.players)
         ? object.players.map((e: any) => Player.fromJSON(e))
         : [],
@@ -448,10 +461,13 @@ export const GameStart = {
     }
   },
 
-  toJSON(message: GameStart): unknown {
+  toJSON(message: BoardState): unknown {
     const obj: any = {}
     if (message.gameId !== '') {
       obj.gameId = message.gameId
+    }
+    if (message.playerInTurn !== 0) {
+      obj.playerInTurn = Math.round(message.playerInTurn)
     }
     if (message.players?.length) {
       obj.players = message.players.map(e => Player.toJSON(e))
@@ -462,13 +478,14 @@ export const GameStart = {
     return obj
   },
 
-  create<I extends Exact<DeepPartial<GameStart>, I>>(base?: I): GameStart {
-    return GameStart.fromPartial(base ?? {})
+  create<I extends Exact<DeepPartial<BoardState>, I>>(base?: I): BoardState {
+    return BoardState.fromPartial(base ?? {})
   },
 
-  fromPartial<I extends Exact<DeepPartial<GameStart>, I>>(object: I): GameStart {
-    const message = createBaseGameStart()
+  fromPartial<I extends Exact<DeepPartial<BoardState>, I>>(object: I): BoardState {
+    const message = createBaseBoardState()
     message.gameId = object.gameId ?? ''
+    message.playerInTurn = object.playerInTurn ?? 0
     message.players = object.players?.map(e => Player.fromPartial(e)) || []
     message.cells = object.cells?.map(e => Cell.fromPartial(e)) || []
     return message
@@ -566,19 +583,22 @@ export const GameEnd = {
 }
 
 function createBaseGameMove(): GameMove {
-  return { player: 0, x: 0, y: 0 }
+  return { playerNumber: 0, playerId: 0, x: 0, y: 0 }
 }
 
 export const GameMove = {
   encode(message: GameMove, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.player !== 0) {
-      writer.uint32(8).uint32(message.player)
+    if (message.playerNumber !== 0) {
+      writer.uint32(8).uint32(message.playerNumber)
+    }
+    if (message.playerId !== 0) {
+      writer.uint32(16).uint32(message.playerId)
     }
     if (message.x !== 0) {
-      writer.uint32(16).uint32(message.x)
+      writer.uint32(24).uint32(message.x)
     }
     if (message.y !== 0) {
-      writer.uint32(24).uint32(message.y)
+      writer.uint32(32).uint32(message.y)
     }
     return writer
   },
@@ -595,17 +615,24 @@ export const GameMove = {
             break
           }
 
-          message.player = reader.uint32()
+          message.playerNumber = reader.uint32()
           continue
         case 2:
           if (tag !== 16) {
             break
           }
 
-          message.x = reader.uint32()
+          message.playerId = reader.uint32()
           continue
         case 3:
           if (tag !== 24) {
+            break
+          }
+
+          message.x = reader.uint32()
+          continue
+        case 4:
+          if (tag !== 32) {
             break
           }
 
@@ -622,7 +649,8 @@ export const GameMove = {
 
   fromJSON(object: any): GameMove {
     return {
-      player: isSet(object.player) ? Number(object.player) : 0,
+      playerNumber: isSet(object.playerNumber) ? Number(object.playerNumber) : 0,
+      playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
       y: isSet(object.y) ? Number(object.y) : 0,
     }
@@ -630,8 +658,11 @@ export const GameMove = {
 
   toJSON(message: GameMove): unknown {
     const obj: any = {}
-    if (message.player !== 0) {
-      obj.player = Math.round(message.player)
+    if (message.playerNumber !== 0) {
+      obj.playerNumber = Math.round(message.playerNumber)
+    }
+    if (message.playerId !== 0) {
+      obj.playerId = Math.round(message.playerId)
     }
     if (message.x !== 0) {
       obj.x = Math.round(message.x)
@@ -648,7 +679,8 @@ export const GameMove = {
 
   fromPartial<I extends Exact<DeepPartial<GameMove>, I>>(object: I): GameMove {
     const message = createBaseGameMove()
-    message.player = object.player ?? 0
+    message.playerNumber = object.playerNumber ?? 0
+    message.playerId = object.playerId ?? 0
     message.x = object.x ?? 0
     message.y = object.y ?? 0
     return message

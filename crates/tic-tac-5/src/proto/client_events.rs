@@ -253,7 +253,6 @@ impl MessageWrite for PlayerRejoinGame {
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct PlayerSelectCell {
     pub game_id: String,
-    pub player_number: u32,
     pub x: u32,
     pub y: u32,
 }
@@ -264,9 +263,8 @@ impl<'a> MessageRead<'a> for PlayerSelectCell {
         while !r.is_eof() {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
-                Ok(16) => msg.player_number = r.read_uint32(bytes)?,
-                Ok(24) => msg.x = r.read_uint32(bytes)?,
-                Ok(32) => msg.y = r.read_uint32(bytes)?,
+                Ok(16) => msg.x = r.read_uint32(bytes)?,
+                Ok(24) => msg.y = r.read_uint32(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -279,16 +277,14 @@ impl MessageWrite for PlayerSelectCell {
     fn get_size(&self) -> usize {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
-        + if self.player_number == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_number) as u64) }
         + if self.x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.x) as u64) }
         + if self.y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.y) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
-        if self.player_number != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_number))?; }
-        if self.x != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.x))?; }
-        if self.y != 0u32 { w.write_with_tag(32, |w| w.write_uint32(*&self.y))?; }
+        if self.x != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.x))?; }
+        if self.y != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.y))?; }
         Ok(())
     }
 }

@@ -6,7 +6,7 @@ use tic_tac_5::{
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
-use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent};
+use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent, PlayerMove};
 
 use super::listed_game::{JoinedPlayer, ListedGame};
 
@@ -46,16 +46,18 @@ impl Game {
             subscribers: Vec::new(),
         }
     }
-    pub fn get_winner(&self) -> Option<&Player> {
-        if self.state.status == GameStatus::X_WON {
-            return Some(&self.state.players[0]);
-        } else if self.state.status == GameStatus::O_WON {
-            return Some(&self.state.players[1]);
-        }
-        None
-    }
+
     pub fn get_player_in_turn(&self) -> &Player {
         &self.state.players[(self.state.player_in_turn - 1) as usize]
+    }
+
+    pub fn get_board_state(&self) -> BoardState {
+        BoardState {
+            game_id: self.id.to_string(),
+            player_in_turn: self.get_player_in_turn().id,
+            players: self.state.players.clone(),
+            cells: self.state.get_cells(),
+        }
     }
 
     pub fn check_if_running(&mut self) -> bool {
@@ -79,20 +81,16 @@ impl Game {
         self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN
     }
 
-    pub fn is_valid_move(&mut self, payload: &PlayerSelectCell) -> Option<String> {
-        if payload.player_number != self.state.player_in_turn {
+    pub fn is_valid_move(&self, x: u32, y: u32, player_number: u32) -> Option<String> {
+        if player_number != self.state.player_in_turn {
             return Some(format!(
                 "Player {} tried to move when it was {} turn",
-                payload.player_number, self.state.player_in_turn
+                player_number, self.state.player_in_turn
             ));
-        } else if !self
-            .state
-            .board
-            .is_within_board(payload.x as i32, payload.y as i32)
-        {
+        } else if !self.state.board.is_within_board(x as i32, y as i32) {
             return Some("Move's x, y weren't inside the board".to_string());
         }
-        let cell = self.state.board.get_cell_at(payload.x, payload.y);
+        let cell = self.state.board.get_cell_at(x, y);
         if cell.owner != 0 {
             return Some(format!(
                 "Cell at {} {} was already selected",
@@ -102,15 +100,19 @@ impl Game {
         None
     }
 
-    pub fn handle_player_move(&mut self, payload: &PlayerSelectCell) -> Result<bool, String> {
-        let err = self.is_valid_move(payload);
-        if err.is_some() {
-            return Err(err.unwrap());
+    pub fn handle_player_move(
+        &mut self,
+        x: u32,
+        y: u32,
+        player_number: u32,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        let is_valid_err = self.is_valid_move(x, y, player_number);
+        if is_valid_err.is_some() {
+            return Err(is_valid_err.unwrap().into());
         }
-        self.state
-            .player_move(payload.x, payload.y, payload.player_number);
-        let did_win = self.state.check_win(payload.x, payload.y);
-        if payload.player_number == self.state.options.players {
+        self.state.player_move(x, y, player_number);
+        let did_win = self.state.check_win(x, y);
+        if player_number == self.state.options.players {
             self.state.player_in_turn = 1;
             self.state.status = if did_win {
                 GameStatus::O_WON
@@ -118,7 +120,7 @@ impl Game {
                 GameStatus::O_TURN
             };
         } else {
-            self.state.player_in_turn = payload.player_number + 1;
+            self.state.player_in_turn = player_number + 1;
             self.state.status = if did_win {
                 GameStatus::X_WON
             } else {
@@ -201,11 +203,7 @@ impl Game {
             ClientToGameEvent::Reconnected(socket_id, player_id) => {
                 self.handle_player_reconnect(&player_id);
                 self.send_to(
-                    GameToClientEvent::GameStart(GameStart {
-                        game_id: self.id.to_string(),
-                        players: self.state.players.clone(),
-                        cells: self.state.get_cells(),
-                    }),
+                    GameToClientEvent::GameStart(self.get_board_state()),
                     socket_id,
                 );
                 self.send(GameToClientEvent::PlayerReconnected(
@@ -216,18 +214,29 @@ impl Game {
                 ));
             }
             ClientToGameEvent::SelectCell(socket_id, payload) => {
-                let result = self.handle_player_move(&payload);
-                if result.is_ok() {
-                    if result.unwrap() {
+                let player_number = self.state.get_player(payload.player_id).player_number;
+                let did_win = self.handle_player_move(payload.x, payload.y, player_number);
+                if did_win.is_ok() {
+                    if did_win.unwrap() {
                         self.send_multiple(vec![
-                            GameToClientEvent::GameUpdate(payload),
+                            GameToClientEvent::GameUpdate(GameMove {
+                                player_number: player_number,
+                                player_id: payload.player_id,
+                                x: payload.x,
+                                y: payload.y,
+                            }),
                             GameToClientEvent::GameEnd(self.get_game_end()),
                         ]);
                         let _ = self
                             .game_to_lobby_sender
                             .send(GameToLobbyEvent::GameEnded(self.id));
                     } else {
-                        self.send(GameToClientEvent::GameUpdate(payload));
+                        self.send(GameToClientEvent::GameUpdate(GameMove {
+                            player_number: player_number,
+                            player_id: payload.player_id,
+                            x: payload.x,
+                            y: payload.y,
+                        }));
                     }
                 }
             }
@@ -242,11 +251,7 @@ impl Game {
                 println!(">>> ClientToGameEvent::SubscribeToGame");
                 if self.subscribers.len() == self.joined_players.len() {
                     self.state.status = GameStatus::X_TURN;
-                    self.send(GameToClientEvent::GameStart(GameStart {
-                        game_id: self.id.to_string(),
-                        players: self.state.players.clone(),
-                        cells: self.state.get_cells(),
-                    }));
+                    self.send(GameToClientEvent::GameStart(self.get_board_state()));
                 }
             }
         }

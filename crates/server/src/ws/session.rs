@@ -9,7 +9,7 @@ use tokio::task::JoinHandle;
 
 use crate::state::client::Client;
 use crate::state::events::{
-    ClientToGameEvent, ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent,
+    ClientToGameEvent, ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent, PlayerMove,
 };
 use crate::ws::serialize_server_event::serialize_server_event;
 
@@ -141,7 +141,11 @@ impl Session {
                             debug!("ClientMsgType::player_select_cell {:#?}", payload);
                             self.send_to_game(ClientToGameEvent::SelectCell(
                                 self.socket_id,
-                                payload,
+                                PlayerMove {
+                                    player_id: self.client.player_id,
+                                    x: payload.x,
+                                    y: payload.y,
+                                },
                             ));
                         }
                     }
@@ -242,15 +246,8 @@ impl Session {
                 self.send_to_ws(ServerMsgType::game_end, &payload).await;
             }
             GameToClientEvent::GameUpdate(payload) => {
-                self.send_to_ws(
-                    ServerMsgType::game_player_move,
-                    &GameMove {
-                        player: payload.player_number,
-                        x: payload.x,
-                        y: payload.y,
-                    },
-                )
-                .await;
+                self.send_to_ws(ServerMsgType::game_player_move, &payload)
+                    .await;
             }
         }
     }
