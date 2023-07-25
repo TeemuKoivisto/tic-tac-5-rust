@@ -78,6 +78,94 @@ impl<'a> From<&'a str> for ServerMsgType {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum PlayerAppState {
+    initializing = 0,
+    disconnected = 1,
+    lobby = 2,
+    waiting_game_start = 3,
+    in_game = 4,
+    errored = 5,
+}
+
+impl Default for PlayerAppState {
+    fn default() -> Self {
+        PlayerAppState::initializing
+    }
+}
+
+impl From<i32> for PlayerAppState {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => PlayerAppState::initializing,
+            1 => PlayerAppState::disconnected,
+            2 => PlayerAppState::lobby,
+            3 => PlayerAppState::waiting_game_start,
+            4 => PlayerAppState::in_game,
+            5 => PlayerAppState::errored,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for PlayerAppState {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "initializing" => PlayerAppState::initializing,
+            "disconnected" => PlayerAppState::disconnected,
+            "lobby" => PlayerAppState::lobby,
+            "waiting_game_start" => PlayerAppState::waiting_game_start,
+            "in_game" => PlayerAppState::in_game,
+            "errored" => PlayerAppState::errored,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum PlayerInGameState {
+    not_started = 0,
+    x_turn = 1,
+    o_turn = 2,
+    waiting_player = 3,
+    paused = 4,
+    ended = 5,
+}
+
+impl Default for PlayerInGameState {
+    fn default() -> Self {
+        PlayerInGameState::not_started
+    }
+}
+
+impl From<i32> for PlayerInGameState {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => PlayerInGameState::not_started,
+            1 => PlayerInGameState::x_turn,
+            2 => PlayerInGameState::o_turn,
+            3 => PlayerInGameState::waiting_player,
+            4 => PlayerInGameState::paused,
+            5 => PlayerInGameState::ended,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for PlayerInGameState {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "not_started" => PlayerInGameState::not_started,
+            "x_turn" => PlayerInGameState::x_turn,
+            "o_turn" => PlayerInGameState::o_turn,
+            "waiting_player" => PlayerInGameState::waiting_player,
+            "paused" => PlayerInGameState::paused,
+            "ended" => PlayerInGameState::ended,
+            _ => Self::default(),
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct LobbyPlayer {
     pub player_id: u32,
@@ -149,16 +237,20 @@ impl MessageWrite for LobbyState {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct PlayerStatus {
+pub struct PlayerState {
+    pub app_state: PlayerAppState,
+    pub game_state: PlayerInGameState,
     pub waiting_games: Vec<String>,
     pub ended_games: Vec<GameEnd>,
 }
 
-impl<'a> MessageRead<'a> for PlayerStatus {
+impl<'a> MessageRead<'a> for PlayerState {
     fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
         let mut msg = Self::default();
         while !r.is_eof() {
             match r.next_tag(bytes) {
+                Ok(8) => msg.app_state = r.read_enum(bytes)?,
+                Ok(16) => msg.game_state = r.read_enum(bytes)?,
                 Ok(26) => msg.waiting_games.push(r.read_string(bytes)?.to_owned()),
                 Ok(34) => msg.ended_games.push(r.read_message::<GameEnd>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
@@ -169,14 +261,18 @@ impl<'a> MessageRead<'a> for PlayerStatus {
     }
 }
 
-impl MessageWrite for PlayerStatus {
+impl MessageWrite for PlayerState {
     fn get_size(&self) -> usize {
         0
+        + if self.app_state == server_events::PlayerAppState::initializing { 0 } else { 1 + sizeof_varint(*(&self.app_state) as u64) }
+        + if self.game_state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.game_state) as u64) }
         + self.waiting_games.iter().map(|s| 1 + sizeof_len((s).len())).sum::<usize>()
         + self.ended_games.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.app_state != server_events::PlayerAppState::initializing { w.write_with_tag(8, |w| w.write_enum(*&self.app_state as i32))?; }
+        if self.game_state != server_events::PlayerInGameState::not_started { w.write_with_tag(16, |w| w.write_enum(*&self.game_state as i32))?; }
         for s in &self.waiting_games { w.write_with_tag(26, |w| w.write_string(&**s))?; }
         for s in &self.ended_games { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())
@@ -187,6 +283,7 @@ impl MessageWrite for PlayerStatus {
 pub struct BoardState {
     pub game_id: String,
     pub player_in_turn: u32,
+    pub start_time: u64,
     pub players: Vec<game::Player>,
     pub cells: Vec<game::Cell>,
 }
@@ -198,6 +295,7 @@ impl<'a> MessageRead<'a> for BoardState {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_in_turn = r.read_uint32(bytes)?,
+                Ok(40) => msg.start_time = r.read_uint64(bytes)?,
                 Ok(26) => msg.players.push(r.read_message::<game::Player>(bytes)?),
                 Ok(34) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
                 Ok(t) => { r.read_unknown(bytes, t)?; }
@@ -213,6 +311,7 @@ impl MessageWrite for BoardState {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.player_in_turn == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_in_turn) as u64) }
+        + if self.start_time == 0u64 { 0 } else { 1 + sizeof_varint(*(&self.start_time) as u64) }
         + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
         + self.cells.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
     }
@@ -220,6 +319,7 @@ impl MessageWrite for BoardState {
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_in_turn != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_in_turn))?; }
+        if self.start_time != 0u64 { w.write_with_tag(40, |w| w.write_uint64(*&self.start_time))?; }
         for s in &self.players { w.write_with_tag(26, |w| w.write_message(s))?; }
         for s in &self.cells { w.write_with_tag(34, |w| w.write_message(s))?; }
         Ok(())

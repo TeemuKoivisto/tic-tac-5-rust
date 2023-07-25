@@ -48,7 +48,7 @@ impl SessionHandle {
     ) -> Result<usize, SendError<ClientToLobbyEvent>> {
         sender.send(ClientToLobbyEvent::Connected(
             self.socket_id,
-            self.actor.get_game_ids(),
+            self.actor.state.get_game_ids(),
             self.lobby_sender.clone(),
             self.game_sender.clone(),
         ))

@@ -73,6 +73,7 @@ export const stateActions = {
   transitApp(to: AppState): Result<undefined> {
     const currentApp = get(appState)
     const available = appTransitions[currentApp]
+    log.debug(`app transition from ${AppState[currentApp]} to ${AppState[to]}`)
     if (!available.includes(to)) {
       return { err: `Not a valid app state transition! from ${currentApp} to ${to}`, code: 500 }
     }
@@ -86,7 +87,7 @@ export const stateActions = {
   transitGame(to: GameState): Result<undefined> {
     const currentApp = get(appState)
     const currentGame = get(gameState)
-    log.debug(`transition from ${currentGame} to ${to}`)
+    log.debug(`game transition from ${GameState[currentGame]} to ${GameState[to]}`)
     if (currentApp !== AppState.in_game) {
       return { err: `App was not in in_game state! ${currentApp}`, code: 500 }
     }

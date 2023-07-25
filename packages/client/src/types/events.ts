@@ -4,7 +4,7 @@ import {
   LobbyState,
   GameMove,
   ServerMsgType,
-  PlayerStatus,
+  PlayerState,
   GamePlayerDisconnected,
   GamePlayerReconnected,
 } from '@tt5/prototypes'
@@ -22,7 +22,7 @@ export type SocketEvent =
     }
   | {
       e: ServerMsgType.player_status
-      data: PlayerStatus
+      data: PlayerState
     }
   | {
       e: ServerMsgType.game_start

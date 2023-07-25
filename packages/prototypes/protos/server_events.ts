@@ -1,5 +1,6 @@
 /* eslint-disable */
-import * as _m0 from 'protobufjs/minimal'
+import Long from 'long'
+import _m0 from 'protobufjs/minimal'
 import { Cell, GameStatus, gameStatusFromJSON, gameStatusToJSON, LobbyGame, Player } from './game'
 
 export enum ServerMsgType {
@@ -103,6 +104,120 @@ export function serverMsgTypeToJSON(object: ServerMsgType): string {
   }
 }
 
+export enum PlayerAppState {
+  initializing = 0,
+  disconnected = 1,
+  lobby = 2,
+  waiting_game_start = 3,
+  in_game = 4,
+  errored = 5,
+  UNRECOGNIZED = -1,
+}
+
+export function playerAppStateFromJSON(object: any): PlayerAppState {
+  switch (object) {
+    case 0:
+    case 'initializing':
+      return PlayerAppState.initializing
+    case 1:
+    case 'disconnected':
+      return PlayerAppState.disconnected
+    case 2:
+    case 'lobby':
+      return PlayerAppState.lobby
+    case 3:
+    case 'waiting_game_start':
+      return PlayerAppState.waiting_game_start
+    case 4:
+    case 'in_game':
+      return PlayerAppState.in_game
+    case 5:
+    case 'errored':
+      return PlayerAppState.errored
+    case -1:
+    case 'UNRECOGNIZED':
+    default:
+      return PlayerAppState.UNRECOGNIZED
+  }
+}
+
+export function playerAppStateToJSON(object: PlayerAppState): string {
+  switch (object) {
+    case PlayerAppState.initializing:
+      return 'initializing'
+    case PlayerAppState.disconnected:
+      return 'disconnected'
+    case PlayerAppState.lobby:
+      return 'lobby'
+    case PlayerAppState.waiting_game_start:
+      return 'waiting_game_start'
+    case PlayerAppState.in_game:
+      return 'in_game'
+    case PlayerAppState.errored:
+      return 'errored'
+    case PlayerAppState.UNRECOGNIZED:
+    default:
+      return 'UNRECOGNIZED'
+  }
+}
+
+export enum PlayerInGameState {
+  not_started = 0,
+  x_turn = 1,
+  o_turn = 2,
+  waiting_player = 3,
+  paused = 4,
+  ended = 5,
+  UNRECOGNIZED = -1,
+}
+
+export function playerInGameStateFromJSON(object: any): PlayerInGameState {
+  switch (object) {
+    case 0:
+    case 'not_started':
+      return PlayerInGameState.not_started
+    case 1:
+    case 'x_turn':
+      return PlayerInGameState.x_turn
+    case 2:
+    case 'o_turn':
+      return PlayerInGameState.o_turn
+    case 3:
+    case 'waiting_player':
+      return PlayerInGameState.waiting_player
+    case 4:
+    case 'paused':
+      return PlayerInGameState.paused
+    case 5:
+    case 'ended':
+      return PlayerInGameState.ended
+    case -1:
+    case 'UNRECOGNIZED':
+    default:
+      return PlayerInGameState.UNRECOGNIZED
+  }
+}
+
+export function playerInGameStateToJSON(object: PlayerInGameState): string {
+  switch (object) {
+    case PlayerInGameState.not_started:
+      return 'not_started'
+    case PlayerInGameState.x_turn:
+      return 'x_turn'
+    case PlayerInGameState.o_turn:
+      return 'o_turn'
+    case PlayerInGameState.waiting_player:
+      return 'waiting_player'
+    case PlayerInGameState.paused:
+      return 'paused'
+    case PlayerInGameState.ended:
+      return 'ended'
+    case PlayerInGameState.UNRECOGNIZED:
+    default:
+      return 'UNRECOGNIZED'
+  }
+}
+
 export interface LobbyPlayer {
   playerId: number
   name: string
@@ -113,7 +228,9 @@ export interface LobbyState {
   players: LobbyPlayer[]
 }
 
-export interface PlayerStatus {
+export interface PlayerState {
+  appState: PlayerAppState
+  gameState: PlayerInGameState
   waitingGames: string[]
   endedGames: GameEnd[]
 }
@@ -121,7 +238,7 @@ export interface PlayerStatus {
 export interface BoardState {
   gameId: string
   playerInTurn: number
-  /** uint64 start_time = 2; */
+  startTime: number
   players: Player[]
   cells: Cell[]
 }
@@ -306,12 +423,18 @@ export const LobbyState = {
   },
 }
 
-function createBasePlayerStatus(): PlayerStatus {
-  return { waitingGames: [], endedGames: [] }
+function createBasePlayerState(): PlayerState {
+  return { appState: 0, gameState: 0, waitingGames: [], endedGames: [] }
 }
 
-export const PlayerStatus = {
-  encode(message: PlayerStatus, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const PlayerState = {
+  encode(message: PlayerState, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.appState !== 0) {
+      writer.uint32(8).int32(message.appState)
+    }
+    if (message.gameState !== 0) {
+      writer.uint32(16).int32(message.gameState)
+    }
     for (const v of message.waitingGames) {
       writer.uint32(26).string(v!)
     }
@@ -321,13 +444,27 @@ export const PlayerStatus = {
     return writer
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerStatus {
+  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerState {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
-    const message = createBasePlayerStatus()
+    const message = createBasePlayerState()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
+        case 1:
+          if (tag !== 8) {
+            break
+          }
+
+          message.appState = reader.int32() as any
+          continue
+        case 2:
+          if (tag !== 16) {
+            break
+          }
+
+          message.gameState = reader.int32() as any
+          continue
         case 3:
           if (tag !== 26) {
             break
@@ -351,8 +488,10 @@ export const PlayerStatus = {
     return message
   },
 
-  fromJSON(object: any): PlayerStatus {
+  fromJSON(object: any): PlayerState {
     return {
+      appState: isSet(object.appState) ? playerAppStateFromJSON(object.appState) : 0,
+      gameState: isSet(object.gameState) ? playerInGameStateFromJSON(object.gameState) : 0,
       waitingGames: Array.isArray(object?.waitingGames)
         ? object.waitingGames.map((e: any) => String(e))
         : [],
@@ -362,8 +501,14 @@ export const PlayerStatus = {
     }
   },
 
-  toJSON(message: PlayerStatus): unknown {
+  toJSON(message: PlayerState): unknown {
     const obj: any = {}
+    if (message.appState !== 0) {
+      obj.appState = playerAppStateToJSON(message.appState)
+    }
+    if (message.gameState !== 0) {
+      obj.gameState = playerInGameStateToJSON(message.gameState)
+    }
     if (message.waitingGames?.length) {
       obj.waitingGames = message.waitingGames
     }
@@ -373,12 +518,14 @@ export const PlayerStatus = {
     return obj
   },
 
-  create<I extends Exact<DeepPartial<PlayerStatus>, I>>(base?: I): PlayerStatus {
-    return PlayerStatus.fromPartial(base ?? {})
+  create<I extends Exact<DeepPartial<PlayerState>, I>>(base?: I): PlayerState {
+    return PlayerState.fromPartial(base ?? {})
   },
 
-  fromPartial<I extends Exact<DeepPartial<PlayerStatus>, I>>(object: I): PlayerStatus {
-    const message = createBasePlayerStatus()
+  fromPartial<I extends Exact<DeepPartial<PlayerState>, I>>(object: I): PlayerState {
+    const message = createBasePlayerState()
+    message.appState = object.appState ?? 0
+    message.gameState = object.gameState ?? 0
     message.waitingGames = object.waitingGames?.map(e => e) || []
     message.endedGames = object.endedGames?.map(e => GameEnd.fromPartial(e)) || []
     return message
@@ -386,7 +533,7 @@ export const PlayerStatus = {
 }
 
 function createBaseBoardState(): BoardState {
-  return { gameId: '', playerInTurn: 0, players: [], cells: [] }
+  return { gameId: '', playerInTurn: 0, startTime: 0, players: [], cells: [] }
 }
 
 export const BoardState = {
@@ -396,6 +543,9 @@ export const BoardState = {
     }
     if (message.playerInTurn !== 0) {
       writer.uint32(16).uint32(message.playerInTurn)
+    }
+    if (message.startTime !== 0) {
+      writer.uint32(40).uint64(message.startTime)
     }
     for (const v of message.players) {
       Player.encode(v!, writer.uint32(26).fork()).ldelim()
@@ -427,6 +577,13 @@ export const BoardState = {
 
           message.playerInTurn = reader.uint32()
           continue
+        case 5:
+          if (tag !== 40) {
+            break
+          }
+
+          message.startTime = longToNumber(reader.uint64() as Long)
+          continue
         case 3:
           if (tag !== 26) {
             break
@@ -454,6 +611,7 @@ export const BoardState = {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
       playerInTurn: isSet(object.playerInTurn) ? Number(object.playerInTurn) : 0,
+      startTime: isSet(object.startTime) ? Number(object.startTime) : 0,
       players: Array.isArray(object?.players)
         ? object.players.map((e: any) => Player.fromJSON(e))
         : [],
@@ -468,6 +626,9 @@ export const BoardState = {
     }
     if (message.playerInTurn !== 0) {
       obj.playerInTurn = Math.round(message.playerInTurn)
+    }
+    if (message.startTime !== 0) {
+      obj.startTime = Math.round(message.startTime)
     }
     if (message.players?.length) {
       obj.players = message.players.map(e => Player.toJSON(e))
@@ -486,6 +647,7 @@ export const BoardState = {
     const message = createBaseBoardState()
     message.gameId = object.gameId ?? ''
     message.playerInTurn = object.playerInTurn ?? 0
+    message.startTime = object.startTime ?? 0
     message.players = object.players?.map(e => Player.fromPartial(e)) || []
     message.cells = object.cells?.map(e => Cell.fromPartial(e)) || []
     return message
@@ -873,6 +1035,25 @@ export const GamePlayerReconnected = {
   },
 }
 
+declare const self: any | undefined
+declare const window: any | undefined
+declare const global: any | undefined
+const tsProtoGlobalThis: any = (() => {
+  if (typeof globalThis !== 'undefined') {
+    return globalThis
+  }
+  if (typeof self !== 'undefined') {
+    return self
+  }
+  if (typeof window !== 'undefined') {
+    return window
+  }
+  if (typeof global !== 'undefined') {
+    return global
+  }
+  throw 'Unable to locate global object'
+})()
+
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined
 
 type DeepPartial<T> = T extends Builtin
@@ -889,6 +1070,18 @@ type KeysOfUnion<T> = T extends T ? keyof T : never
 type Exact<P, I extends P> = P extends Builtin
   ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never }
+
+function longToNumber(long: Long): number {
+  if (long.gt(Number.MAX_SAFE_INTEGER)) {
+    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER')
+  }
+  return long.toNumber()
+}
+
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any
+  _m0.configure()
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined

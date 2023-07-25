@@ -20,6 +20,24 @@ enum ServerMsgType {
     game_player_move = 12;
 }
 
+enum PlayerAppState {
+    initializing = 0;
+    disconnected = 1;
+    lobby = 2;
+    waiting_game_start = 3;
+    in_game = 4;
+    errored = 5;
+}
+
+enum PlayerInGameState {
+    not_started = 0;
+    x_turn = 1;
+    o_turn = 2;
+    waiting_player = 3;
+    paused = 4;
+    ended = 5;
+}
+
 message LobbyPlayer {
     uint32 player_id = 2;
     string name = 3;
@@ -30,7 +48,9 @@ message LobbyState {
     repeated LobbyPlayer players = 2;
 }
 
-message PlayerStatus {
+message PlayerState {
+    PlayerAppState app_state = 1;
+    PlayerInGameState game_state = 2;
     repeated string waiting_games = 3;
     repeated GameEnd ended_games = 4;
 }
@@ -38,7 +58,7 @@ message PlayerStatus {
 message BoardState {
     string game_id = 1;
     uint32 player_in_turn = 2;
-    // uint64 start_time = 2;
+    uint64 start_time = 5;
     repeated Player players = 3;
     repeated Cell cells = 4;
 }

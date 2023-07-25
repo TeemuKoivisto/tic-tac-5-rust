@@ -54,6 +54,7 @@ impl Game {
     pub fn get_board_state(&self) -> BoardState {
         BoardState {
             game_id: self.id.to_string(),
+            start_time: self.start_time,
             player_in_turn: self.get_player_in_turn().id,
             players: self.state.players.clone(),
             cells: self.state.get_cells(),

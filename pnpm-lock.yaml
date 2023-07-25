@@ -125,8 +125,8 @@ importers:
         specifier: ^0.34.1
         version: 0.34.1(rollup@3.10.0)(typescript@4.9.4)
       ts-proto:
-        specifier: ^1.155.1
-        version: 1.155.1
+        specifier: ^1.156.1
+        version: 1.156.1
 
   packages/types:
     devDependencies:
@@ -3014,21 +3014,21 @@ packages:
       dprint-node: 1.0.7
     dev: true
 
-  /ts-proto-descriptors@1.14.0:
-    resolution: {integrity: sha512-xqLA6cBTfof+mZ/sIw/pZviyhnWWcWqRBjyjaMW5O4fIogpawT4aa0wI8rKh0rYIrQzoHxLugmFu4+rdiWaGEQ==}
+  /ts-proto-descriptors@1.15.0:
+    resolution: {integrity: sha512-TYyJ7+H+7Jsqawdv+mfsEpZPTIj9siDHS6EMCzG/z3b/PZiphsX+mWtqFfFVe5/N0Th6V3elK9lQqjnrgTOfrg==}
     dependencies:
       long: 5.2.3
       protobufjs: 7.2.4
     dev: true
 
-  /ts-proto@1.155.1:
-    resolution: {integrity: sha512-7dGkBFJu8NVl1OJbRjcKKs05hUNcLhFXTJqI5GphkmLCKoid0SBVKhW0q1j0c0LgCZB/zoFv4L5ibgFzIB6kPQ==}
+  /ts-proto@1.156.1:
+    resolution: {integrity: sha512-zgEGjaUySjWs7e4vdg5xNk/nxMinQnIMG+0KcvEBmE1vy03Yvc7tmeoJdB7qt/p/+0taEUwEdbjegR5t1B+nEA==}
     hasBin: true
     dependencies:
       case-anything: 2.1.13
       protobufjs: 7.2.4
       ts-poet: 6.5.0
-      ts-proto-descriptors: 1.14.0
+      ts-proto-descriptors: 1.15.0
     dev: true
 
   /tsconfig-paths@3.14.1:

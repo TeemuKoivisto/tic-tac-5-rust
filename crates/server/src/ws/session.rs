@@ -7,21 +7,16 @@ use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
 
-use crate::state::client::Client;
 use crate::state::events::{
     ClientToGameEvent, ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent, PlayerMove,
 };
 use crate::ws::serialize_server_event::serialize_server_event;
 
 use super::session_handle::SessionHandle;
-
-pub struct SubscribedGame {
-    game_id: String,
-    sender: broadcast::Sender<ClientToGameEvent>,
-}
+use super::session_state::SessionState;
 
 pub struct Session {
-    pub client: Client,
+    pub state: SessionState,
     pub socket_id: u32,
     ws_sender: SplitSink<WebSocket, Message>,
     ws_receiver: SplitStream<WebSocket>,
@@ -29,8 +24,6 @@ pub struct Session {
     pub lobby_receiver: broadcast::Receiver<LobbyToClientEvent>,
     game_sender: broadcast::Sender<GameToClientEvent>,
     pub game_receiver: broadcast::Receiver<GameToClientEvent>,
-    subscribed_lobby: Option<broadcast::Sender<ClientToLobbyEvent>>,
-    subscribed_games: Vec<SubscribedGame>,
 }
 
 impl Session {
@@ -44,11 +37,7 @@ impl Session {
     ) -> Self {
         let (ws_sender, ws_receiver) = socket.split();
         Self {
-            client: Client {
-                name: "".to_string(),
-                player_id: 0,
-                socket_id,
-            },
+            state: SessionState::new(socket_id),
             socket_id,
             ws_sender,
             ws_receiver,
@@ -56,8 +45,6 @@ impl Session {
             lobby_receiver,
             game_sender,
             game_receiver,
-            subscribed_lobby: None,
-            subscribed_games: Vec::new(),
         }
     }
 
@@ -65,37 +52,17 @@ impl Session {
         let (ws_sender, ws_receiver) = socket.split();
         self.ws_sender = ws_sender;
         self.ws_receiver = ws_receiver;
-        self.send_to_ws(
-            ServerMsgType::player_status,
-            &PlayerStatus {
-                waiting_games: self.get_game_ids(),
-                ended_games: Vec::new(),
-            },
-        )
-        .await;
+        self.send_to_ws(ServerMsgType::player_status, &self.state.get_player_state())
+            .await;
     }
 
     pub fn send_disconnect(&mut self) {
+        self.state.transit(PlayerAppState::disconnected);
         self.send_to_lobby(ClientToLobbyEvent::Disconnected(self.socket_id));
         self.send_to_game(ClientToGameEvent::Disconnected(
             self.socket_id,
-            self.client.player_id,
+            self.state.player_id,
         ));
-    }
-
-    fn set_player(&mut self, player_join: &PlayerJoinLobby) {
-        self.client = Client {
-            name: player_join.name.clone(),
-            player_id: player_join.player_id,
-            socket_id: self.socket_id,
-        }
-    }
-
-    pub fn get_game_ids(&self) -> Vec<String> {
-        self.subscribed_games
-            .iter()
-            .map(|g| g.game_id.clone())
-            .collect()
     }
 
     pub async fn handle_ws_message(
@@ -104,22 +71,22 @@ impl Session {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match msg {
             Message::Binary(mut raw_buf) => {
-                // let mut msg = msg.into_data();
                 let message_type = raw_buf.remove(0);
                 let mut reader = BytesReader::from_bytes(&raw_buf);
-                // debug!("New message {}", message_type);
                 match ClientMsgType::try_from(message_type) {
                     Ok(ClientMsgType::join_lobby) => {
                         if let Ok(player_join) = PlayerJoinLobby::from_reader(&mut reader, &raw_buf)
                         {
                             debug!("ClientMsgType::join_lobby {:#?}", player_join);
-                            self.set_player(&player_join);
+                            self.state.set_player(&player_join);
                             self.send_to_lobby(ClientToLobbyEvent::PlayerJoinLobby(player_join));
+                            self.state.transit(PlayerAppState::lobby);
                         }
                     }
                     Ok(ClientMsgType::create_lobby_game) => {
                         if let Ok(payload) = PlayerCreateGame::from_reader(&mut reader, &raw_buf) {
                             debug!("ClientMsgType::create_lobby_game {:#?}", payload);
+                            self.state.transit(PlayerAppState::waiting_game_start);
                             self.send_to_lobby(ClientToLobbyEvent::PlayerCreateGame(
                                 self.socket_id,
                                 payload,
@@ -130,6 +97,7 @@ impl Session {
                         if let Ok(player_join) = PlayerJoinGame::from_reader(&mut reader, &raw_buf)
                         {
                             debug!("ClientMsgType::join_lobby_game {:#?}", player_join);
+                            self.state.transit(PlayerAppState::waiting_game_start);
                             self.send_to_lobby(ClientToLobbyEvent::PlayerJoinGame(
                                 self.socket_id,
                                 player_join,
@@ -142,7 +110,7 @@ impl Session {
                             self.send_to_game(ClientToGameEvent::SelectCell(
                                 self.socket_id,
                                 PlayerMove {
-                                    player_id: self.client.player_id,
+                                    player_id: self.state.player_id,
                                     x: payload.x,
                                     y: payload.y,
                                 },
@@ -154,7 +122,7 @@ impl Session {
                             debug!("ClientMsgType::player_rejoin {:#?}", payload);
                             self.send_to_game(ClientToGameEvent::Reconnected(
                                 self.socket_id,
-                                self.client.player_id,
+                                self.state.player_id,
                             ));
                             self.send_to_ws(ServerMsgType::player_reconnected, &payload)
                                 .await;
@@ -189,26 +157,22 @@ impl Session {
         info!("Client {} -> LobbyToClientEvent {:?}", self.socket_id, msg);
         match msg {
             LobbyToClientEvent::Subscribe(sender) => {
-                self.subscribed_lobby = Some(sender);
+                self.state.set_lobby(sender);
+                self.state.transit(PlayerAppState::lobby);
             }
             LobbyToClientEvent::JoinLobby(_) => todo!(),
             LobbyToClientEvent::LobbyMsg(_) => todo!(),
             LobbyToClientEvent::LeaveLobby(payload) => {
-                // TODO send to client
+                // let was_player = payload.iter().find(|s| s == &&self.socket_id);
+                // if
             }
             LobbyToClientEvent::LobbyState(payload) => {
-                let _ = self
-                    .ws_sender
-                    .send(serialize_server_event(ServerMsgType::lobby_state, &payload))
-                    .await;
+                self.send_to_ws(ServerMsgType::lobby_state, &payload).await;
             }
             LobbyToClientEvent::JoinLobbyGame(_) => todo!(),
             LobbyToClientEvent::LeaveLobbyGame(_) => todo!(),
             LobbyToClientEvent::PlayerJoinGame(payload) => {
-                let _ = self
-                    .ws_sender
-                    .send(serialize_server_event(ServerMsgType::player_join, &payload))
-                    .await;
+                self.send_to_ws(ServerMsgType::player_join, &payload).await;
             }
         }
     }
@@ -220,16 +184,15 @@ impl Session {
                     "ClientEvent::SubscribeToGame (socket_id {} game_id {})",
                     self.socket_id, game_id
                 );
+                self.state.transit(PlayerAppState::waiting_game_start);
                 let _ = client_sender.send(ClientToGameEvent::SubscribeToGame(
-                    self.client.clone(),
+                    self.state.get_client(),
                     self.game_sender.clone(),
                 ));
-                self.subscribed_games.push(SubscribedGame {
-                    game_id,
-                    sender: client_sender,
-                });
+                self.state.push_game(game_id, client_sender);
             }
             GameToClientEvent::PlayerDisconnected(payload) => {
+                self.state.transit_game(PlayerInGameState::waiting_player);
                 self.send_to_ws(ServerMsgType::player_disconnected, &payload)
                     .await;
             }
@@ -240,12 +203,22 @@ impl Session {
             GameToClientEvent::PlayerJoin(_) => todo!(),
             GameToClientEvent::PlayerLeave() => todo!(),
             GameToClientEvent::GameStart(payload) => {
+                // @TODO use the payload
+                self.state.transit(PlayerAppState::in_game);
+                self.state.transit_game(PlayerInGameState::x_turn);
                 self.send_to_ws(ServerMsgType::game_start, &payload).await;
             }
             GameToClientEvent::GameEnd(payload) => {
+                self.state.transit_game(PlayerInGameState::ended);
                 self.send_to_ws(ServerMsgType::game_end, &payload).await;
             }
             GameToClientEvent::GameUpdate(payload) => {
+                // self.state.transit_game(to);
+                // if self.game_state == PlayerInGameState::x_turn {
+                //     self.game_state = PlayerInGameState::o_turn;
+                // } else {
+                //     self.game_state = PlayerInGameState::x_turn;
+                // }
                 self.send_to_ws(ServerMsgType::game_player_move, &payload)
                     .await;
             }
@@ -258,10 +231,16 @@ impl Session {
             .await;
     }
     fn send_to_lobby(&mut self, event: ClientToLobbyEvent) {
-        let _ = self.subscribed_lobby.as_ref().unwrap().send(event.clone());
+        let _ = self
+            .state
+            .subscribed_lobby
+            .as_ref()
+            .unwrap()
+            .send(event.clone());
     }
     fn send_to_game(&mut self, event: ClientToGameEvent) {
-        self.subscribed_games
+        self.state
+            .subscribed_games
             .retain(|sub| sub.sender.send(event.clone()).is_ok());
     }
 }
@@ -278,8 +257,7 @@ pub fn run_session(mut session: SessionHandle) -> JoinHandle<SessionHandle> {
                                 break;
                             }
                         }
-                        Err(err) => {
-                            println!("socket error {:?}", err);
+                        Err(_err) => {
                             break;
                         }
                     }

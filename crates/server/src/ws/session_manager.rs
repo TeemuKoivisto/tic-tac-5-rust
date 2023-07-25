@@ -31,8 +31,8 @@ impl SessionManager {
     }
 
     pub fn add_disconnected(&mut self, session: SessionHandle) {
-        let player_id = session.actor.client.player_id;
-        let socket_id = session.actor.client.socket_id;
+        let player_id = session.actor.state.player_id;
+        let socket_id = session.actor.socket_id;
         self.disconnected.push(Connection {
             handle: session,
             player_id,

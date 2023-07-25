@@ -56,8 +56,8 @@ pub fn run_game(mut actor: Game) -> JoinHandle<()> {
                     actor.handle_client_event(ev).await;
                 },
                 _ = interval.tick() => {
+                    println!("tick");
                     if !actor.check_if_running() {
-                        actor.send_end_game();
                         break;
                     }
                 },
@@ -66,5 +66,6 @@ pub fn run_game(mut actor: Game) -> JoinHandle<()> {
                 },
             }
         }
+        actor.send_end_game();
     })
 }

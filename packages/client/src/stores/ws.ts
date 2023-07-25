@@ -5,7 +5,7 @@ import {
   LobbyState,
   PlayerJoinGame,
   PlayerJoinLobby,
-  PlayerStatus,
+  PlayerState,
   BoardState,
   GameEnd,
   GameMove,
@@ -51,7 +51,7 @@ export const socketActions = {
           cb({ e: ServerMsgType.lobby_state, data: LobbyState.decode(payload) })
           break
         case ServerMsgType.player_status:
-          cb({ e: ServerMsgType.player_status, data: PlayerStatus.decode(payload) })
+          cb({ e: ServerMsgType.player_status, data: PlayerState.decode(payload) })
           break
         case ServerMsgType.player_msg:
         case ServerMsgType.player_join_lobby:

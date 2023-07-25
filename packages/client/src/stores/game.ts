@@ -121,6 +121,11 @@ export function handleMessages(evt: SocketEvent) {
         return cells
       })
       playerInTurn.set(get(players).find(p => p.playerNumber === evt.data.nextInTurn))
+      if (evt.data.nextInTurn === get(localPlayer)?.playerNumber) {
+        stateActions.transitGame(GameState.your_turn)
+      } else {
+        stateActions.transitGame(GameState.opponent_turn)
+      }
       break
     case ServerMsgType.player_disconnected:
       modalActions.open(EModal.PLAYER_DISCONNECTED, evt.data)

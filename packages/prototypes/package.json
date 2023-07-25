@@ -22,9 +22,10 @@
     "rimraf": "^3.0.2",
     "rollup": "^3.10.0",
     "rollup-plugin-typescript2": "^0.34.1",
-    "ts-proto": "^1.138.0"
+    "ts-proto": "^1.156.1"
   },
   "dependencies": {
+    "long": "^5.2.3",
     "protobufjs": "^7.1.2"
   }
 }

@@ -15,6 +15,7 @@ protos() {
   pb-rs --dont_use_cow --output_directory crates/tic-tac-5/src/proto protos/*.proto
   protoc --plugin=./packages/prototypes/node_modules/.bin/protoc-gen-ts_proto \
     --ts_proto_opt=exportCommonSymbols=false \
+    --ts_proto_opt=esModuleInterop=true \
     --ts_proto_out=./packages/prototypes/protos -Iprotos protos/*.proto
   pnpm --filter prototypes build
 }
