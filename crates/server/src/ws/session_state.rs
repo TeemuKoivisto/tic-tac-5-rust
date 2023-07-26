@@ -23,6 +23,7 @@ pub struct SessionState {
     pub prev_game_state: PlayerInGameState,
     pub subscribed_lobby: Option<broadcast::Sender<ClientToLobbyEvent>>,
     pub subscribed_games: Vec<SubscribedGame>,
+    pub waiting_game: Option<String>,
 }
 
 fn is_valid_app_transition(from: &PlayerAppState, to: &PlayerAppState) -> bool {
@@ -114,6 +115,7 @@ impl SessionState {
             prev_game_state: PlayerInGameState::not_started,
             subscribed_lobby: None,
             subscribed_games: Vec::new(),
+            waiting_game: None,
         }
     }
 
@@ -150,6 +152,10 @@ impl SessionState {
         self.subscribed_lobby = Some(sender);
     }
 
+    pub fn set_waiting_game(&mut self, id: Option<String>) {
+        self.waiting_game = id;
+    }
+
     pub fn push_game(
         &mut self,
         game_id: String,
@@ -161,23 +167,17 @@ impl SessionState {
         });
     }
 
-    pub fn revert_disconnected(&mut self) {
-        if self.app_state != PlayerAppState::disconnected {
-            panic!(
-                "Session was not in disconnected state to revert it to {:?}",
-                self.prev_app_state
-            );
-        }
-        self.app_state = self.prev_app_state;
+    pub fn remove_game(&mut self, game_id: &String) {
+        self.subscribed_games.retain(|g| &g.game_id != game_id)
     }
 
     pub fn transit(&mut self, to: PlayerAppState) {
-        if !is_valid_app_transition(&self.app_state, &to) {
-            panic!(
-                "Not valid app transition: from {:?} to {:?}",
-                self.app_state, to
-            );
-        }
+        // if !is_valid_app_transition(&self.app_state, &to) {
+        //     panic!(
+        //         "Not valid app transition: from {:?} to {:?}",
+        //         self.app_state, to
+        //     );
+        // }
         self.prev_app_state = self.app_state;
         self.app_state = to;
     }

@@ -9,12 +9,12 @@ let retryTimeout: ReturnType<typeof setTimeout> | undefined
 export async function run() {
   const result = await authActions.login()
   if ('err' in result) {
-    stateActions.transitApp(PlayerAppState.errored)
+    stateActions.setState(PlayerAppState.errored)
     retryTimeout = setTimeout(() => {
       run()
     }, 5000)
   } else {
-    stateActions.transitApp(PlayerAppState.disconnected)
+    stateActions.setState(PlayerAppState.disconnected)
     socketActions.connect(handleMessages)
   }
 }

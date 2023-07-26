@@ -4,31 +4,23 @@ import { log } from '../logger'
 
 import type { Result } from '@tt5/types'
 
-// export enum PlayerAppState {
-//   'unauthenticated',
-//   'connecting',
-//   'lobby',
-//   'waiting_game_start',
-//   'in_game',
-//   'errored',
-// }
-
-// export enum PlayerInGameState {
-//   'disconnected',
-//   'your_turn',
-//   'opponent_turn',
-//   'waiting_opponent',
-//   'paused',
-//   'ended',
-// }
-
 export const appState = writable<PlayerAppState>(PlayerAppState.initializing)
 export const prevAppState = writable<PlayerAppState>(PlayerAppState.initializing)
 export const gameState = writable<PlayerInGameState>(PlayerInGameState.paused)
 
 const appTransitions: { [key in PlayerAppState]: PlayerAppState[] } = {
-  [PlayerAppState.initializing]: [PlayerAppState.disconnected, PlayerAppState.errored],
-  [PlayerAppState.disconnected]: [PlayerAppState.lobby, PlayerAppState.errored],
+  [PlayerAppState.initializing]: [
+    PlayerAppState.disconnected,
+    PlayerAppState.lobby,
+    PlayerAppState.errored,
+  ],
+  [PlayerAppState.disconnected]: [
+    PlayerAppState.initializing,
+    PlayerAppState.lobby,
+    PlayerAppState.waiting_game_start,
+    PlayerAppState.in_game,
+    PlayerAppState.errored,
+  ],
   [PlayerAppState.lobby]: [
     PlayerAppState.disconnected,
     PlayerAppState.waiting_game_start,
@@ -36,7 +28,7 @@ const appTransitions: { [key in PlayerAppState]: PlayerAppState[] } = {
     PlayerAppState.errored,
   ],
   [PlayerAppState.waiting_game_start]: [PlayerAppState.disconnected, PlayerAppState.in_game],
-  [PlayerAppState.in_game]: [PlayerAppState.lobby],
+  [PlayerAppState.in_game]: [PlayerAppState.disconnected, PlayerAppState.lobby],
   [PlayerAppState.errored]: [PlayerAppState.disconnected],
   [PlayerAppState.UNRECOGNIZED]: [],
 }
@@ -78,14 +70,23 @@ const gameTransitions: { [key in PlayerInGameState]: PlayerInGameState[] } = {
 }
 
 export const stateActions = {
+  setState(app: PlayerAppState, game?: PlayerInGameState) {
+    console.log(`SET STATE TO ${PlayerAppState[app]} ${game && PlayerInGameState[game]}`)
+    const currentApp = get(appState)
+    prevAppState.set(currentApp)
+    appState.set(app)
+    if (game) {
+      gameState.set(game)
+    }
+  },
   transitApp(to: PlayerAppState): Result<undefined> {
     const currentApp = get(appState)
     const available = appTransitions[currentApp]
     log.debug(`app transition from ${PlayerAppState[currentApp]} to ${PlayerAppState[to]}`)
-    if (!available.includes(to)) {
-      console.error(`Not a valid app state transition! from ${currentApp} to ${to}`)
-      return { err: `Not a valid app state transition! from ${currentApp} to ${to}`, code: 500 }
-    }
+    // if (!available.includes(to)) {
+    //   console.error(`Not a valid app state transition! from ${currentApp} to ${to}`)
+    //   return { err: `Not a valid app state transition! from ${currentApp} to ${to}`, code: 500 }
+    // }
     prevAppState.set(currentApp)
     appState.set(to)
     if (to === PlayerAppState.in_game) {
@@ -97,15 +98,15 @@ export const stateActions = {
     const currentApp = get(appState)
     const currentGame = get(gameState)
     log.debug(`game transition from ${PlayerInGameState[currentGame]} to ${PlayerInGameState[to]}`)
-    if (currentApp !== PlayerAppState.in_game) {
-      console.error(`App was not in in_game state! ${currentApp}`)
-      return { err: `App was not in in_game state! ${currentApp}`, code: 500 }
-    }
-    const available = gameTransitions[currentGame]
-    if (!available.includes(to)) {
-      console.error(`Not a valid game state transition! from ${currentGame} to ${to}`)
-      return { err: `Not a valid game state transition! from ${currentGame} to ${to}`, code: 500 }
-    }
+    // if (currentApp !== PlayerAppState.in_game) {
+    //   console.error(`App was not in in_game state! ${currentApp}`)
+    //   return { err: `App was not in in_game state! ${currentApp}`, code: 500 }
+    // }
+    // const available = gameTransitions[currentGame]
+    // if (!available.includes(to)) {
+    //   console.error(`Not a valid game state transition! from ${currentGame} to ${to}`)
+    //   return { err: `Not a valid game state transition! from ${currentGame} to ${to}`, code: 500 }
+    // }
     gameState.set(to)
     return { data: undefined }
   },

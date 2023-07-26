@@ -1,7 +1,9 @@
 use axum::extract::ws::WebSocket;
 use tokio::sync::broadcast::{self, error::SendError};
 
-use crate::state::events::{ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent};
+use crate::state::events::{
+    ClientConnected, ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent,
+};
 
 use super::session::Session;
 
@@ -45,12 +47,15 @@ impl SessionHandle {
     pub fn subscribe(
         &self,
         sender: &broadcast::Sender<ClientToLobbyEvent>,
+        player_id: u32,
     ) -> Result<usize, SendError<ClientToLobbyEvent>> {
-        sender.send(ClientToLobbyEvent::Connected(
-            self.socket_id,
-            self.actor.state.get_game_ids(),
-            self.lobby_sender.clone(),
-            self.game_sender.clone(),
-        ))
+        sender.send(ClientToLobbyEvent::Connected(ClientConnected {
+            socket_id: self.socket_id,
+            player_id,
+            waiting_game: self.actor.state.waiting_game.clone(),
+            subscribed_games: self.actor.state.get_game_ids(),
+            lobby_sender: self.lobby_sender.clone(),
+            game_sender: self.game_sender.clone(),
+        }))
     }
 }

@@ -13,17 +13,22 @@ pub enum LobbyToClientEvent {
     LobbyState(LobbyState),
     JoinLobbyGame(u32),
     LeaveLobbyGame(u32),
-    PlayerJoinGame(PlayerJoinGame),
+    PlayerJoinedGame(PlayerJoinedGame),
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientConnected {
+    pub socket_id: u32,
+    pub player_id: u32,
+    pub waiting_game: Option<String>,
+    pub subscribed_games: Vec<String>,
+    pub lobby_sender: broadcast::Sender<LobbyToClientEvent>,
+    pub game_sender: broadcast::Sender<GameToClientEvent>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ClientToLobbyEvent {
-    Connected(
-        u32,
-        Vec<String>,
-        broadcast::Sender<LobbyToClientEvent>,
-        broadcast::Sender<GameToClientEvent>,
-    ),
+    Connected(ClientConnected),
     Disconnected(u32),
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),

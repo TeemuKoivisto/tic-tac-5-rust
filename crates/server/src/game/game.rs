@@ -152,6 +152,23 @@ impl Game {
     pub async fn handle_client_event(&mut self, msg: ClientToGameEvent) {
         info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
+            ClientToGameEvent::SubscribeToGame(client, sender) => {
+                self.subscribers.push(Subscriber {
+                    socket_id: client.socket_id,
+                    sender,
+                });
+                self.state
+                    .add_player(&client.player_id, client.name, Some(client.socket_id));
+                println!(
+                    ">>> ClientToGameEvent::SubscribeToGame {} {}",
+                    self.subscribers.len(),
+                    self.joined_players.len()
+                );
+                if self.subscribers.len() == self.joined_players.len() {
+                    self.state.status = GameStatus::X_TURN;
+                    self.send(GameToClientEvent::GameStart(self.get_board_state()));
+                }
+            }
             ClientToGameEvent::Disconnected(_socket_id, player_id) => {
                 // self.subscribers.retain(|sub| sub.socket_id != socket_id);
                 self.handle_player_disconnect(&player_id);
@@ -220,19 +237,6 @@ impl Game {
                 }
             }
             ClientToGameEvent::LeaveGame() => todo!(),
-            ClientToGameEvent::SubscribeToGame(client, sender) => {
-                self.subscribers.push(Subscriber {
-                    socket_id: client.socket_id,
-                    sender,
-                });
-                self.state
-                    .add_player(&client.player_id, client.name, Some(client.socket_id));
-                println!(">>> ClientToGameEvent::SubscribeToGame");
-                if self.subscribers.len() == self.joined_players.len() {
-                    self.state.status = GameStatus::X_TURN;
-                    self.send(GameToClientEvent::GameStart(self.get_board_state()));
-                }
-            }
         }
     }
 

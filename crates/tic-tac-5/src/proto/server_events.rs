@@ -15,43 +15,43 @@ use super::*;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ServerMsgType {
-    lobby_state = 0,
-    player_status = 1,
-    player_msg = 2,
-    player_join_lobby = 3,
-    player_leave_lobby = 4,
-    lobby_game_updated = 5,
-    player_join = 6,
-    player_left = 7,
-    player_disconnected = 8,
-    player_reconnected = 9,
+    player_state = 0,
+    player_disconnected = 1,
+    player_reconnected = 2,
+    lobby_state = 3,
+    player_msg = 4,
+    player_join_lobby = 5,
+    player_leave_lobby = 6,
+    lobby_game_updated = 7,
+    player_joined_game = 8,
+    player_left_game = 9,
     game_start = 10,
-    game_end = 11,
-    game_player_move = 12,
+    game_player_move = 11,
+    game_end = 12,
 }
 
 impl Default for ServerMsgType {
     fn default() -> Self {
-        ServerMsgType::lobby_state
+        ServerMsgType::player_state
     }
 }
 
 impl From<i32> for ServerMsgType {
     fn from(i: i32) -> Self {
         match i {
-            0 => ServerMsgType::lobby_state,
-            1 => ServerMsgType::player_status,
-            2 => ServerMsgType::player_msg,
-            3 => ServerMsgType::player_join_lobby,
-            4 => ServerMsgType::player_leave_lobby,
-            5 => ServerMsgType::lobby_game_updated,
-            6 => ServerMsgType::player_join,
-            7 => ServerMsgType::player_left,
-            8 => ServerMsgType::player_disconnected,
-            9 => ServerMsgType::player_reconnected,
+            0 => ServerMsgType::player_state,
+            1 => ServerMsgType::player_disconnected,
+            2 => ServerMsgType::player_reconnected,
+            3 => ServerMsgType::lobby_state,
+            4 => ServerMsgType::player_msg,
+            5 => ServerMsgType::player_join_lobby,
+            6 => ServerMsgType::player_leave_lobby,
+            7 => ServerMsgType::lobby_game_updated,
+            8 => ServerMsgType::player_joined_game,
+            9 => ServerMsgType::player_left_game,
             10 => ServerMsgType::game_start,
-            11 => ServerMsgType::game_end,
-            12 => ServerMsgType::game_player_move,
+            11 => ServerMsgType::game_player_move,
+            12 => ServerMsgType::game_end,
             _ => Self::default(),
         }
     }
@@ -60,19 +60,19 @@ impl From<i32> for ServerMsgType {
 impl<'a> From<&'a str> for ServerMsgType {
     fn from(s: &'a str) -> Self {
         match s {
+            "player_state" => ServerMsgType::player_state,
+            "player_disconnected" => ServerMsgType::player_disconnected,
+            "player_reconnected" => ServerMsgType::player_reconnected,
             "lobby_state" => ServerMsgType::lobby_state,
-            "player_status" => ServerMsgType::player_status,
             "player_msg" => ServerMsgType::player_msg,
             "player_join_lobby" => ServerMsgType::player_join_lobby,
             "player_leave_lobby" => ServerMsgType::player_leave_lobby,
             "lobby_game_updated" => ServerMsgType::lobby_game_updated,
-            "player_join" => ServerMsgType::player_join,
-            "player_left" => ServerMsgType::player_left,
-            "player_disconnected" => ServerMsgType::player_disconnected,
-            "player_reconnected" => ServerMsgType::player_reconnected,
+            "player_joined_game" => ServerMsgType::player_joined_game,
+            "player_left_game" => ServerMsgType::player_left_game,
             "game_start" => ServerMsgType::game_start,
-            "game_end" => ServerMsgType::game_end,
             "game_player_move" => ServerMsgType::game_player_move,
+            "game_end" => ServerMsgType::game_end,
             _ => Self::default(),
         }
     }
@@ -275,6 +275,41 @@ impl MessageWrite for PlayerState {
         if self.game_state != server_events::PlayerInGameState::not_started { w.write_with_tag(16, |w| w.write_enum(*&self.game_state as i32))?; }
         for s in &self.waiting_games { w.write_with_tag(26, |w| w.write_string(&**s))?; }
         for s in &self.ended_games { w.write_with_tag(34, |w| w.write_message(s))?; }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct PlayerJoinedGame {
+    pub game_id: String,
+    pub state: PlayerAppState,
+}
+
+impl<'a> MessageRead<'a> for PlayerJoinedGame {
+    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
+        let mut msg = Self::default();
+        while !r.is_eof() {
+            match r.next_tag(bytes) {
+                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
+                Ok(16) => msg.state = r.read_enum(bytes)?,
+                Ok(t) => { r.read_unknown(bytes, t)?; }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(msg)
+    }
+}
+
+impl MessageWrite for PlayerJoinedGame {
+    fn get_size(&self) -> usize {
+        0
+        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
+        + if self.state == server_events::PlayerAppState::initializing { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
+    }
+
+    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
+        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
+        if self.state != server_events::PlayerAppState::initializing { w.write_with_tag(16, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }

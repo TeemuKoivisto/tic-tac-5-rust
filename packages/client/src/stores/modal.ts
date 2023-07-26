@@ -1,4 +1,4 @@
-import { GamePlayerDisconnected, GameStatus } from '@tt5/prototypes'
+import { GamePlayerDisconnected, GameStatus, PlayerInGameState } from '@tt5/prototypes'
 import { get, writable } from 'svelte/store'
 
 export enum EModal {
@@ -35,6 +35,7 @@ export const modals = writable<ModalParams>({
     playerId: 0,
     symbol: '',
     name: '',
+    state: PlayerInGameState.waiting_player,
   },
 })
 export const openModal = writable<EModal | null>(null)

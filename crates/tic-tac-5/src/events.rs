@@ -52,19 +52,19 @@ impl TryInto<u8> for ServerMsgType {
     type Error = ();
     fn try_into(self) -> Result<u8, Self::Error> {
         match self {
-            Self::lobby_state => Ok(0),
-            Self::player_status => Ok(1),
-            Self::player_msg => Ok(2),
-            Self::player_join_lobby => Ok(3),
-            Self::player_leave_lobby => Ok(4),
-            Self::lobby_game_updated => Ok(5),
-            Self::player_join => Ok(6),
-            Self::player_left => Ok(7),
-            Self::player_disconnected => Ok(8),
-            Self::player_reconnected => Ok(9),
+            Self::player_state => Ok(0),
+            Self::player_disconnected => Ok(1),
+            Self::player_reconnected => Ok(2),
+            Self::lobby_state => Ok(3),
+            Self::player_msg => Ok(4),
+            Self::player_join_lobby => Ok(5),
+            Self::player_leave_lobby => Ok(6),
+            Self::lobby_game_updated => Ok(7),
+            Self::player_joined_game => Ok(8),
+            Self::player_left_game => Ok(9),
             Self::game_start => Ok(10),
-            Self::game_end => Ok(11),
-            Self::game_player_move => Ok(12),
+            Self::game_player_move => Ok(11),
+            Self::game_end => Ok(12),
         }
     }
 }

@@ -14,6 +14,7 @@ import {
   PlayerCreateGame,
   PlayerSelectCell,
   PlayerRejoinGame,
+  PlayerJoinedGame,
 } from '@tt5/prototypes'
 
 import { jwt } from './auth'
@@ -50,16 +51,16 @@ export const socketActions = {
         case ServerMsgType.lobby_state:
           cb({ e: ServerMsgType.lobby_state, data: LobbyState.decode(payload) })
           break
-        case ServerMsgType.player_status:
-          cb({ e: ServerMsgType.player_status, data: PlayerState.decode(payload) })
+        case ServerMsgType.player_state:
+          cb({ e: ServerMsgType.player_state, data: PlayerState.decode(payload) })
+          break
+        case ServerMsgType.player_joined_game:
+          cb({ e: ServerMsgType.player_joined_game, data: PlayerJoinedGame.decode(payload) })
           break
         case ServerMsgType.player_msg:
         case ServerMsgType.player_join_lobby:
         case ServerMsgType.player_leave_lobby:
         case ServerMsgType.lobby_game_updated:
-        case ServerMsgType.player_join:
-          log.debug(`Read type ${messageType}`)
-          break
         case ServerMsgType.game_start: {
           cb({ e: ServerMsgType.game_start, data: BoardState.decode(payload) })
           break

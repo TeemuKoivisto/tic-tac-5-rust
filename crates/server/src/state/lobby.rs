@@ -9,7 +9,7 @@ use crate::game::game_handle::GameHandle;
 use crate::game::listed_game::ListedGame;
 use crate::state::events::{ClientToLobbyEvent, LobbyToClientEvent};
 
-use super::events::{GameToClientEvent, GameToLobbyEvent};
+use super::events::{ClientConnected, GameToClientEvent, GameToLobbyEvent};
 
 #[derive(Debug)]
 pub struct ClientSubscriber {
@@ -27,7 +27,7 @@ pub struct Lobby {
     client_receiver: broadcast::Receiver<ClientToLobbyEvent>,
     game_sender: broadcast::Sender<GameToLobbyEvent>,
     game_receiver: broadcast::Receiver<GameToLobbyEvent>,
-    subscribers: Vec<ClientSubscriber>,
+    subscribers: Vec<ClientConnected>,
 }
 
 impl Lobby {
@@ -87,26 +87,142 @@ impl Lobby {
         }
     }
 
+    pub fn find_and_join_listed_game(
+        &mut self,
+        game_id: &Uuid,
+        payload: &PlayerJoinGame,
+        socket_id: u32,
+    ) -> Option<bool> {
+        let found = self.lobby_games.iter_mut().find(|g| &g.id == game_id);
+        if found.is_none() {
+            return None;
+        }
+        let listed = found.unwrap();
+        if listed.handle_player_join(&payload, socket_id) {
+            let game = GameHandle::new(&listed, self.game_sender.clone());
+            let mut left: Vec<u32> = Vec::new();
+            for sub in &self.subscribers {
+                let found = listed
+                    .joined_players
+                    .iter()
+                    .find(|p| p.socket_id == Some(sub.socket_id))
+                    .is_some();
+                if found {
+                    let _ = sub.game_sender.send(GameToClientEvent::Subscribe(
+                        game.id.to_string(),
+                        game.client_sender.clone(),
+                    ));
+                    left.push(sub.socket_id);
+                }
+            }
+            self.send(LobbyToClientEvent::LeaveLobby(left.clone()));
+            self.subscribers
+                .retain(|sub| left.iter().find(|s| *s == &sub.socket_id).is_none());
+            // TODO subscribe game to players and vice-versa
+            // also leave lobby
+            self.running_games.insert(game.id.to_string(), game);
+            Some(true)
+        } else {
+            Some(false)
+        }
+    }
+
+    pub fn start_game(&mut self, listed: &ListedGame) {
+        let game = GameHandle::new(&listed, self.game_sender.clone());
+        let mut left: Vec<u32> = Vec::new();
+        for sub in &self.subscribers {
+            let found = listed
+                .joined_players
+                .iter()
+                .find(|p| p.socket_id == Some(sub.socket_id))
+                .is_some();
+            if found {
+                let _ = sub.game_sender.send(GameToClientEvent::Subscribe(
+                    game.id.to_string(),
+                    game.client_sender.clone(),
+                ));
+                left.push(sub.socket_id);
+            }
+        }
+        self.send(LobbyToClientEvent::LeaveLobby(left.clone()));
+        self.subscribers
+            .retain(|sub| left.iter().find(|s| *s == &sub.socket_id).is_none());
+        // TODO subscribe game to players and vice-versa
+        // also leave lobby
+        self.running_games.insert(game.id.to_string(), game);
+    }
+
     pub async fn handle_client_event(&mut self, msg: ClientToLobbyEvent) {
         info!("Lobby -> ClientToLobbyEvent {:?}", msg);
         match msg {
-            ClientToLobbyEvent::Connected(socket_id, game_ids, lobby_sender, game_sender) => {
-                let _ = lobby_sender.send(LobbyToClientEvent::LobbyState(LobbyState {
-                    games: self.lobby_state(),
-                    players: self.lobby_players.clone(),
-                }));
-                self.subscribers.push(ClientSubscriber {
-                    socket_id,
-                    lobby_sender,
-                    game_sender,
-                });
-                for game_id in game_ids {
-                    let found = self.running_games.get(&game_id);
-                    if found.is_some() {}
+            ClientToLobbyEvent::Connected(payload) => {
+                let mut join_lobby = true;
+                if payload.waiting_game.is_some() {
+                    let game_id = payload.waiting_game.as_ref().unwrap();
+                    let found = self
+                        .lobby_games
+                        .iter_mut()
+                        .find(|g| &g.id.to_string() == game_id);
+                    if found.is_some() {
+                        let game = found.unwrap();
+                        let started = game.handle_player_join(
+                            &PlayerJoinGame {
+                                game_id: game_id.to_string(),
+                                player_id: payload.player_id,
+                                name: "".to_string(),
+                                options: None,
+                            },
+                            payload.socket_id,
+                        );
+                        if !started {
+                            let _ =
+                                payload
+                                    .lobby_sender
+                                    .send(LobbyToClientEvent::PlayerJoinedGame(PlayerJoinedGame {
+                                        game_id: game_id.to_string(),
+                                        state: PlayerAppState::waiting_game_start,
+                                    }));
+                        }
+                        join_lobby = !started;
+                    }
+                } else if payload.subscribed_games.len() > 0 {
+                    for game_id in &payload.subscribed_games {
+                        let found = self.running_games.get(game_id);
+                        if found.is_some() {
+                            let game = found.unwrap();
+                            // @TODO send LeaveLobby and (re)subscribe to the game
+                            let _ = payload.game_sender.send(GameToClientEvent::Subscribe(
+                                game.id.to_string(),
+                                game.client_sender.clone(),
+                            ));
+                            join_lobby = false;
+                        }
+                    }
                 }
+                if join_lobby {
+                    let found = self
+                        .subscribers
+                        .iter()
+                        .find(|s| s.socket_id == payload.socket_id);
+                    // @TODO shouldnt have to check as disconnect removes the player
+                    if found.is_none() {
+                        self.subscribers.push(payload);
+                    }
+                } else {
+                    self.send(LobbyToClientEvent::LeaveLobby(vec![payload.socket_id]));
+                }
+                self.send_lobby_state();
             }
             ClientToLobbyEvent::Disconnected(socket_id) => {
                 self.subscribers.retain(|sub| sub.socket_id != socket_id);
+                let mut removed = Vec::new();
+                for game in self.lobby_games.iter_mut() {
+                    let empty = game.handle_player_leave(socket_id);
+                    if empty {
+                        removed.push(game.id);
+                    }
+                }
+                self.lobby_games.retain(|g| !removed.contains(&g.id));
             }
             ClientToLobbyEvent::PlayerCreateGame(socket_id, create_game) => {
                 let game_id = self.find_or_create_game(create_game.options.as_ref().unwrap());
@@ -117,51 +233,26 @@ impl Lobby {
                     options: create_game.options,
                 };
                 info!("player {} create game", socket_id);
-                for game in self.lobby_games.iter_mut() {
-                    if game.id == game_id {
-                        game.handle_player_join(&player_join, socket_id);
+                let found = self.find_and_join_listed_game(&game_id, &player_join, socket_id);
+                if found.is_none() {
+                    let sub = self.subscribers.iter().find(|s| s.socket_id == socket_id);
+                    if sub.is_some() {
+                        let _ =
+                            sub.unwrap()
+                                .lobby_sender
+                                .send(LobbyToClientEvent::PlayerJoinedGame(PlayerJoinedGame {
+                                    game_id: game_id.to_string(),
+                                    state: PlayerAppState::waiting_game_start,
+                                }));
                     }
-                }
-                let sub = self.subscribers.iter().find(|s| s.socket_id == socket_id);
-                if sub.is_some() {
-                    let _ = sub
-                        .unwrap()
-                        .lobby_sender
-                        .send(LobbyToClientEvent::PlayerJoinGame(player_join));
                 }
                 self.send_lobby_state();
             }
             ClientToLobbyEvent::PlayerJoinGame(socket_id, payload) => {
                 let game_id = Uuid::parse_str(&payload.game_id).unwrap();
-                let found = self.lobby_games.iter_mut().find(|g| g.id == game_id);
-                debug!("Found game {:?}", found);
-                if found.is_none() {
-                    return;
-                }
-                let listed = found.unwrap();
-                if listed.handle_player_join(&payload, socket_id) {
-                    let game = GameHandle::new(&listed, self.game_sender.clone());
-                    let mut left: Vec<u32> = Vec::new();
-                    for sub in &self.subscribers {
-                        let found = listed
-                            .joined_players
-                            .iter()
-                            .find(|p| p.socket_id == Some(sub.socket_id))
-                            .is_some();
-                        if found {
-                            let _ = sub.game_sender.send(GameToClientEvent::Subscribe(
-                                game.id.to_string(),
-                                game.client_sender.clone(),
-                            ));
-                            left.push(sub.socket_id);
-                        }
-                    }
-                    self.send(LobbyToClientEvent::LeaveLobby(left.clone()));
-                    self.subscribers
-                        .retain(|sub| left.iter().find(|s| *s == &sub.socket_id).is_none());
-                    // TODO subscribe game to players and vice-versa
-                    // also leave lobby
-                    self.running_games.insert(game.id.to_string(), game);
+                let found = self.find_and_join_listed_game(&game_id, &payload, socket_id);
+                if found.is_some() && !found.unwrap() {
+                    // @TODO should send PlayerJoinedGame
                 }
                 self.send_lobby_state();
             }

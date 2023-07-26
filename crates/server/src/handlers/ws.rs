@@ -64,14 +64,15 @@ pub async fn websocket(socket: WebSocket, token: TicTac5Token, state: Arc<Contex
     let old = sm.write().await.pop_disconnected(&token);
     let session;
     if old.is_some() {
-        session = sm.write().await.restore_session(socket, old.unwrap()).await;
         tracing::info!("RECONNECTED");
+        session = sm.write().await.restore_session(socket, old.unwrap()).await;
     } else {
-        session = sm.write().await.create_session(socket);
         tracing::info!("CREATED");
+        session = sm.write().await.create_session(socket);
     }
+    // User always subscribes first to the lobby since it's the only way to subscribe to any running games
     let lobby = state.lobby.read().await;
-    let _ = session.subscribe(&lobby.client_sender);
+    let _ = session.subscribe(&lobby.client_sender, token.player_id);
     let _ = lobby.subscribe(&session.lobby_sender);
     drop(lobby);
     tokio::select! {

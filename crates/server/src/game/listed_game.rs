@@ -53,8 +53,9 @@ impl ListedGame {
         self.joined_players.len() == self.options.players as usize
     }
 
-    pub fn handle_player_leave(&mut self, player_id: &u32) {
-        // TODO set disconnected & last connected time, remove later in game_loop if not reconnected before eg 15s timeout
-        self.joined_players.retain(|p| &p.player_id != player_id);
+    pub fn handle_player_leave(&mut self, socket_id: u32) -> bool {
+        self.joined_players
+            .retain(|p| p.socket_id != Some(socket_id));
+        self.joined_players.len() == 0
     }
 }

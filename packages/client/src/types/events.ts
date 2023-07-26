@@ -7,6 +7,7 @@ import {
   PlayerState,
   GamePlayerDisconnected,
   GamePlayerReconnected,
+  PlayerJoinedGame,
 } from '@tt5/prototypes'
 
 export type SocketEvent =
@@ -17,24 +18,8 @@ export type SocketEvent =
       e: 'disconnected'
     }
   | {
-      e: ServerMsgType.lobby_state
-      data: LobbyState
-    }
-  | {
-      e: ServerMsgType.player_status
+      e: ServerMsgType.player_state
       data: PlayerState
-    }
-  | {
-      e: ServerMsgType.game_start
-      data: BoardState
-    }
-  | {
-      e: ServerMsgType.game_end
-      data: GameEnd
-    }
-  | {
-      e: ServerMsgType.game_player_move
-      data: GameMove
     }
   | {
       e: ServerMsgType.player_disconnected
@@ -43,6 +28,26 @@ export type SocketEvent =
   | {
       e: ServerMsgType.player_reconnected
       data: GamePlayerReconnected
+    }
+  | {
+      e: ServerMsgType.lobby_state
+      data: LobbyState
+    }
+  | {
+      e: ServerMsgType.player_joined_game
+      data: PlayerJoinedGame
+    }
+  | {
+      e: ServerMsgType.game_start
+      data: BoardState
+    }
+  | {
+      e: ServerMsgType.game_player_move
+      data: GameMove
+    }
+  | {
+      e: ServerMsgType.game_end
+      data: GameEnd
     }
   | {
       e: 'error'
