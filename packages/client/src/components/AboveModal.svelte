@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { localPlayer, playerInTurn } from '../stores/game'
-  import { GameState, gameState } from '../stores/state'
+  import { PlayerInGameState } from '@tt5/prototypes'
+  import { isInTurn } from '../stores/game'
+  import { gameState } from '../stores/state'
   // import { modalActions, EModal } from '../stores/modal'
 
-  $: hideModal = $gameState !== GameState.opponent_turn && $gameState !== GameState.your_turn
-  $: isMyTurn = $localPlayer?.id === $playerInTurn?.id
-  $: titleText = isMyTurn ? "It's your turn" : "It's opponent's turn"
+  $: hideModal = $gameState !== PlayerInGameState.x_turn && $gameState !== PlayerInGameState.o_turn
+  $: titleText = $isInTurn ? "It's your turn" : "It's opponent's turn"
 
   function onKeyDown(_e: KeyboardEvent) {
     // if (e.key === 'Escape') {

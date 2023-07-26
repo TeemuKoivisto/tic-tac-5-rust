@@ -104,19 +104,19 @@ impl GameState {
         }
         self.board.update_cell_owner(x, y, player_number);
         let did_win = self.check_win(x, y);
-        if player_number == self.options.players {
+        if player_number == 2 {
             self.player_in_turn = 1;
             self.status = if did_win {
                 GameStatus::O_WON
             } else {
-                GameStatus::O_TURN
+                GameStatus::X_TURN
             };
         } else {
             self.player_in_turn = player_number + 1;
             self.status = if did_win {
                 GameStatus::X_WON
             } else {
-                GameStatus::X_TURN
+                GameStatus::O_TURN
             };
         }
         Ok((did_win, self.player_in_turn))

@@ -58,15 +58,17 @@ message PlayerState {
 message BoardState {
     string game_id = 1;
     uint32 player_in_turn = 2;
-    uint64 start_time = 5;
-    repeated Player players = 3;
-    repeated Cell cells = 4;
+    uint64 start_time = 3;
+    repeated Player players = 4;
+    repeated Cell cells = 5;
+    PlayerInGameState state = 6;
 }
 
 message GameEnd {
     string game_id = 1;
     GameStatus result = 2;
     optional uint32 winner_id = 3;
+    PlayerInGameState state = 4;
 }
 
 message GameMove {
@@ -75,6 +77,7 @@ message GameMove {
     uint32 x = 3;
     uint32 y = 4;
     // string symbol = 4;
+    PlayerInGameState state = 5;
 }
 
 message GamePlayerDisconnected {
@@ -82,9 +85,11 @@ message GamePlayerDisconnected {
     uint32 player_id = 2;
     string symbol = 4;
     string name = 5;
+    PlayerInGameState state = 6;
 }
 
 message GamePlayerReconnected {
     string game_id = 1;
     uint32 player_id = 2;
+    PlayerInGameState state = 3;
 }

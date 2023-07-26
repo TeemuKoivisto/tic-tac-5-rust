@@ -286,6 +286,7 @@ pub struct BoardState {
     pub start_time: u64,
     pub players: Vec<game::Player>,
     pub cells: Vec<game::Cell>,
+    pub state: PlayerInGameState,
 }
 
 impl<'a> MessageRead<'a> for BoardState {
@@ -295,9 +296,10 @@ impl<'a> MessageRead<'a> for BoardState {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_in_turn = r.read_uint32(bytes)?,
-                Ok(40) => msg.start_time = r.read_uint64(bytes)?,
-                Ok(26) => msg.players.push(r.read_message::<game::Player>(bytes)?),
-                Ok(34) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
+                Ok(24) => msg.start_time = r.read_uint64(bytes)?,
+                Ok(34) => msg.players.push(r.read_message::<game::Player>(bytes)?),
+                Ok(42) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
+                Ok(48) => msg.state = r.read_enum(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -314,14 +316,16 @@ impl MessageWrite for BoardState {
         + if self.start_time == 0u64 { 0 } else { 1 + sizeof_varint(*(&self.start_time) as u64) }
         + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
         + self.cells.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
+        + if self.state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_in_turn != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_in_turn))?; }
-        if self.start_time != 0u64 { w.write_with_tag(40, |w| w.write_uint64(*&self.start_time))?; }
-        for s in &self.players { w.write_with_tag(26, |w| w.write_message(s))?; }
-        for s in &self.cells { w.write_with_tag(34, |w| w.write_message(s))?; }
+        if self.start_time != 0u64 { w.write_with_tag(24, |w| w.write_uint64(*&self.start_time))?; }
+        for s in &self.players { w.write_with_tag(34, |w| w.write_message(s))?; }
+        for s in &self.cells { w.write_with_tag(42, |w| w.write_message(s))?; }
+        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(48, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }
@@ -331,6 +335,7 @@ pub struct GameEnd {
     pub game_id: String,
     pub result: game::GameStatus,
     pub winner_id: u32,
+    pub state: PlayerInGameState,
 }
 
 impl<'a> MessageRead<'a> for GameEnd {
@@ -341,6 +346,7 @@ impl<'a> MessageRead<'a> for GameEnd {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.result = r.read_enum(bytes)?,
                 Ok(24) => msg.winner_id = r.read_uint32(bytes)?,
+                Ok(32) => msg.state = r.read_enum(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -355,12 +361,14 @@ impl MessageWrite for GameEnd {
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.result == game::GameStatus::WAITING { 0 } else { 1 + sizeof_varint(*(&self.result) as u64) }
         + if self.winner_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.winner_id) as u64) }
+        + if self.state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.result != game::GameStatus::WAITING { w.write_with_tag(16, |w| w.write_enum(*&self.result as i32))?; }
         if self.winner_id != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.winner_id))?; }
+        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(32, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }
@@ -371,6 +379,7 @@ pub struct GameMove {
     pub next_in_turn: u32,
     pub x: u32,
     pub y: u32,
+    pub state: PlayerInGameState,
 }
 
 impl<'a> MessageRead<'a> for GameMove {
@@ -382,6 +391,7 @@ impl<'a> MessageRead<'a> for GameMove {
                 Ok(16) => msg.next_in_turn = r.read_uint32(bytes)?,
                 Ok(24) => msg.x = r.read_uint32(bytes)?,
                 Ok(32) => msg.y = r.read_uint32(bytes)?,
+                Ok(40) => msg.state = r.read_enum(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -397,6 +407,7 @@ impl MessageWrite for GameMove {
         + if self.next_in_turn == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.next_in_turn) as u64) }
         + if self.x == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.x) as u64) }
         + if self.y == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.y) as u64) }
+        + if self.state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
@@ -404,6 +415,7 @@ impl MessageWrite for GameMove {
         if self.next_in_turn != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.next_in_turn))?; }
         if self.x != 0u32 { w.write_with_tag(24, |w| w.write_uint32(*&self.x))?; }
         if self.y != 0u32 { w.write_with_tag(32, |w| w.write_uint32(*&self.y))?; }
+        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(40, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }
@@ -414,6 +426,7 @@ pub struct GamePlayerDisconnected {
     pub player_id: u32,
     pub symbol: String,
     pub name: String,
+    pub state: PlayerInGameState,
 }
 
 impl<'a> MessageRead<'a> for GamePlayerDisconnected {
@@ -425,6 +438,7 @@ impl<'a> MessageRead<'a> for GamePlayerDisconnected {
                 Ok(16) => msg.player_id = r.read_uint32(bytes)?,
                 Ok(34) => msg.symbol = r.read_string(bytes)?.to_owned(),
                 Ok(42) => msg.name = r.read_string(bytes)?.to_owned(),
+                Ok(48) => msg.state = r.read_enum(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -440,6 +454,7 @@ impl MessageWrite for GamePlayerDisconnected {
         + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
         + if self.symbol == String::default() { 0 } else { 1 + sizeof_len((&self.symbol).len()) }
         + if self.name == String::default() { 0 } else { 1 + sizeof_len((&self.name).len()) }
+        + if self.state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
@@ -447,6 +462,7 @@ impl MessageWrite for GamePlayerDisconnected {
         if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
         if self.symbol != String::default() { w.write_with_tag(34, |w| w.write_string(&**&self.symbol))?; }
         if self.name != String::default() { w.write_with_tag(42, |w| w.write_string(&**&self.name))?; }
+        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(48, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }
@@ -455,6 +471,7 @@ impl MessageWrite for GamePlayerDisconnected {
 pub struct GamePlayerReconnected {
     pub game_id: String,
     pub player_id: u32,
+    pub state: PlayerInGameState,
 }
 
 impl<'a> MessageRead<'a> for GamePlayerReconnected {
@@ -464,6 +481,7 @@ impl<'a> MessageRead<'a> for GamePlayerReconnected {
             match r.next_tag(bytes) {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_id = r.read_uint32(bytes)?,
+                Ok(24) => msg.state = r.read_enum(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -477,11 +495,13 @@ impl MessageWrite for GamePlayerReconnected {
         0
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.player_id == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_id) as u64) }
+        + if self.state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
     }
 
     fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
+        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(24, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }

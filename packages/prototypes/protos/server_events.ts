@@ -241,20 +241,23 @@ export interface BoardState {
   startTime: number
   players: Player[]
   cells: Cell[]
+  state: PlayerInGameState
 }
 
 export interface GameEnd {
   gameId: string
   result: GameStatus
   winnerId?: number | undefined
+  state: PlayerInGameState
 }
 
 export interface GameMove {
   playerNumber: number
   nextInTurn: number
   x: number
-  /** string symbol = 4; */
   y: number
+  /** string symbol = 4; */
+  state: PlayerInGameState
 }
 
 export interface GamePlayerDisconnected {
@@ -262,11 +265,13 @@ export interface GamePlayerDisconnected {
   playerId: number
   symbol: string
   name: string
+  state: PlayerInGameState
 }
 
 export interface GamePlayerReconnected {
   gameId: string
   playerId: number
+  state: PlayerInGameState
 }
 
 function createBaseLobbyPlayer(): LobbyPlayer {
@@ -533,7 +538,7 @@ export const PlayerState = {
 }
 
 function createBaseBoardState(): BoardState {
-  return { gameId: '', playerInTurn: 0, startTime: 0, players: [], cells: [] }
+  return { gameId: '', playerInTurn: 0, startTime: 0, players: [], cells: [], state: 0 }
 }
 
 export const BoardState = {
@@ -545,13 +550,16 @@ export const BoardState = {
       writer.uint32(16).uint32(message.playerInTurn)
     }
     if (message.startTime !== 0) {
-      writer.uint32(40).uint64(message.startTime)
+      writer.uint32(24).uint64(message.startTime)
     }
     for (const v of message.players) {
-      Player.encode(v!, writer.uint32(26).fork()).ldelim()
+      Player.encode(v!, writer.uint32(34).fork()).ldelim()
     }
     for (const v of message.cells) {
-      Cell.encode(v!, writer.uint32(34).fork()).ldelim()
+      Cell.encode(v!, writer.uint32(42).fork()).ldelim()
+    }
+    if (message.state !== 0) {
+      writer.uint32(48).int32(message.state)
     }
     return writer
   },
@@ -577,26 +585,33 @@ export const BoardState = {
 
           message.playerInTurn = reader.uint32()
           continue
-        case 5:
-          if (tag !== 40) {
+        case 3:
+          if (tag !== 24) {
             break
           }
 
           message.startTime = longToNumber(reader.uint64() as Long)
-          continue
-        case 3:
-          if (tag !== 26) {
-            break
-          }
-
-          message.players.push(Player.decode(reader, reader.uint32()))
           continue
         case 4:
           if (tag !== 34) {
             break
           }
 
+          message.players.push(Player.decode(reader, reader.uint32()))
+          continue
+        case 5:
+          if (tag !== 42) {
+            break
+          }
+
           message.cells.push(Cell.decode(reader, reader.uint32()))
+          continue
+        case 6:
+          if (tag !== 48) {
+            break
+          }
+
+          message.state = reader.int32() as any
           continue
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -616,6 +631,7 @@ export const BoardState = {
         ? object.players.map((e: any) => Player.fromJSON(e))
         : [],
       cells: Array.isArray(object?.cells) ? object.cells.map((e: any) => Cell.fromJSON(e)) : [],
+      state: isSet(object.state) ? playerInGameStateFromJSON(object.state) : 0,
     }
   },
 
@@ -636,6 +652,9 @@ export const BoardState = {
     if (message.cells?.length) {
       obj.cells = message.cells.map(e => Cell.toJSON(e))
     }
+    if (message.state !== 0) {
+      obj.state = playerInGameStateToJSON(message.state)
+    }
     return obj
   },
 
@@ -650,12 +669,13 @@ export const BoardState = {
     message.startTime = object.startTime ?? 0
     message.players = object.players?.map(e => Player.fromPartial(e)) || []
     message.cells = object.cells?.map(e => Cell.fromPartial(e)) || []
+    message.state = object.state ?? 0
     return message
   },
 }
 
 function createBaseGameEnd(): GameEnd {
-  return { gameId: '', result: 0, winnerId: undefined }
+  return { gameId: '', result: 0, winnerId: undefined, state: 0 }
 }
 
 export const GameEnd = {
@@ -668,6 +688,9 @@ export const GameEnd = {
     }
     if (message.winnerId !== undefined) {
       writer.uint32(24).uint32(message.winnerId)
+    }
+    if (message.state !== 0) {
+      writer.uint32(32).int32(message.state)
     }
     return writer
   },
@@ -700,6 +723,13 @@ export const GameEnd = {
 
           message.winnerId = reader.uint32()
           continue
+        case 4:
+          if (tag !== 32) {
+            break
+          }
+
+          message.state = reader.int32() as any
+          continue
       }
       if ((tag & 7) === 4 || tag === 0) {
         break
@@ -714,6 +744,7 @@ export const GameEnd = {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
       result: isSet(object.result) ? gameStatusFromJSON(object.result) : 0,
       winnerId: isSet(object.winnerId) ? Number(object.winnerId) : undefined,
+      state: isSet(object.state) ? playerInGameStateFromJSON(object.state) : 0,
     }
   },
 
@@ -728,6 +759,9 @@ export const GameEnd = {
     if (message.winnerId !== undefined) {
       obj.winnerId = Math.round(message.winnerId)
     }
+    if (message.state !== 0) {
+      obj.state = playerInGameStateToJSON(message.state)
+    }
     return obj
   },
 
@@ -740,12 +774,13 @@ export const GameEnd = {
     message.gameId = object.gameId ?? ''
     message.result = object.result ?? 0
     message.winnerId = object.winnerId ?? undefined
+    message.state = object.state ?? 0
     return message
   },
 }
 
 function createBaseGameMove(): GameMove {
-  return { playerNumber: 0, nextInTurn: 0, x: 0, y: 0 }
+  return { playerNumber: 0, nextInTurn: 0, x: 0, y: 0, state: 0 }
 }
 
 export const GameMove = {
@@ -761,6 +796,9 @@ export const GameMove = {
     }
     if (message.y !== 0) {
       writer.uint32(32).uint32(message.y)
+    }
+    if (message.state !== 0) {
+      writer.uint32(40).int32(message.state)
     }
     return writer
   },
@@ -800,6 +838,13 @@ export const GameMove = {
 
           message.y = reader.uint32()
           continue
+        case 5:
+          if (tag !== 40) {
+            break
+          }
+
+          message.state = reader.int32() as any
+          continue
       }
       if ((tag & 7) === 4 || tag === 0) {
         break
@@ -815,6 +860,7 @@ export const GameMove = {
       nextInTurn: isSet(object.nextInTurn) ? Number(object.nextInTurn) : 0,
       x: isSet(object.x) ? Number(object.x) : 0,
       y: isSet(object.y) ? Number(object.y) : 0,
+      state: isSet(object.state) ? playerInGameStateFromJSON(object.state) : 0,
     }
   },
 
@@ -832,6 +878,9 @@ export const GameMove = {
     if (message.y !== 0) {
       obj.y = Math.round(message.y)
     }
+    if (message.state !== 0) {
+      obj.state = playerInGameStateToJSON(message.state)
+    }
     return obj
   },
 
@@ -845,12 +894,13 @@ export const GameMove = {
     message.nextInTurn = object.nextInTurn ?? 0
     message.x = object.x ?? 0
     message.y = object.y ?? 0
+    message.state = object.state ?? 0
     return message
   },
 }
 
 function createBaseGamePlayerDisconnected(): GamePlayerDisconnected {
-  return { gameId: '', playerId: 0, symbol: '', name: '' }
+  return { gameId: '', playerId: 0, symbol: '', name: '', state: 0 }
 }
 
 export const GamePlayerDisconnected = {
@@ -866,6 +916,9 @@ export const GamePlayerDisconnected = {
     }
     if (message.name !== '') {
       writer.uint32(42).string(message.name)
+    }
+    if (message.state !== 0) {
+      writer.uint32(48).int32(message.state)
     }
     return writer
   },
@@ -905,6 +958,13 @@ export const GamePlayerDisconnected = {
 
           message.name = reader.string()
           continue
+        case 6:
+          if (tag !== 48) {
+            break
+          }
+
+          message.state = reader.int32() as any
+          continue
       }
       if ((tag & 7) === 4 || tag === 0) {
         break
@@ -920,6 +980,7 @@ export const GamePlayerDisconnected = {
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
       symbol: isSet(object.symbol) ? String(object.symbol) : '',
       name: isSet(object.name) ? String(object.name) : '',
+      state: isSet(object.state) ? playerInGameStateFromJSON(object.state) : 0,
     }
   },
 
@@ -936,6 +997,9 @@ export const GamePlayerDisconnected = {
     }
     if (message.name !== '') {
       obj.name = message.name
+    }
+    if (message.state !== 0) {
+      obj.state = playerInGameStateToJSON(message.state)
     }
     return obj
   },
@@ -954,12 +1018,13 @@ export const GamePlayerDisconnected = {
     message.playerId = object.playerId ?? 0
     message.symbol = object.symbol ?? ''
     message.name = object.name ?? ''
+    message.state = object.state ?? 0
     return message
   },
 }
 
 function createBaseGamePlayerReconnected(): GamePlayerReconnected {
-  return { gameId: '', playerId: 0 }
+  return { gameId: '', playerId: 0, state: 0 }
 }
 
 export const GamePlayerReconnected = {
@@ -969,6 +1034,9 @@ export const GamePlayerReconnected = {
     }
     if (message.playerId !== 0) {
       writer.uint32(16).uint32(message.playerId)
+    }
+    if (message.state !== 0) {
+      writer.uint32(24).int32(message.state)
     }
     return writer
   },
@@ -994,6 +1062,13 @@ export const GamePlayerReconnected = {
 
           message.playerId = reader.uint32()
           continue
+        case 3:
+          if (tag !== 24) {
+            break
+          }
+
+          message.state = reader.int32() as any
+          continue
       }
       if ((tag & 7) === 4 || tag === 0) {
         break
@@ -1007,6 +1082,7 @@ export const GamePlayerReconnected = {
     return {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
       playerId: isSet(object.playerId) ? Number(object.playerId) : 0,
+      state: isSet(object.state) ? playerInGameStateFromJSON(object.state) : 0,
     }
   },
 
@@ -1017,6 +1093,9 @@ export const GamePlayerReconnected = {
     }
     if (message.playerId !== 0) {
       obj.playerId = Math.round(message.playerId)
+    }
+    if (message.state !== 0) {
+      obj.state = playerInGameStateToJSON(message.state)
     }
     return obj
   },
@@ -1031,6 +1110,7 @@ export const GamePlayerReconnected = {
     const message = createBaseGamePlayerReconnected()
     message.gameId = object.gameId ?? ''
     message.playerId = object.playerId ?? 0
+    message.state = object.state ?? 0
     return message
   },
 }

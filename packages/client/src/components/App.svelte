@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { PlayerAppState } from '@tt5/prototypes'
 
   import Loading from './Loading.svelte'
   import Lobby from './Lobby.svelte'
@@ -7,7 +8,7 @@
   import Waiting from './Waiting.svelte'
 
   import { run } from '../stores/app'
-  import { appState, AppState } from '../stores/state'
+  import { appState } from '../stores/state'
 
   onMount(() => {
     run()
@@ -15,15 +16,15 @@
 </script>
 
 <main>
-  {#if $appState === AppState.unauthenticated || $appState === AppState.connecting}
+  {#if $appState === PlayerAppState.initializing || $appState === PlayerAppState.disconnected}
     <Loading />
-  {:else if $appState === AppState.lobby}
+  {:else if $appState === PlayerAppState.lobby}
     <Lobby />
-  {:else if $appState === AppState.waiting_game_start}
+  {:else if $appState === PlayerAppState.waiting_game_start}
     <Waiting />
-  {:else if $appState === AppState.in_game}
+  {:else if $appState === PlayerAppState.in_game}
     <Play />
-  {:else if $appState === AppState.errored}
+  {:else if $appState === PlayerAppState.errored}
     The app has crashed 😵‍💫
   {/if}
 </main>

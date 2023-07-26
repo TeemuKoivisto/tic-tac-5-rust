@@ -51,6 +51,18 @@ impl Game {
         &self.state.players[(self.state.player_in_turn - 1) as usize]
     }
 
+    pub fn get_player_game_state(&self) -> PlayerInGameState {
+        if self.state.status == GameStatus::X_TURN {
+            PlayerInGameState::x_turn
+        } else if self.state.status == GameStatus::O_TURN {
+            PlayerInGameState::o_turn
+        } else if self.state.status == GameStatus::WAITING {
+            PlayerInGameState::waiting_player
+        } else {
+            PlayerInGameState::ended
+        }
+    }
+
     pub fn get_board_state(&self) -> BoardState {
         BoardState {
             game_id: self.id.to_string(),
@@ -58,6 +70,7 @@ impl Game {
             player_in_turn: self.get_player_in_turn().id,
             players: self.state.players.clone(),
             cells: self.state.get_cells(),
+            state: self.get_player_game_state(),
         }
     }
 
@@ -132,6 +145,7 @@ impl Game {
             game_id: self.id.to_string(),
             result: self.state.status,
             winner_id,
+            state: PlayerInGameState::ended,
         }
     }
 
@@ -149,6 +163,7 @@ impl Game {
                         player_id,
                         symbol: player.symbol.clone(),
                         name: player.name.clone(),
+                        state: PlayerInGameState::waiting_player,
                     },
                 ));
             }
@@ -162,6 +177,7 @@ impl Game {
                     GamePlayerReconnected {
                         game_id: self.id.to_string(),
                         player_id,
+                        state: self.get_player_game_state(),
                     },
                 ));
             }
@@ -179,6 +195,7 @@ impl Game {
                                 next_in_turn,
                                 x: payload.x,
                                 y: payload.y,
+                                state: PlayerInGameState::ended,
                             }),
                             GameToClientEvent::GameEnd(self.get_game_end()),
                         ]);
@@ -186,11 +203,18 @@ impl Game {
                             .game_to_lobby_sender
                             .send(GameToLobbyEvent::GameEnded(self.id));
                     } else {
+                        println!(
+                            "player {} moved, next in turn {} and enum {:?}",
+                            player_number,
+                            next_in_turn,
+                            self.get_player_game_state()
+                        );
                         self.send(GameToClientEvent::GameUpdate(GameMove {
                             player_number: player_number,
                             next_in_turn,
                             x: payload.x,
                             y: payload.y,
+                            state: self.get_player_game_state(),
                         }));
                     }
                 }

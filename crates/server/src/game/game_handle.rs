@@ -56,7 +56,7 @@ pub fn run_game(mut actor: Game) -> JoinHandle<()> {
                     actor.handle_client_event(ev).await;
                 },
                 _ = interval.tick() => {
-                    println!("tick");
+                    // println!("tick");
                     if !actor.check_if_running() {
                         break;
                     }

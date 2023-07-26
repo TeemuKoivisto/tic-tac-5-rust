@@ -52,6 +52,7 @@ impl Session {
         let (ws_sender, ws_receiver) = socket.split();
         self.ws_sender = ws_sender;
         self.ws_receiver = ws_receiver;
+        self.state.revert_disconnected();
         self.send_to_ws(ServerMsgType::player_status, &self.state.get_player_state())
             .await;
     }
@@ -80,13 +81,11 @@ impl Session {
                             debug!("ClientMsgType::join_lobby {:#?}", player_join);
                             self.state.set_player(&player_join);
                             self.send_to_lobby(ClientToLobbyEvent::PlayerJoinLobby(player_join));
-                            self.state.transit(PlayerAppState::lobby);
                         }
                     }
                     Ok(ClientMsgType::create_lobby_game) => {
                         if let Ok(payload) = PlayerCreateGame::from_reader(&mut reader, &raw_buf) {
                             debug!("ClientMsgType::create_lobby_game {:#?}", payload);
-                            self.state.transit(PlayerAppState::waiting_game_start);
                             self.send_to_lobby(ClientToLobbyEvent::PlayerCreateGame(
                                 self.socket_id,
                                 payload,
@@ -97,7 +96,6 @@ impl Session {
                         if let Ok(player_join) = PlayerJoinGame::from_reader(&mut reader, &raw_buf)
                         {
                             debug!("ClientMsgType::join_lobby_game {:#?}", player_join);
-                            self.state.transit(PlayerAppState::waiting_game_start);
                             self.send_to_lobby(ClientToLobbyEvent::PlayerJoinGame(
                                 self.socket_id,
                                 player_join,
@@ -107,6 +105,7 @@ impl Session {
                     Ok(ClientMsgType::player_select_cell) => {
                         if let Ok(payload) = PlayerSelectCell::from_reader(&mut reader, &raw_buf) {
                             debug!("ClientMsgType::player_select_cell {:#?}", payload);
+                            // @TODO use game_id
                             self.send_to_game(ClientToGameEvent::SelectCell(
                                 self.socket_id,
                                 PlayerMove {
@@ -157,14 +156,16 @@ impl Session {
         info!("Client {} -> LobbyToClientEvent {:?}", self.socket_id, msg);
         match msg {
             LobbyToClientEvent::Subscribe(sender) => {
-                self.state.set_lobby(sender);
                 self.state.transit(PlayerAppState::lobby);
+                self.state.set_lobby(sender);
             }
             LobbyToClientEvent::JoinLobby(_) => todo!(),
             LobbyToClientEvent::LobbyMsg(_) => todo!(),
             LobbyToClientEvent::LeaveLobby(payload) => {
                 // let was_player = payload.iter().find(|s| s == &&self.socket_id);
-                // if
+                // if was_player.is_some() {
+                //     println!("PLAYER LEFT LOBBY");
+                // }
             }
             LobbyToClientEvent::LobbyState(payload) => {
                 self.send_to_ws(ServerMsgType::lobby_state, &payload).await;
@@ -197,15 +198,15 @@ impl Session {
                     .await;
             }
             GameToClientEvent::PlayerReconnected(payload) => {
+                self.state.transit_game(payload.state);
                 self.send_to_ws(ServerMsgType::player_reconnected, &payload)
                     .await;
             }
             GameToClientEvent::PlayerJoin(_) => todo!(),
             GameToClientEvent::PlayerLeave() => todo!(),
             GameToClientEvent::GameStart(payload) => {
-                // @TODO use the payload
                 self.state.transit(PlayerAppState::in_game);
-                self.state.transit_game(PlayerInGameState::x_turn);
+                self.state.transit_game(payload.state);
                 self.send_to_ws(ServerMsgType::game_start, &payload).await;
             }
             GameToClientEvent::GameEnd(payload) => {
@@ -213,12 +214,7 @@ impl Session {
                 self.send_to_ws(ServerMsgType::game_end, &payload).await;
             }
             GameToClientEvent::GameUpdate(payload) => {
-                // self.state.transit_game(to);
-                // if self.game_state == PlayerInGameState::x_turn {
-                //     self.game_state = PlayerInGameState::o_turn;
-                // } else {
-                //     self.game_state = PlayerInGameState::x_turn;
-                // }
+                self.state.transit_game(payload.state);
                 self.send_to_ws(ServerMsgType::game_player_move, &payload)
                     .await;
             }
