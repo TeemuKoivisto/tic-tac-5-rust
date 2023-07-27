@@ -10,7 +10,7 @@ export enum ClientMsgType {
   leave_lobby_game = 4,
   /** player_select_cell - game */
   player_select_cell = 5,
-  player_rejoin = 6,
+  pause_game = 6,
   leave_game = 7,
   UNRECOGNIZED = -1,
 }
@@ -36,8 +36,8 @@ export function clientMsgTypeFromJSON(object: any): ClientMsgType {
     case 'player_select_cell':
       return ClientMsgType.player_select_cell
     case 6:
-    case 'player_rejoin':
-      return ClientMsgType.player_rejoin
+    case 'pause_game':
+      return ClientMsgType.pause_game
     case 7:
     case 'leave_game':
       return ClientMsgType.leave_game
@@ -62,8 +62,8 @@ export function clientMsgTypeToJSON(object: ClientMsgType): string {
       return 'leave_lobby_game'
     case ClientMsgType.player_select_cell:
       return 'player_select_cell'
-    case ClientMsgType.player_rejoin:
-      return 'player_rejoin'
+    case ClientMsgType.pause_game:
+      return 'pause_game'
     case ClientMsgType.leave_game:
       return 'leave_game'
     case ClientMsgType.UNRECOGNIZED:
@@ -95,10 +95,6 @@ export interface PlayerJoinGame {
   playerId: number
   name: string
   options: GameOptions | undefined
-}
-
-export interface PlayerRejoinGame {
-  gameId: string
 }
 
 export interface PlayerSelectCell {
@@ -474,64 +470,6 @@ export const PlayerJoinGame = {
       object.options !== undefined && object.options !== null
         ? GameOptions.fromPartial(object.options)
         : undefined
-    return message
-  },
-}
-
-function createBasePlayerRejoinGame(): PlayerRejoinGame {
-  return { gameId: '' }
-}
-
-export const PlayerRejoinGame = {
-  encode(message: PlayerRejoinGame, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.gameId !== '') {
-      writer.uint32(10).string(message.gameId)
-    }
-    return writer
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): PlayerRejoinGame {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
-    let end = length === undefined ? reader.len : reader.pos + length
-    const message = createBasePlayerRejoinGame()
-    while (reader.pos < end) {
-      const tag = reader.uint32()
-      switch (tag >>> 3) {
-        case 1:
-          if (tag !== 10) {
-            break
-          }
-
-          message.gameId = reader.string()
-          continue
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break
-      }
-      reader.skipType(tag & 7)
-    }
-    return message
-  },
-
-  fromJSON(object: any): PlayerRejoinGame {
-    return { gameId: isSet(object.gameId) ? String(object.gameId) : '' }
-  },
-
-  toJSON(message: PlayerRejoinGame): unknown {
-    const obj: any = {}
-    if (message.gameId !== '') {
-      obj.gameId = message.gameId
-    }
-    return obj
-  },
-
-  create<I extends Exact<DeepPartial<PlayerRejoinGame>, I>>(base?: I): PlayerRejoinGame {
-    return PlayerRejoinGame.fromPartial(base ?? {})
-  },
-
-  fromPartial<I extends Exact<DeepPartial<PlayerRejoinGame>, I>>(object: I): PlayerRejoinGame {
-    const message = createBasePlayerRejoinGame()
-    message.gameId = object.gameId ?? ''
     return message
   },
 }

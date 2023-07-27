@@ -11,7 +11,7 @@ enum ClientMsgType {
     leave_lobby_game = 4;
     // game
     player_select_cell = 5;
-    player_rejoin = 6;
+    pause_game = 6;
     leave_game = 7;
 }
 
@@ -38,10 +38,6 @@ message PlayerJoinGame {
     uint32 player_id = 2;
     string name = 3;
     GameOptions options = 4;
-}
-
-message PlayerRejoinGame {
-    string game_id = 1;
 }
 
 message PlayerSelectCell {

@@ -53,13 +53,19 @@ impl Session {
         self.ws_sender = ws_sender;
         self.ws_receiver = ws_receiver;
         self.state.transit(PlayerAppState::initializing);
+        // if self.state.subscribed_lobby.is_some() {
+        //     self.send_to_lobby(ClientToLobbyEvent::);
+        // }
         // self.send_to_ws(ServerMsgType::player_state, &self.state.get_player_state())
         //     .await;
     }
 
     pub fn send_disconnect(&mut self) {
         self.state.transit(PlayerAppState::disconnected);
-        self.send_to_lobby(ClientToLobbyEvent::Disconnected(self.socket_id));
+        self.send_to_lobby(ClientToLobbyEvent::Disconnected(
+            self.socket_id,
+            self.state.player_id,
+        ));
         self.send_to_game(ClientToGameEvent::Disconnected(
             self.socket_id,
             self.state.player_id,
@@ -116,17 +122,17 @@ impl Session {
                             ));
                         }
                     }
-                    Ok(ClientMsgType::player_rejoin) => {
-                        if let Ok(payload) = PlayerRejoinGame::from_reader(&mut reader, &raw_buf) {
-                            debug!("ClientMsgType::player_rejoin {:#?}", payload);
-                            self.send_to_game(ClientToGameEvent::Reconnected(
-                                self.socket_id,
-                                self.state.player_id,
-                            ));
-                            self.send_to_ws(ServerMsgType::player_reconnected, &payload)
-                                .await;
-                        }
-                    }
+                    // Ok(ClientMsgType::player_rejoin) => {
+                    //     if let Ok(payload) = PlayerRejoinGame::from_reader(&mut reader, &raw_buf) {
+                    //         debug!("ClientMsgType::player_rejoin {:#?}", payload);
+                    //         self.send_to_game(ClientToGameEvent::Reconnected(
+                    //             self.socket_id,
+                    //             self.state.player_id,
+                    //         ));
+                    //         self.send_to_ws(ServerMsgType::player_reconnected, &payload)
+                    //             .await;
+                    //     }
+                    // }
                     Ok(ClientMsgType::leave_game) => {
                         if let Ok(payload) = PlayerLeaveGame::from_reader(&mut reader, &raw_buf) {
                             debug!("ClientMsgType::player_leave {:#?}", payload);
@@ -191,7 +197,7 @@ impl Session {
         match msg {
             GameToClientEvent::Subscribe(game_id, client_sender) => {
                 info!(
-                    "ClientEvent::SubscribeToGame (socket_id {} game_id {})",
+                    "GameToClientEvent::Subscribe (socket_id {} game_id {})",
                     self.socket_id, game_id
                 );
                 self.state.set_waiting_game(None);
@@ -203,11 +209,13 @@ impl Session {
                 self.state.push_game(game_id, client_sender);
             }
             GameToClientEvent::PlayerDisconnected(payload) => {
+                info!("GameToClientEvent::PlayerDisconnected");
                 self.state.transit_game(PlayerInGameState::waiting_player);
                 self.send_to_ws(ServerMsgType::player_disconnected, &payload)
                     .await;
             }
             GameToClientEvent::PlayerReconnected(payload) => {
+                info!("GameToClientEvent::PlayerReconnected");
                 self.state.transit_game(payload.state);
                 self.send_to_ws(ServerMsgType::player_reconnected, &payload)
                     .await;
@@ -215,16 +223,19 @@ impl Session {
             GameToClientEvent::PlayerJoin(_) => todo!(),
             GameToClientEvent::PlayerLeave() => todo!(),
             GameToClientEvent::GameStart(payload) => {
+                info!("GameToClientEvent::GameStart");
                 self.state.transit(PlayerAppState::in_game);
                 self.state.transit_game(payload.state);
                 self.send_to_ws(ServerMsgType::game_start, &payload).await;
             }
             GameToClientEvent::GameEnd(payload) => {
+                info!("GameToClientEvent::GameEnd");
                 self.state.transit_game(PlayerInGameState::ended);
                 self.state.remove_game(&payload.game_id);
                 self.send_to_ws(ServerMsgType::game_end, &payload).await;
             }
             GameToClientEvent::GameUpdate(payload) => {
+                info!("GameToClientEvent::GameUpdate");
                 self.state.transit_game(payload.state);
                 self.send_to_ws(ServerMsgType::game_player_move, &payload)
                     .await;

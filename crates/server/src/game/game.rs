@@ -92,7 +92,9 @@ impl Game {
                 }
             }
         }
-        self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN
+        self.state.status == GameStatus::WAITING
+            || self.state.status == GameStatus::X_TURN
+            || self.state.status == GameStatus::O_TURN
     }
 
     pub fn handle_player_leave(&mut self, player_id: &u32) {
@@ -140,7 +142,6 @@ impl Game {
         } else {
             winner_id = 0;
         }
-        println!("game end {:?}", self.state.status);
         GameEnd {
             game_id: self.id.to_string(),
             result: self.state.status,
@@ -153,20 +154,41 @@ impl Game {
         info!("Game -> ClientToGameEvent {:?}", msg);
         match msg {
             ClientToGameEvent::SubscribeToGame(client, sender) => {
-                self.subscribers.push(Subscriber {
-                    socket_id: client.socket_id,
-                    sender,
-                });
-                self.state
-                    .add_player(&client.player_id, client.name, Some(client.socket_id));
                 println!(
-                    ">>> ClientToGameEvent::SubscribeToGame {} {}",
-                    self.subscribers.len(),
-                    self.joined_players.len()
+                    "SubscribeToGame {:?} {:?}",
+                    self.subscribers, self.state.players
                 );
-                if self.subscribers.len() == self.joined_players.len() {
-                    self.state.status = GameStatus::X_TURN;
-                    self.send(GameToClientEvent::GameStart(self.get_board_state()));
+                if self
+                    .subscribers
+                    .iter()
+                    .find(|s| s.socket_id == client.socket_id)
+                    .is_none()
+                {
+                    self.subscribers.push(Subscriber {
+                        socket_id: client.socket_id,
+                        sender,
+                    });
+                    let started = self.state.add_player(
+                        &client.player_id,
+                        client.name,
+                        Some(client.socket_id),
+                    );
+                    if started {
+                        self.send(GameToClientEvent::GameStart(self.get_board_state()));
+                    }
+                } else {
+                    self.handle_player_reconnect(&client.player_id);
+                    self.send_to(
+                        GameToClientEvent::GameStart(self.get_board_state()),
+                        client.socket_id,
+                    );
+                    self.send(GameToClientEvent::PlayerReconnected(
+                        GamePlayerReconnected {
+                            game_id: self.id.to_string(),
+                            player_id: client.player_id,
+                            state: self.get_player_game_state(),
+                        },
+                    ));
                 }
             }
             ClientToGameEvent::Disconnected(_socket_id, player_id) => {

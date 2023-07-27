@@ -69,13 +69,13 @@ export function handleMessages(evt: SocketEvent) {
       stateActions.transitGame(evt.data.state)
       break
     case ServerMsgType.player_state:
-      const waitingGameId = evt.data.waitingGames[0]
-      if (waitingGameId) {
-        socketActions.emit(ClientMsgType.player_rejoin, {
-          gameId: waitingGameId,
-        })
-        stateActions.transitGame(PlayerInGameState.paused)
-      }
+      // const waitingGameId = evt.data.waitingGames[0]
+      // if (waitingGameId) {
+      //   socketActions.emit(ClientMsgType.player_rejoin, {
+      //     gameId: waitingGameId,
+      //   })
+      //   stateActions.transitGame(PlayerInGameState.paused)
+      // }
       stateActions.setState(evt.data.appState, evt.data.gameState)
       break
     case ServerMsgType.lobby_state:

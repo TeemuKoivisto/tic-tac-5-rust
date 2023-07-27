@@ -13,7 +13,6 @@ import {
   GamePlayerReconnected,
   PlayerCreateGame,
   PlayerSelectCell,
-  PlayerRejoinGame,
   PlayerJoinedGame,
 } from '@tt5/prototypes'
 
@@ -100,9 +99,6 @@ export const socketActions = {
         break
       case ClientMsgType.player_select_cell:
         data = PlayerSelectCell.encode(args[1]).finish()
-        break
-      case ClientMsgType.player_rejoin:
-        data = PlayerRejoinGame.encode(args[1]).finish()
         break
     }
     if (!data) {

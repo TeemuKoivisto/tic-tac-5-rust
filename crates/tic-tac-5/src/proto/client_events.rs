@@ -21,7 +21,7 @@ pub enum ClientMsgType {
     join_lobby_game = 3,
     leave_lobby_game = 4,
     player_select_cell = 5,
-    player_rejoin = 6,
+    pause_game = 6,
     leave_game = 7,
 }
 
@@ -40,7 +40,7 @@ impl From<i32> for ClientMsgType {
             3 => ClientMsgType::join_lobby_game,
             4 => ClientMsgType::leave_lobby_game,
             5 => ClientMsgType::player_select_cell,
-            6 => ClientMsgType::player_rejoin,
+            6 => ClientMsgType::pause_game,
             7 => ClientMsgType::leave_game,
             _ => Self::default(),
         }
@@ -56,7 +56,7 @@ impl<'a> From<&'a str> for ClientMsgType {
             "join_lobby_game" => ClientMsgType::join_lobby_game,
             "leave_lobby_game" => ClientMsgType::leave_lobby_game,
             "player_select_cell" => ClientMsgType::player_select_cell,
-            "player_rejoin" => ClientMsgType::player_rejoin,
+            "pause_game" => ClientMsgType::pause_game,
             "leave_game" => ClientMsgType::leave_game,
             _ => Self::default(),
         }
@@ -215,37 +215,6 @@ impl MessageWrite for PlayerJoinGame {
         if self.player_id != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_id))?; }
         if self.name != String::default() { w.write_with_tag(26, |w| w.write_string(&**&self.name))?; }
         if let Some(ref s) = self.options { w.write_with_tag(34, |w| w.write_message(s))?; }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Clone)]
-pub struct PlayerRejoinGame {
-    pub game_id: String,
-}
-
-impl<'a> MessageRead<'a> for PlayerRejoinGame {
-    fn from_reader(r: &mut BytesReader, bytes: &'a [u8]) -> Result<Self> {
-        let mut msg = Self::default();
-        while !r.is_eof() {
-            match r.next_tag(bytes) {
-                Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
-                Ok(t) => { r.read_unknown(bytes, t)?; }
-                Err(e) => return Err(e),
-            }
-        }
-        Ok(msg)
-    }
-}
-
-impl MessageWrite for PlayerRejoinGame {
-    fn get_size(&self) -> usize {
-        0
-        + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
-    }
-
-    fn write_message<W: WriterBackend>(&self, w: &mut Writer<W>) -> Result<()> {
-        if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         Ok(())
     }
 }

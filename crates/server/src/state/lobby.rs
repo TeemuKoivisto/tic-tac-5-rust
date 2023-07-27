@@ -60,6 +60,19 @@ impl Lobby {
             .collect()
     }
 
+    pub fn remove_player(&mut self, player_id: &u32, socket_id: u32) {
+        self.lobby_players.retain(|p| &p.player_id != player_id);
+        self.subscribers.retain(|s| &s.player_id != player_id);
+        let mut removed = Vec::new();
+        for game in self.lobby_games.iter_mut() {
+            let empty = game.handle_player_leave(socket_id);
+            if empty {
+                removed.push(game.id);
+            }
+        }
+        self.lobby_games.retain(|g| !removed.contains(&g.id));
+    }
+
     pub fn find_game(&self, user_options: &GameOptions) -> Option<Uuid> {
         for game in &self.lobby_games {
             if game.allows_joining() && game.matches_player_options(user_options) {
@@ -203,8 +216,9 @@ impl Lobby {
                     let found = self
                         .subscribers
                         .iter()
-                        .find(|s| s.socket_id == payload.socket_id);
+                        .find(|s| s.player_id == payload.player_id);
                     // @TODO shouldnt have to check as disconnect removes the player
+                    println!("ADD PLAYER {:?} {:?}", found, self.subscribers);
                     if found.is_none() {
                         self.subscribers.push(payload);
                     }
@@ -213,16 +227,8 @@ impl Lobby {
                 }
                 self.send_lobby_state();
             }
-            ClientToLobbyEvent::Disconnected(socket_id) => {
-                self.subscribers.retain(|sub| sub.socket_id != socket_id);
-                let mut removed = Vec::new();
-                for game in self.lobby_games.iter_mut() {
-                    let empty = game.handle_player_leave(socket_id);
-                    if empty {
-                        removed.push(game.id);
-                    }
-                }
-                self.lobby_games.retain(|g| !removed.contains(&g.id));
+            ClientToLobbyEvent::Disconnected(socket_id, player_id) => {
+                self.remove_player(&player_id, socket_id);
             }
             ClientToLobbyEvent::PlayerCreateGame(socket_id, create_game) => {
                 let game_id = self.find_or_create_game(create_game.options.as_ref().unwrap());
@@ -232,8 +238,8 @@ impl Lobby {
                     name: create_game.name,
                     options: create_game.options,
                 };
-                info!("player {} create game", socket_id);
                 let found = self.find_and_join_listed_game(&game_id, &player_join, socket_id);
+                info!("player {} create game found is {:?}", socket_id, found);
                 if found.is_none() {
                     let sub = self.subscribers.iter().find(|s| s.socket_id == socket_id);
                     if sub.is_some() {

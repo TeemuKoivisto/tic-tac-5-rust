@@ -50,7 +50,7 @@ impl GameState {
             rng,
         }
     }
-    pub fn add_player(&mut self, player_id: &u32, name: String, socket_id: Option<u32>) {
+    pub fn add_player(&mut self, player_id: &u32, name: String, socket_id: Option<u32>) -> bool {
         let player_number = self.players.len() as u32 + 1;
         let symbol = if player_number == 1 {
             "X".to_string()
@@ -67,6 +67,11 @@ impl GameState {
             ai: false,
         };
         self.players.push(player);
+        let full = self.players.len() == self.options.players as usize;
+        if full {
+            self.status = GameStatus::X_TURN;
+        }
+        full
     }
     pub fn get_player(&self, player_id: u32) -> &Player {
         self.players.iter().find(|p| p.id == player_id).unwrap()

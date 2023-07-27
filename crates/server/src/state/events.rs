@@ -29,7 +29,7 @@ pub struct ClientConnected {
 #[derive(Debug, Clone)]
 pub enum ClientToLobbyEvent {
     Connected(ClientConnected),
-    Disconnected(u32),
+    Disconnected(u32, u32),
     PlayerJoinLobby(PlayerJoinLobby),
     PlayerCreateGame(u32, PlayerCreateGame),
     PlayerJoinGame(u32, PlayerJoinGame),

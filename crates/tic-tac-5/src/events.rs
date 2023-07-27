@@ -16,7 +16,7 @@ impl TryFrom<u8> for ClientMsgType {
             x if x == ClientMsgType::player_select_cell as u8 => {
                 Ok(ClientMsgType::player_select_cell)
             }
-            x if x == ClientMsgType::player_rejoin as u8 => Ok(ClientMsgType::player_rejoin),
+            x if x == ClientMsgType::pause_game as u8 => Ok(ClientMsgType::pause_game),
             x if x == ClientMsgType::leave_game as u8 => Ok(ClientMsgType::leave_game),
             _ => Err(()),
         }

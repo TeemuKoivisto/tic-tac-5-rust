@@ -7,7 +7,6 @@ import {
   PlayerCreateGame,
   PlayerJoinGame,
   PlayerJoinLobby,
-  PlayerRejoinGame,
   PlayerSelectCell,
 } from './protos/client_events'
 
@@ -21,5 +20,4 @@ export interface ClientEventMap {
     ClientMsgType.player_select_cell,
     PlayerSelectCell
   >
-  [ClientMsgType.player_rejoin]: ClientEvent<ClientMsgType.player_rejoin, PlayerRejoinGame>
 }
