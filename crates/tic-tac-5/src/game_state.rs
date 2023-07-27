@@ -21,6 +21,7 @@ pub struct GameState {
     pub players: Vec<Player>,
     pub player_in_turn: u32,
     pub board: Board,
+    pub turns_elapsed: u32,
     pub rng: StdRng,
 }
 
@@ -47,6 +48,7 @@ impl GameState {
             players: Vec::new(),
             board: Board::new(size),
             player_in_turn: 1,
+            turns_elapsed: 0,
             rng,
         }
     }
@@ -97,6 +99,7 @@ impl GameState {
         }
         None
     }
+
     pub fn handle_player_move(
         &mut self,
         x: u32,
@@ -108,6 +111,7 @@ impl GameState {
             return Err(is_valid_err.unwrap().into());
         }
         self.board.update_cell_owner(x, y, player_number);
+        self.turns_elapsed += 1;
         let did_win = self.check_win(x, y);
         if player_number == 2 {
             self.player_in_turn = 1;
@@ -126,6 +130,7 @@ impl GameState {
         }
         Ok((did_win, self.player_in_turn))
     }
+
     pub fn check_win(&self, x: u32, y: u32) -> bool {
         let cell = self.board.get_cell_at(x, y);
         let mut won = false;
@@ -134,6 +139,7 @@ impl GameState {
         }
         won
     }
+
     pub fn get_cells(&self) -> Vec<Cell> {
         self.board
             .cells

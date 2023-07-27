@@ -13,6 +13,7 @@ use super::listed_game::{JoinedPlayer, ListedGame};
 #[derive(Debug)]
 pub struct Subscriber {
     socket_id: u32,
+    player_id: u32,
     sender: broadcast::Sender<GameToClientEvent>,
 }
 
@@ -67,6 +68,7 @@ impl Game {
         BoardState {
             game_id: self.id.to_string(),
             start_time: self.start_time,
+            turns_elapsed: self.state.turns_elapsed,
             player_in_turn: self.get_player_in_turn().id,
             players: self.state.players.clone(),
             cells: self.state.get_cells(),
@@ -161,11 +163,12 @@ impl Game {
                 if self
                     .subscribers
                     .iter()
-                    .find(|s| s.socket_id == client.socket_id)
+                    .find(|s| s.player_id == client.player_id)
                     .is_none()
                 {
                     self.subscribers.push(Subscriber {
                         socket_id: client.socket_id,
+                        player_id: client.player_id,
                         sender,
                     });
                     let started = self.state.add_player(

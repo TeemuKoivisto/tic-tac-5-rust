@@ -69,19 +69,12 @@ export function handleMessages(evt: SocketEvent) {
       stateActions.transitGame(evt.data.state)
       break
     case ServerMsgType.player_state:
-      // const waitingGameId = evt.data.waitingGames[0]
-      // if (waitingGameId) {
-      //   socketActions.emit(ClientMsgType.player_rejoin, {
-      //     gameId: waitingGameId,
-      //   })
-      //   stateActions.transitGame(PlayerInGameState.paused)
-      // }
       stateActions.setState(evt.data.appState, evt.data.gameState)
       break
     case ServerMsgType.lobby_state:
       lobbyGames.set(evt.data.games)
       lobbyPlayers.set(evt.data.players)
-      gameActions.reset()
+      // gameActions.reset()
       // stateActions.transitApp(PlayerAppState.lobby)
       // stateActions.setState(PlayerAppState.lobby)
       break
@@ -89,21 +82,19 @@ export function handleMessages(evt: SocketEvent) {
       stateActions.setState(evt.data.state)
       break
     case ServerMsgType.game_start:
-      gameActions.reset()
-      const pId = get(playerId)
+      gameEnd.set(undefined)
       gameId.set(evt.data.gameId)
+      gameStarted.set(evt.data.startTime)
+      gameTurns.set(evt.data.turnsElapsed)
+
+      const pId = get(playerId)
       players.set(evt.data.players)
       cells.set(new Map(evt.data.cells.map(c => [`${c.x}:${c.y}`, c])))
       localPlayer.set(evt.data.players.find(p => p.id === pId))
-      // @TODO initialize properly to handle disconnects
-      gameStarted.set(Date.now())
+      lastMove.set(undefined)
+
       stateActions.transitApp(PlayerAppState.in_game)
       stateActions.transitGame(evt.data.state)
-      // if (evt.data.playerInTurn === pId) {
-      //   stateActions.transitGame(PlayerInGameState.your_turn)
-      // } else {
-      //   stateActions.transitGame(PlayerInGameState.opponent_turn)
-      // }
       break
     case ServerMsgType.game_end:
       const player = get(localPlayer)

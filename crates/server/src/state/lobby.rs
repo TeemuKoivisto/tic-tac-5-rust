@@ -263,14 +263,21 @@ impl Lobby {
                 self.send_lobby_state();
             }
             ClientToLobbyEvent::PlayerJoinLobby(data) => {
-                self.lobby_players.insert(
-                    0,
-                    LobbyPlayer {
-                        player_id: data.player_id,
-                        name: data.name,
-                    },
-                );
-                self.send_lobby_state();
+                if self
+                    .lobby_players
+                    .iter()
+                    .find(|p| p.player_id == data.player_id)
+                    .is_none()
+                {
+                    self.lobby_players.insert(
+                        0,
+                        LobbyPlayer {
+                            player_id: data.player_id,
+                            name: data.name,
+                        },
+                    );
+                    self.send_lobby_state();
+                }
             }
         }
     }

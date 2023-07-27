@@ -64,9 +64,10 @@ message BoardState {
     string game_id = 1;
     uint32 player_in_turn = 2;
     uint64 start_time = 3;
-    repeated Player players = 4;
-    repeated Cell cells = 5;
-    PlayerInGameState state = 6;
+    uint32 turns_elapsed = 4;
+    repeated Player players = 5;
+    repeated Cell cells = 6;
+    PlayerInGameState state = 7;
 }
 
 message GameEnd {

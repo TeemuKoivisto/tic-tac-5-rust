@@ -319,6 +319,7 @@ pub struct BoardState {
     pub game_id: String,
     pub player_in_turn: u32,
     pub start_time: u64,
+    pub turns_elapsed: u32,
     pub players: Vec<game::Player>,
     pub cells: Vec<game::Cell>,
     pub state: PlayerInGameState,
@@ -332,9 +333,10 @@ impl<'a> MessageRead<'a> for BoardState {
                 Ok(10) => msg.game_id = r.read_string(bytes)?.to_owned(),
                 Ok(16) => msg.player_in_turn = r.read_uint32(bytes)?,
                 Ok(24) => msg.start_time = r.read_uint64(bytes)?,
-                Ok(34) => msg.players.push(r.read_message::<game::Player>(bytes)?),
-                Ok(42) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
-                Ok(48) => msg.state = r.read_enum(bytes)?,
+                Ok(32) => msg.turns_elapsed = r.read_uint32(bytes)?,
+                Ok(42) => msg.players.push(r.read_message::<game::Player>(bytes)?),
+                Ok(50) => msg.cells.push(r.read_message::<game::Cell>(bytes)?),
+                Ok(56) => msg.state = r.read_enum(bytes)?,
                 Ok(t) => { r.read_unknown(bytes, t)?; }
                 Err(e) => return Err(e),
             }
@@ -349,6 +351,7 @@ impl MessageWrite for BoardState {
         + if self.game_id == String::default() { 0 } else { 1 + sizeof_len((&self.game_id).len()) }
         + if self.player_in_turn == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.player_in_turn) as u64) }
         + if self.start_time == 0u64 { 0 } else { 1 + sizeof_varint(*(&self.start_time) as u64) }
+        + if self.turns_elapsed == 0u32 { 0 } else { 1 + sizeof_varint(*(&self.turns_elapsed) as u64) }
         + self.players.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
         + self.cells.iter().map(|s| 1 + sizeof_len((s).get_size())).sum::<usize>()
         + if self.state == server_events::PlayerInGameState::not_started { 0 } else { 1 + sizeof_varint(*(&self.state) as u64) }
@@ -358,9 +361,10 @@ impl MessageWrite for BoardState {
         if self.game_id != String::default() { w.write_with_tag(10, |w| w.write_string(&**&self.game_id))?; }
         if self.player_in_turn != 0u32 { w.write_with_tag(16, |w| w.write_uint32(*&self.player_in_turn))?; }
         if self.start_time != 0u64 { w.write_with_tag(24, |w| w.write_uint64(*&self.start_time))?; }
-        for s in &self.players { w.write_with_tag(34, |w| w.write_message(s))?; }
-        for s in &self.cells { w.write_with_tag(42, |w| w.write_message(s))?; }
-        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(48, |w| w.write_enum(*&self.state as i32))?; }
+        if self.turns_elapsed != 0u32 { w.write_with_tag(32, |w| w.write_uint32(*&self.turns_elapsed))?; }
+        for s in &self.players { w.write_with_tag(42, |w| w.write_message(s))?; }
+        for s in &self.cells { w.write_with_tag(50, |w| w.write_message(s))?; }
+        if self.state != server_events::PlayerInGameState::not_started { w.write_with_tag(56, |w| w.write_enum(*&self.state as i32))?; }
         Ok(())
     }
 }

@@ -7,9 +7,9 @@
   export const hideModal: () => void = () => undefined
 
   const { player, result, startTime, turns } = params
-  const elapsed = Date.now() - startTime
-  const min = Math.floor(elapsed / 1000 / 60) % 60
-  const sec = Math.floor(elapsed / 1000) % 60
+  const elapsed = Date.now() / 1000 - startTime
+  const min = Math.floor(elapsed / 60) % 60
+  const sec = Math.floor(elapsed) % 60
   const timer = `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`
   const elapsedTurns = turns
   let titleText: string

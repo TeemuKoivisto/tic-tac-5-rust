@@ -244,6 +244,7 @@ export interface BoardState {
   gameId: string
   playerInTurn: number
   startTime: number
+  turnsElapsed: number
   players: Player[]
   cells: Cell[]
   state: PlayerInGameState
@@ -618,7 +619,15 @@ export const PlayerJoinedGame = {
 }
 
 function createBaseBoardState(): BoardState {
-  return { gameId: '', playerInTurn: 0, startTime: 0, players: [], cells: [], state: 0 }
+  return {
+    gameId: '',
+    playerInTurn: 0,
+    startTime: 0,
+    turnsElapsed: 0,
+    players: [],
+    cells: [],
+    state: 0,
+  }
 }
 
 export const BoardState = {
@@ -632,14 +641,17 @@ export const BoardState = {
     if (message.startTime !== 0) {
       writer.uint32(24).uint64(message.startTime)
     }
+    if (message.turnsElapsed !== 0) {
+      writer.uint32(32).uint32(message.turnsElapsed)
+    }
     for (const v of message.players) {
-      Player.encode(v!, writer.uint32(34).fork()).ldelim()
+      Player.encode(v!, writer.uint32(42).fork()).ldelim()
     }
     for (const v of message.cells) {
-      Cell.encode(v!, writer.uint32(42).fork()).ldelim()
+      Cell.encode(v!, writer.uint32(50).fork()).ldelim()
     }
     if (message.state !== 0) {
-      writer.uint32(48).int32(message.state)
+      writer.uint32(56).int32(message.state)
     }
     return writer
   },
@@ -673,21 +685,28 @@ export const BoardState = {
           message.startTime = longToNumber(reader.uint64() as Long)
           continue
         case 4:
-          if (tag !== 34) {
+          if (tag !== 32) {
             break
           }
 
-          message.players.push(Player.decode(reader, reader.uint32()))
+          message.turnsElapsed = reader.uint32()
           continue
         case 5:
           if (tag !== 42) {
             break
           }
 
-          message.cells.push(Cell.decode(reader, reader.uint32()))
+          message.players.push(Player.decode(reader, reader.uint32()))
           continue
         case 6:
-          if (tag !== 48) {
+          if (tag !== 50) {
+            break
+          }
+
+          message.cells.push(Cell.decode(reader, reader.uint32()))
+          continue
+        case 7:
+          if (tag !== 56) {
             break
           }
 
@@ -707,6 +726,7 @@ export const BoardState = {
       gameId: isSet(object.gameId) ? String(object.gameId) : '',
       playerInTurn: isSet(object.playerInTurn) ? Number(object.playerInTurn) : 0,
       startTime: isSet(object.startTime) ? Number(object.startTime) : 0,
+      turnsElapsed: isSet(object.turnsElapsed) ? Number(object.turnsElapsed) : 0,
       players: Array.isArray(object?.players)
         ? object.players.map((e: any) => Player.fromJSON(e))
         : [],
@@ -725,6 +745,9 @@ export const BoardState = {
     }
     if (message.startTime !== 0) {
       obj.startTime = Math.round(message.startTime)
+    }
+    if (message.turnsElapsed !== 0) {
+      obj.turnsElapsed = Math.round(message.turnsElapsed)
     }
     if (message.players?.length) {
       obj.players = message.players.map(e => Player.toJSON(e))
@@ -747,6 +770,7 @@ export const BoardState = {
     message.gameId = object.gameId ?? ''
     message.playerInTurn = object.playerInTurn ?? 0
     message.startTime = object.startTime ?? 0
+    message.turnsElapsed = object.turnsElapsed ?? 0
     message.players = object.players?.map(e => Player.fromPartial(e)) || []
     message.cells = object.cells?.map(e => Cell.fromPartial(e)) || []
     message.state = object.state ?? 0

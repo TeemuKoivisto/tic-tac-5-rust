@@ -42,12 +42,12 @@ impl SessionManager {
     }
 
     pub fn pop_disconnected(&mut self, token: &TicTac5Token) -> Option<Connection> {
-        let dis = self
-            .disconnected
-            .iter()
-            .map(|d| (d.player_id, d.socket_id))
-            .collect::<Vec<(u32, u32)>>();
-        println!("DISCONNECTED: {:?}", dis);
+        // let dis = self
+        //     .disconnected
+        //     .iter()
+        //     .map(|d| (d.player_id, d.socket_id))
+        //     .collect::<Vec<(u32, u32)>>();
+        // println!("DISCONNECTED: {:?}", dis);
         let idx = self
             .disconnected
             .iter()

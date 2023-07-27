@@ -3,8 +3,9 @@ use tokio::sync::{broadcast, mpsc};
 
 use crate::state::events::{Client, ClientToGameEvent, ClientToLobbyEvent};
 
+#[derive(Debug, Clone)]
 pub struct SubscribedGame {
-    game_id: String,
+    pub game_id: String,
     pub sender: broadcast::Sender<ClientToGameEvent>,
 }
 
@@ -156,10 +157,17 @@ impl SessionState {
         game_id: String,
         client_sender: broadcast::Sender<ClientToGameEvent>,
     ) {
-        self.subscribed_games.push(SubscribedGame {
-            game_id,
-            sender: client_sender,
-        });
+        if self
+            .subscribed_games
+            .iter()
+            .find(|g| g.game_id == game_id)
+            .is_none()
+        {
+            self.subscribed_games.push(SubscribedGame {
+                game_id,
+                sender: client_sender,
+            });
+        }
     }
 
     pub fn remove_game(&mut self, game_id: &String) {

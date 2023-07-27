@@ -23,6 +23,7 @@ pub struct LoginResponse {
 }
 
 pub async fn login(State(state): State<Arc<Context>>) -> AxumResponse {
+    // NOTE: for incognito users this will create a new player_id when they close their window
     let player_id = state.session_manager.write().await.get_next_player_id();
     let (token, expires) = state.jwt_manager.write().await.encode_login(player_id);
     Json(LoginResponse {
