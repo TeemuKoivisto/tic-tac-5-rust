@@ -1,12 +1,7 @@
 use tic_tac_5::proto::{client_events::PlayerJoinLobby, server_events::*};
 use tokio::sync::{broadcast, mpsc};
 
-use crate::state::{
-    client::Client,
-    events::{
-        ClientToGameEvent, ClientToLobbyEvent, GameToClientEvent, LobbyToClientEvent, PlayerMove,
-    },
-};
+use crate::state::events::{Client, ClientToGameEvent, ClientToLobbyEvent};
 
 pub struct SubscribedGame {
     game_id: String,

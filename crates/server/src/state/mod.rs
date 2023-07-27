@@ -1,4 +1,3 @@
-pub mod client;
 pub mod context;
 pub mod events;
 pub mod jwt_manager;

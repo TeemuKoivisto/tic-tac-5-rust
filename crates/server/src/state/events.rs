@@ -2,8 +2,6 @@ use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
-use super::client::Client;
-
 #[derive(Debug, Clone)]
 pub enum LobbyToClientEvent {
     Subscribe(broadcast::Sender<ClientToLobbyEvent>),
@@ -14,6 +12,13 @@ pub enum LobbyToClientEvent {
     JoinLobbyGame(u32),
     LeaveLobbyGame(u32),
     PlayerJoinedGame(PlayerJoinedGame),
+}
+
+#[derive(Debug, Clone)]
+pub struct Client {
+    pub player_id: u32,
+    pub name: String,
+    pub socket_id: u32,
 }
 
 #[derive(Debug, Clone)]
