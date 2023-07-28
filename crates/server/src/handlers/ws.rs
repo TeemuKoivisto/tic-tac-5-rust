@@ -66,7 +66,6 @@ pub async fn websocket(socket: WebSocket, token: TicTac5Token, state: Arc<Contex
     if old.is_some() {
         tracing::info!("RECONNECTED");
         session = sm.write().await.restore_session(socket, old.unwrap()).await;
-        // @TODO send Reconnected
     } else {
         tracing::info!("CREATED");
         session = sm.write().await.create_session(socket);

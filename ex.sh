@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
 ROOT_DIR="$(dirname $(readlink -f $0))"
-export JWT_SECRET="very-secret"
 
 run() {
   cd $ROOT_DIR
-  RUST_LOG=server=info cargo run -p server --release
+  env $(cat .env) cargo run -p server --release
   # cargo build -p tic-tac-5 && cargo run -p server --release
 }
 

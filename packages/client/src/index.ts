@@ -3,7 +3,7 @@ import './index.css'
 
 import { enableDebug } from './logger'
 
-enableDebug(false)
+enableDebug(true)
 
 const el = document.querySelector('#app')
 if (el) {

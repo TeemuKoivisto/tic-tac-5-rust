@@ -32,7 +32,7 @@
   class="my-32 p-4 h-full m-auto lg:container md:p-16 md:pt-8 xs:p-8 rounded-2xl flex flex-col items-center justify-center"
 >
   <h1 class="my-3 text-5xl font-bold flex items-center">TicTac5</h1>
-  <div class="mt-24 flex items-center justify-center">
+  <div class="mt-24 flex flex-col md:flex-row items-center justify-center">
     <form class="w-52 flex flex-col" on:submit|preventDefault={handleCreateSubmit}>
       <div class="col-field">
         <label for="name">Name</label>
@@ -51,11 +51,11 @@
         </button>
       </div>
     </form>
-    <div class="w-52 ml-16">
+    <div class="w-52 mt-12 md:ml-16 flex justify-center">
       {#if $lobbyGames.length === 0}
-        <h3 class="my-6 ml-24">No games</h3>
+        <h3>No games</h3>
       {:else}
-        <ul>
+        <ul class="w-full">
           {#each $lobbyGames as game, idx}
             <li>
               <div>

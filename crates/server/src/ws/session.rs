@@ -53,6 +53,7 @@ impl Session {
         self.ws_sender = ws_sender;
         self.ws_receiver = ws_receiver;
         self.state.transit(PlayerAppState::initializing);
+        // @TODO send Reconnected?
         // if self.state.subscribed_lobby.is_some() {
         //     self.send_to_lobby(ClientToLobbyEvent::);
         // }
