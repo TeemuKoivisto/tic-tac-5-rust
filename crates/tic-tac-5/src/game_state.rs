@@ -172,7 +172,7 @@ mod tests {
     use rand::{rngs::OsRng, Rng};
 
     #[test]
-    fn exploration() {
+    fn test_basic_game() {
         let opts = GameOptions {
             size: 25,
             players: 2,
