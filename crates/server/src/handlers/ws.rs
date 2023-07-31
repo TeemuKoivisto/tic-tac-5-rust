@@ -60,16 +60,18 @@ pub async fn ws_handler(
 }
 
 pub async fn websocket(socket: WebSocket, token: TicTac5Token, state: Arc<Context>) {
-    let sm = &state.session_manager;
-    let old = sm.write().await.pop_disconnected(&token);
-    let session;
-    if old.is_some() {
+    let session_manager = &state.session_manager;
+    let mut sm = session_manager.write().await;
+    sm.remove_expired();
+    let old = sm.pop_disconnected(&token);
+    let session = if old.is_some() {
         tracing::info!("RECONNECTED");
-        session = sm.write().await.restore_session(socket, old.unwrap()).await;
+        sm.restore_session(socket, old.unwrap()).await
     } else {
         tracing::info!("CREATED");
-        session = sm.write().await.create_session(socket);
-    }
+        sm.create_session(socket)
+    };
+    drop(sm);
     // User always subscribes first to the lobby since it's the only way to subscribe to any running games
     let lobby = state.lobby.read().await;
     let _ = session.subscribe(&lobby.client_sender, token.player_id);
@@ -78,7 +80,7 @@ pub async fn websocket(socket: WebSocket, token: TicTac5Token, state: Arc<Contex
     tokio::select! {
         sess = (run_session(session)) => {
             if sess.is_ok() {
-                sm.write().await.add_disconnected(sess.unwrap());
+                session_manager.write().await.add_disconnected(sess.unwrap());
             }
         },
     };

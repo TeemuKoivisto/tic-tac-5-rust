@@ -40,7 +40,7 @@ impl Game {
             id: lobby_game.id,
             state: GameState::new(&lobby_game.options, rng_seed),
             joined_players: lobby_game.joined_players.clone(),
-            start_time: chrono::Utc::now().timestamp_millis() as u64 / 1000,
+            start_time: chrono::Utc::now().timestamp() as u64,
             game_sender,
             game_to_lobby_sender,
             client_receiver,
@@ -78,7 +78,7 @@ impl Game {
 
     pub fn check_if_running(&mut self) -> bool {
         if self.state.status == GameStatus::X_TURN || self.state.status == GameStatus::O_TURN {
-            let time = chrono::Utc::now().timestamp_millis() as u64 / 1000;
+            let time = chrono::Utc::now().timestamp() as u64;
             let mut disconnected = 0;
             for player in self.joined_players.iter() {
                 if !player.connected && time > player.last_seen.unwrap() + 10 {
@@ -121,7 +121,7 @@ impl Game {
         for mut player in self.joined_players.iter_mut() {
             if &player.player_id == player_id {
                 player.connected = false;
-                player.last_seen = Some(chrono::Utc::now().timestamp_millis() as u64 / 1000);
+                player.last_seen = Some(chrono::Utc::now().timestamp() as u64);
             }
         }
     }

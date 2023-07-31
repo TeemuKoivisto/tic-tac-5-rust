@@ -3,6 +3,7 @@ use rand::{
     rngs::{OsRng, StdRng},
     Rng, RngCore, SeedableRng,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::jwt_manager::TicTac5Token;
 
@@ -37,8 +38,15 @@ impl SessionManager {
             handle: session,
             player_id,
             socket_id,
-            last_seen: chrono::Utc::now().timestamp_millis() as u64 / 1000,
+            last_seen: chrono::Utc::now().timestamp() as u64,
         })
+    }
+
+    pub fn remove_expired(&mut self) {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        // Disconnected for over 1 minute -> delete old session
+        self.disconnected
+            .retain(|conn| conn.last_seen + 60 > now.as_secs())
     }
 
     pub fn pop_disconnected(&mut self, token: &TicTac5Token) -> Option<Connection> {
@@ -48,6 +56,7 @@ impl SessionManager {
         //     .map(|d| (d.player_id, d.socket_id))
         //     .collect::<Vec<(u32, u32)>>();
         // println!("DISCONNECTED: {:?}", dis);
+
         let idx = self
             .disconnected
             .iter()

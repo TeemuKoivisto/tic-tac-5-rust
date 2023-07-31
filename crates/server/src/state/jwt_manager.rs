@@ -55,7 +55,7 @@ impl JwtManager {
     }
 
     pub fn encode_login(&mut self, player_id: u32) -> (String, u64) {
-        let time = chrono::Utc::now().timestamp_millis() as u64 / 1000;
+        let time = chrono::Utc::now().timestamp() as u64;
         let exp = time + 60 * 60 * 24 * 14; // two weeks in seconds
         let claims = TicTac5Token {
             iat: time,
