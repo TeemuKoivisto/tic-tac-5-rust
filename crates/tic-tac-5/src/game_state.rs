@@ -82,7 +82,9 @@ impl GameState {
         self.players[(player_number - 1) as usize].dead = true;
     }
     pub fn is_valid_move(&self, x: u32, y: u32, player_number: u32) -> Option<String> {
-        if player_number != self.player_in_turn {
+        if self.status != GameStatus::O_TURN && self.status != GameStatus::X_TURN {
+            return Some(format!("Game is not running: {:?}", self.status));
+        } else if player_number != self.player_in_turn {
             return Some(format!(
                 "Player {} tried to move when it was {} turn",
                 player_number, self.player_in_turn
@@ -155,5 +157,99 @@ impl GameState {
                 player: c.owner,
             })
             .collect::<Vec<Cell>>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        game_state::GameState,
+        proto::{
+            client_events::GameOptions,
+            game::{GameStatus, Player},
+        },
+    };
+    use rand::{rngs::OsRng, Rng};
+
+    #[test]
+    fn exploration() {
+        let opts = GameOptions {
+            size: 25,
+            players: 2,
+        };
+        let rng_seed = OsRng.gen();
+        let mut game = GameState::new(&opts, rng_seed);
+        let player1 = Player {
+            id: 100,
+            socket_id: 0,
+            player_number: 1,
+            symbol: "X".to_string(),
+            name: "Player 1".to_string(),
+            dead: false,
+            ai: false,
+        };
+        let player2 = Player {
+            id: 200,
+            socket_id: 1,
+            player_number: 2,
+            symbol: "O".to_string(),
+            name: "Player 2".to_string(),
+            dead: false,
+            ai: false,
+        };
+        game.add_player(&player1.id, player1.name.clone(), Some(player1.socket_id));
+        assert_eq!(game.status, GameStatus::WAITING);
+        let full = game.add_player(&player2.id, player2.name.clone(), Some(player2.socket_id));
+        assert_eq!(full, true);
+        assert_eq!(game.status, GameStatus::X_TURN);
+        assert_eq!(game.get_player(player1.id), &player1);
+        assert_eq!(game.get_player(player2.id), &player2);
+        let moves: Vec<(u32, u32, u32)> = vec![
+            (0, 0, 1),
+            (10, 0, 2),
+            (11, 0, 2),
+            (0, 0, 1),
+            (11, 0, 2),
+            (2, 2, 1),
+            (12, 0, 2),
+            (1, 1, 1),
+            (13, 0, 2),
+            (4, 4, 1),
+            (0, 0, 2),
+            (14, 0, 2),
+            (3, 3, 1),
+            (11, 0, 2),
+        ];
+        for (i, (x, y, player_number)) in moves.iter().enumerate() {
+            let _ = game.handle_player_move(*x, *y, *player_number);
+            match i {
+                1 | 2 | 3 | 4 | 6 | 8 | 11 => assert_eq!(
+                    game.status,
+                    GameStatus::X_TURN,
+                    "Move (i {}) wasn't X_TURN but {:?}",
+                    i,
+                    game.status
+                ),
+                0 | 5 | 7 | 9 | 10 => assert_eq!(
+                    game.status,
+                    GameStatus::O_TURN,
+                    "Move (i {}) wasn't O_TURN but {:?}",
+                    i,
+                    game.status
+                ),
+                12 | 13 => assert_eq!(
+                    game.status,
+                    GameStatus::X_WON,
+                    "Move (i {}) wasn't X_WON but {:?}",
+                    i,
+                    game.status
+                ),
+                _ => {}
+            }
+        }
+        assert_eq!(game.status, GameStatus::X_WON);
+        assert_eq!(game.get_player(player1.id), &player1);
+        assert_eq!(game.get_player(player2.id), &player2);
+        assert_eq!(game.turns_elapsed, 9);
     }
 }
