@@ -1,7 +1,6 @@
 use rand::{rngs::OsRng, rngs::StdRng, Rng, SeedableRng};
-use std::collections::{HashMap, HashSet};
 
-use crate::board::{Adjacency, Adjancies, Board};
+use crate::board::{Adjacency, Board};
 use crate::proto::client_events::*;
 use crate::proto::game::*;
 

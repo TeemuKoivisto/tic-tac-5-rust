@@ -1,7 +1,7 @@
-use log::{debug, error, info};
+use log::{debug, info};
 use std::collections::HashMap;
 use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
 

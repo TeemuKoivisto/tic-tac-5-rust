@@ -2,9 +2,9 @@ use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
-use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
-use tic_tac_5::proto::{client_events::*, game::*, server_events::*};
-use tokio::sync::{broadcast, mpsc};
+use quick_protobuf::{BytesReader, MessageRead, MessageWrite};
+use tic_tac_5::proto::{client_events::*, server_events::*};
+use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use crate::state::events::{
@@ -171,7 +171,7 @@ impl Session {
             }
             LobbyToClientEvent::JoinLobby(_) => todo!(),
             LobbyToClientEvent::LobbyMsg(_) => todo!(),
-            LobbyToClientEvent::LeaveLobby(payload) => {
+            LobbyToClientEvent::LeaveLobby(_payload) => {
                 // @TODO
                 // self.state.set_lobby(None);
                 // let was_player = payload.iter().find(|s| s == &&self.socket_id);

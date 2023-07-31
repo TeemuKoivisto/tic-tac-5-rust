@@ -1,5 +1,5 @@
 use tic_tac_5::proto::{client_events::PlayerJoinLobby, server_events::*};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 
 use crate::state::events::{Client, ClientToGameEvent, ClientToLobbyEvent};
 

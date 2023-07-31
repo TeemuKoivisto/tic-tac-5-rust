@@ -29,7 +29,7 @@ pub enum JwtError {
 impl fmt::Display for JwtError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            JwtError::NoSession(ref x) => write!(f, "No current session with jwt found"),
+            JwtError::NoSession(ref _x) => write!(f, "No current session with jwt found"),
             JwtError::Expired => write!(f, "JWT session expired"),
             JwtError::Other(ref x) => write!(f, "{}", x),
         }

@@ -1,12 +1,12 @@
-use log::{debug, error, info, warn};
+use log::info;
 use tic_tac_5::{
     game_state::*,
     proto::{game::*, server_events::*},
 };
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent, PlayerMove};
+use crate::state::events::{ClientToGameEvent, GameToClientEvent, GameToLobbyEvent};
 
 use super::listed_game::{JoinedPlayer, ListedGame};
 

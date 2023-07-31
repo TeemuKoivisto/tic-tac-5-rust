@@ -30,7 +30,7 @@ impl ListedGame {
     pub fn allows_joining(&self) -> bool {
         !self.running && self.joined_players.len() != self.options.players as usize
     }
-    pub fn matches_player_options(&self, user_options: &GameOptions) -> bool {
+    pub fn matches_player_options(&self, _user_options: &GameOptions) -> bool {
         true
     }
     pub fn is_running(&self) -> bool {
