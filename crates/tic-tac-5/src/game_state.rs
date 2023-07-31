@@ -53,6 +53,9 @@ impl GameState {
         }
     }
     pub fn add_player(&mut self, player_id: &u32, name: String, socket_id: Option<u32>) -> bool {
+        if self.players.len() == self.options.players as usize {
+            return true;
+        }
         let player_number = self.players.len() as u32 + 1;
         let symbol = if player_number == 1 {
             "X".to_string()
@@ -81,25 +84,28 @@ impl GameState {
     pub fn remove_player(&mut self, player_number: u32) {
         self.players[(player_number - 1) as usize].dead = true;
     }
-    pub fn is_valid_move(&self, x: u32, y: u32, player_number: u32) -> Option<String> {
+    pub fn is_valid_move(
+        &self,
+        x: u32,
+        y: u32,
+        player_number: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.status != GameStatus::O_TURN && self.status != GameStatus::X_TURN {
-            return Some(format!("Game is not running: {:?}", self.status));
+            return Err(format!("Game is not running: {:?}", self.status).into());
         } else if player_number != self.player_in_turn {
-            return Some(format!(
+            return Err(format!(
                 "Player {} tried to move when it was {} turn",
                 player_number, self.player_in_turn
-            ));
+            )
+            .into());
         } else if !self.board.is_within_board(x as i32, y as i32) {
-            return Some("Move's x, y weren't inside the board".to_string());
+            return Err("Move's x, y weren't inside the board".to_string().into());
         }
         let cell = self.board.get_cell_at(x, y);
         if cell.owner != 0 {
-            return Some(format!(
-                "Cell at {} {} was already selected",
-                cell.x, cell.y
-            ));
+            return Err(format!("Cell at {} {} was already selected", cell.x, cell.y).into());
         }
-        None
+        Ok(())
     }
 
     pub fn handle_player_move(
@@ -109,8 +115,8 @@ impl GameState {
         player_number: u32,
     ) -> Result<(bool, u32), Box<dyn std::error::Error>> {
         let is_valid_err = self.is_valid_move(x, y, player_number);
-        if is_valid_err.is_some() {
-            return Err(is_valid_err.unwrap().into());
+        if is_valid_err.is_err() {
+            return Err(is_valid_err.unwrap_err());
         }
         self.board.update_cell_owner(x, y, player_number);
         self.turns_elapsed += 1;
@@ -201,6 +207,9 @@ mod tests {
         assert_eq!(game.status, GameStatus::WAITING);
         let full = game.add_player(&player2.id, player2.name.clone(), Some(player2.socket_id));
         assert_eq!(full, true);
+        assert_eq!(game.players.len(), 2);
+        game.add_player(&player2.id, player2.name.clone(), Some(player2.socket_id));
+        assert_eq!(game.players.len(), 2);
         assert_eq!(game.status, GameStatus::X_TURN);
         assert_eq!(game.get_player(player1.id), &player1);
         assert_eq!(game.get_player(player2.id), &player2);
