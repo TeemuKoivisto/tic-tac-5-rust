@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: crates/server/Dockerfile
+    ports:
+      - 6635:6634
+    environment:
+      PORT: 6634
+      RUST_LOG: server=info
+      JWT_SECRET: verysecret
+    restart: always

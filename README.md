@@ -17,7 +17,6 @@ pnpm cli
 
 ## TODO
 
-- remove expired sessions
 - fix sometimes full lobby games fail to start -> reused senders in SessionHandle?
 - allow leaving games when waiting on disconnected
 - send AppState as first payload from server when connected -> lobby | in_game

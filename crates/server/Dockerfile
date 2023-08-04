@@ -1,7 +1,7 @@
 #####################
 ### Builder image ###
 #####################
-FROM rust:1-slim-buster as builder
+FROM rust:1-slim-bookworm as builder
 
 # Make a fake Rust app to keep a cached layer of compiled crates
 RUN USER=root cargo new app
@@ -24,14 +24,16 @@ RUN cargo install --path ./crates/server
 ####################
 ### Server image ###
 ####################
-FROM rust:1-slim-buster
+FROM debian:bookworm-slim
 
 ENV INSTALL_PATH /usr/local/tic-tac-5
+
+RUN apt-get update && apt-get -y install ca-certificates
 
 WORKDIR ${INSTALL_PATH}
 COPY --from=builder /usr/local/cargo/bin/server ${INSTALL_PATH}
 
-ENV RUST_LOG info
+ENV RUST_LOG warn
 
 EXPOSE ${PORT}
 

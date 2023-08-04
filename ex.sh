@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
+if [ -f .env ]; then
+  export $(cat .env | xargs)
+fi
+
 ROOT_DIR="$(dirname $(readlink -f $0))"
 
 run() {
   cd $ROOT_DIR
-  env $(cat .env) cargo run -p server --release
+  cargo run -p server --release
   # cargo build -p tic-tac-5 && cargo run -p server --release
 }
 
@@ -28,18 +32,14 @@ if [ -n "$1" ]; then
     protos
     ;;
   docker:build)
-    docker build -t liquid-war -f ./crates/server/Dockerfile .
+    docker build -t tic-tac-5 -f ./crates/server/Dockerfile .
     ;;
   docker:run)
-    docker run -it --rm -p 6464:6464 liquid-war
+    docker run -it --rm -p 6464:6464 tic-tac-5
     ;;
   docker:push)
-    AWS_ACCOUNT_ID="626386600593"
-    AWS_REGION="eu-central-1"
-    ECR_REPOSITORY="tic-tac-5"
     REGISTRY_URL=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
     IMAGE=${REGISTRY_URL}/${ECR_REPOSITORY}
-    VERSION=$(cat crates/server/Cargo.toml | grep version | awk -F'[ "]' 'NR==1{print $4}')
 
     aws ecr get-login-password --region ${AWS_REGION} | docker login \
       --username=AWS \
@@ -47,11 +47,12 @@ if [ -n "$1" ]; then
       --password-stdin
 
     echo "Building & pushing image with version ${VERSION} and 'latest'"
-    # Eg 626386600593.dkr.ecr.eu-west-1.amazonaws.com/lw-server:0.2.0
+    # docker buildx prune --all # deletes all build cache
+    # Eg 626386600593.dkr.ecr.eu-west-1.amazonaws.com/xsync-worker:0.2.0
     docker buildx build --push \
-      -f ./crates/server/Dockerfile \
+      -f ${IMAGE_PATH} \
       -t ${IMAGE}:${VERSION} \
-      -t ${IMAGE}:latest .
+      -t ${IMAGE}:latest  .
     ;;
   *)
     echo $"Usage: $0 docker:build|docker:run|docker:push"
