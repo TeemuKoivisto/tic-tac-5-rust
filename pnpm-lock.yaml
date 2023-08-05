@@ -54,6 +54,55 @@ importers:
         specifier: 4.9.4
         version: 4.9.4
 
+  packages/ai:
+    dependencies:
+      '@tt5/prototypes':
+        specifier: workspace:*
+        version: link:../prototypes
+      '@tt5/types':
+        specifier: workspace:*
+        version: link:../types
+      debug:
+        specifier: ^4.3.4
+        version: 4.3.4
+      uuid:
+        specifier: ^9.0.0
+        version: 9.0.0
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^2.0.2
+        version: 2.0.2(svelte@3.58.0)(vite@4.0.4)
+      '@types/debug':
+        specifier: 4.1.7
+        version: 4.1.7
+      '@types/uuid':
+        specifier: ^9.0.0
+        version: 9.0.0
+      autoprefixer:
+        specifier: ^10.4.13
+        version: 10.4.13(postcss@8.4.21)
+      postcss:
+        specifier: ^8.4.21
+        version: 8.4.21
+      sass:
+        specifier: ^1.57.1
+        version: 1.57.1
+      svelte:
+        specifier: ^3.58.0
+        version: 3.58.0
+      svelte-check:
+        specifier: ^3.0.2
+        version: 3.0.2(postcss@8.4.21)(sass@1.57.1)(svelte@3.58.0)
+      svelte-preprocess:
+        specifier: ^5.0.0
+        version: 5.0.0(postcss@8.4.21)(sass@1.57.1)(svelte@3.58.0)(typescript@4.9.4)
+      tailwindcss:
+        specifier: ^3.2.4
+        version: 3.2.4(postcss@8.4.21)
+      vite:
+        specifier: ^4.0.4
+        version: 4.0.4(sass@1.57.1)
+
   packages/client:
     dependencies:
       '@tt5/prototypes':
