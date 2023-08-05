@@ -1,6 +1,6 @@
 import { get, writable } from 'svelte/store'
 
-enum Adjacency {
+export enum Adjacency {
   Horizontal = 0,
   Vertical = 1,
   LeftToRightDiagonal = 2,
@@ -8,10 +8,10 @@ enum Adjacency {
 }
 
 interface Adjancies {
-  hor: number
-  ver: number
-  left_diag: number
-  right_diag: number
+  [Adjacency.Horizontal]: number
+  [Adjacency.Vertical]: number
+  [Adjacency.LeftToRightDiagonal]: number
+  [Adjacency.RightToLeftDiagonal]: number
 }
 
 export interface Cell {
@@ -26,12 +26,14 @@ type Option<T> = { data: T } | undefined
 class Board {
   size = 3
   cells: Cell[] = []
+  available = 3 * 3
 
-  constructor(size = 3, previous?: Cell[]) {
-    this.size = size
+  constructor(size = 3, previous?: Board) {
+    this.size = previous?.size ?? size
+    this.available = previous?.available ?? size * size
     let cells: Cell[] = []
     if (previous) {
-      cells = previous.map(c => Object.assign({}, c))
+      cells = previous.cells.map(c => Object.assign({}, c))
     } else {
       for (let y = 0; y < size; y += 1) {
         for (let x = 0; x < size; x += 1) {
@@ -40,10 +42,10 @@ class Board {
             y,
             owner: 0,
             adjacency: {
-              hor: 0,
-              ver: 0,
-              left_diag: 0,
-              right_diag: 0,
+              [Adjacency.Horizontal]: 0,
+              [Adjacency.Vertical]: 0,
+              [Adjacency.LeftToRightDiagonal]: 0,
+              [Adjacency.RightToLeftDiagonal]: 0,
             },
           })
         }
@@ -62,9 +64,13 @@ class Board {
 
   set_cell_owner(x: number, y: number, player: number) {
     this.cells[x + y * this.size].owner = player
+    this.available -= 1
   }
 
   get_next_empty_cell(): Cell | undefined {
+    if (this.available === 0) {
+      return undefined
+    }
     let idx = 0
     let cell = this.cells[idx]
     while (cell.owner !== 0 || this.cells.length === idx) {
@@ -117,11 +123,11 @@ class Board {
     return undefined
   }
 
-  get_adjacent_cells(placed: Cell, player: number, dir: Adjacency) {
+  get_adjacent_cells(x: number, y: number, player: number, dir: Adjacency) {
     const adjacent = []
     let topside = true
-    let now_x = placed.x
-    let now_y = placed.y
+    let now_x = x
+    let now_y = y
     let iters = 0
     while (true) {
       const cell = this.get_adjacent_in_direction(now_x, now_y, dir, topside)
@@ -135,8 +141,8 @@ class Board {
         now_y = c.y
       } else if (topside) {
         topside = false
-        now_x = placed.x
-        now_y = placed.y
+        now_x = x
+        now_y = y
       } else {
         break
       }
@@ -145,48 +151,54 @@ class Board {
     return adjacent
   }
 
+  update_cell_owner(x: number, y: number, player: number) {
+    this.set_cell_owner(x, y, player)
+    const adjancies: Adjancies = {
+      [Adjacency.Horizontal]: 0,
+      [Adjacency.Vertical]: 0,
+      [Adjacency.LeftToRightDiagonal]: 0,
+      [Adjacency.RightToLeftDiagonal]: 0,
+    }
+    for (const adj in Adjacency) {
+      const dir: Adjacency = Number(adj)
+      if (!isNaN(dir)) {
+        const cells = this.get_adjacent_cells(x, y, player, dir)
+        const adjacent_count = cells.length + 1
+        for (const c of cells) {
+          this.cells[c.x + c.y * this.size].adjacency[dir] = adjacent_count
+        }
+        adjancies[dir] = adjacent_count
+      }
+    }
+    this.cells[x + y * this.size].adjacency = adjancies
+  }
+
   check_is_full() {
-    return this.cells.every(c => c.owner !== 0)
+    return this.available === 0
   }
 
   check_win_at(x: number, y: number) {
     const cell = this.get_cell_at(x, y)
-    return Object.values(cell.adjacency).some(v => v === 5)
+    return Object.values(cell.adjacency).some(v => v === 3)
   }
 
   check_win() {
-    return this.cells.find(c => Object.values(c.adjacency).some(v => v === 5))
+    return this.cells.find(c => Object.values(c.adjacency).some(v => v === 3))
   }
 
   get_available_moves(): Cell[] {
     return this.cells.filter(c => c.owner === 0)
   }
-
-  create_board(player: number) {
-    const newBoard = new Board(this.size, this.cells)
-    const cell = this.get_next_empty_cell()
-    if (cell) {
-      newBoard.set_cell_owner(cell.x, cell.y, player)
-      if (newBoard.check_win_at(cell.x, cell.y)) {
-        return 10
-      } else if (newBoard.check_is_full()) {
-        return 0
-      }
-    }
-    return 0
-  }
-
-  copy_board_with_cell_selected(cell: Cell, player: number) {
-    const newBoard = new Board(this.size, this.cells)
-    newBoard.set_cell_owner(cell.x, cell.y, player)
-    return newBoard
-  }
 }
 
-export const board = writable<Board>(new Board())
+export const board = writable<Board>(new Board(3))
 export const gridSize = writable(3)
 export const player = writable<1 | 2>(1)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
+
+let iterations = 0
+let moves = 0
+const debug = false
 
 interface Options {
   maxDepth: number
@@ -197,27 +209,31 @@ function minimax(
   selectedCell: Cell,
   initial: Board,
   depth: number,
-  maximizingPlayer: boolean,
+  player: number,
+  isMaximizing: boolean,
   opts: Options
 ) {
-  // debugger
-  const board = initial.copy_board_with_cell_selected(selectedCell, maximizingPlayer ? 1 : 2)
-  const won = board.check_win_at(selectedCell.x, selectedCell.y)
-  if (won || depth === 0) {
-    return maximizingPlayer ? 10 : -10
-  } else if (board.check_is_full()) {
-    return 0
+  iterations += 1
+  const board = new Board(initial.size, initial)
+  board.update_cell_owner(selectedCell.x, selectedCell.y, player)
+  if (board.check_win_at(selectedCell.x, selectedCell.y)) {
+    return player === 1 ? -100 - depth : 100 + depth
+  } else if (board.check_is_full() || depth === 0) {
+    return player === 1 ? -10 - depth : 10 + depth
   }
   let value: number
-  if (maximizingPlayer) {
-    value = Number.POSITIVE_INFINITY
-    initial.get_available_moves().forEach(c => {
-      value = Math.max(value, minimax(c, board, depth - 1, false, opts))
+  if (isMaximizing) {
+    value = Number.NEGATIVE_INFINITY
+    board.get_available_moves().forEach(c => {
+      value = Math.max(value, minimax(c, board, depth - 1, player === 1 ? 2 : 1, false, opts))
     })
   } else {
-    value = Number.NEGATIVE_INFINITY
-    initial.get_available_moves().forEach(c => {
-      value = Math.min(value, minimax(c, board, depth - 1, true, opts))
+    value = Number.POSITIVE_INFINITY
+    board.get_available_moves().forEach(c => {
+      value = Math.min(
+        value,
+        Math.min(value, minimax(c, board, depth - 1, player === 1 ? 2 : 1, true, opts))
+      )
     })
   }
   return value
@@ -232,7 +248,7 @@ export const gameActions = {
       return
     }
     const playerNumber = get(player)
-    b.set_cell_owner(cell.x, cell.y, playerNumber)
+    b.update_cell_owner(cell.x, cell.y, playerNumber)
     let ended = true
     if (b.check_win_at(cell.x, cell.y)) {
       gameStatus.set('x-won')
@@ -242,6 +258,7 @@ export const gameActions = {
       ended = false
     }
     board.set(b)
+    moves += 1
     if (!ended) {
       this.evaluateAiMove()
     }
@@ -254,9 +271,10 @@ export const gameActions = {
       maxDepth: 10,
       aiPlayer: 2,
     }
+    iterations = 0
     b.get_available_moves().forEach(c => {
-      const value = minimax(c, b, 6, true, opts)
-      if (bestValue < value) {
+      const value = minimax(c, b, 9, 2, false, opts)
+      if (value > bestValue) {
         aiMove = c
         bestValue = value
       }
@@ -264,7 +282,8 @@ export const gameActions = {
     if (!aiMove) {
       throw Error('no ai move found')
     }
-    b.set_cell_owner(aiMove.x, aiMove.y, 2)
+    console.log(`best: ${aiMove.x} ${aiMove.y} ${bestValue} at iterations ${iterations} \n`)
+    b.update_cell_owner(aiMove.x, aiMove.y, 2)
     if (b.check_win_at(aiMove.x, aiMove.y)) {
       gameStatus.set('o-won')
     } else if (b.check_is_full()) {
