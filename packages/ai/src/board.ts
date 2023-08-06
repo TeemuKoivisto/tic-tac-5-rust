@@ -21,20 +21,27 @@ export interface Cell {
 
 export type Option<T> = { data: T } | undefined
 
+interface BoardOptions {
+  gridSize?: number
+  inRow?: number
+}
+
 export class Board {
   size = 3
+  inRow = 3
   cells: Cell[] = []
   available = 3 * 3
 
-  constructor(size = 3, previous?: Board) {
-    this.size = previous?.size ?? size
-    this.available = previous?.available ?? size * size
+  constructor(opts?: BoardOptions, previous?: Board) {
+    this.size = previous?.size ?? opts?.gridSize ?? this.size
+    this.inRow = previous?.inRow ?? opts?.inRow ?? this.inRow
+    this.available = previous?.available ?? this.size * this.size
     let cells: Cell[] = []
     if (previous) {
       cells = previous.cells.map(c => Object.assign({}, c))
     } else {
-      for (let y = 0; y < size; y += 1) {
-        for (let x = 0; x < size; x += 1) {
+      for (let y = 0; y < this.size; y += 1) {
+        for (let x = 0; x < this.size; x += 1) {
           cells.push({
             x,
             y,
@@ -178,11 +185,11 @@ export class Board {
 
   check_win_at(x: number, y: number) {
     const cell = this.get_cell_at(x, y)
-    return Object.values(cell.adjacency).some(v => v === 3)
+    return Object.values(cell.adjacency).some(v => v === this.inRow)
   }
 
   check_win() {
-    return this.cells.find(c => Object.values(c.adjacency).some(v => v === 3))
+    return this.cells.find(c => Object.values(c.adjacency).some(v => v === this.inRow))
   }
 
   get_available_moves(): Cell[] {

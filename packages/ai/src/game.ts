@@ -1,15 +1,21 @@
 import { get, writable } from 'svelte/store'
 import { Cell, Board } from './board'
 
-export const board = writable<Board>(new Board(3))
+export const board = writable<Board>(new Board())
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
-export const searchDepth = writable(6)
+export const searchDepth = writable(4)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
 
 let iterations = 0
 let moves = 0
 const debug = false
+
+interface PlayOptions {
+  symbol?: 'x' | 'o'
+  size?: number
+  maxDepth?: number
+}
 
 interface Options {
   maxDepth: number
@@ -26,7 +32,7 @@ function minimax(
   opts: Options
 ) {
   iterations += 1
-  const board = new Board(initial.size, initial)
+  const board = new Board(undefined, initial)
   board.update_cell_owner(selectedCell.x, selectedCell.y, player)
   if (board.check_win_at(selectedCell.x, selectedCell.y)) {
     return opts.humanPlayer === player ? -100 - depth : 100 + depth
@@ -52,12 +58,13 @@ function minimax(
 }
 
 export const gameActions = {
-  play(symbol: 'x' | 'o', size = 3, depth = 6) {
-    board.set(new Board(size))
-    gridSize.set(size)
-    player.set(symbol)
-    searchDepth.set(depth)
-    if (symbol === 'o') {
+  play(opts: PlayOptions) {
+    const { symbol, size, maxDepth } = opts
+    board.set(new Board({ gridSize: size, inRow: size === 5 ? 4 : 3 }))
+    if (size !== undefined) gridSize.set(size)
+    if (symbol !== undefined) player.set(symbol)
+    if (maxDepth !== undefined) searchDepth.set(maxDepth)
+    if (get(player) === 'o') {
       this.evaluateAiMove()
     }
   },

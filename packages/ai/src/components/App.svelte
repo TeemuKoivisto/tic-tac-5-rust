@@ -12,11 +12,19 @@
       <div class="mt-12 flex justify-center">
         <button
           class="btn focus:outline-none hover:bg-blue-700"
-          on:click={() => gameActions.play('x')}>Play as X</button
+          on:click={() => gameActions.play({ symbol: 'x' })}>Play as X</button
         >
         <button
           class="ml-4 btn focus:outline-none hover:bg-blue-700"
-          on:click={() => gameActions.play('o')}>Play as O</button
+          on:click={() => gameActions.play({ symbol: 'o' })}>Play as O</button
+        >
+        <button
+          class="ml-4 btn focus:outline-none hover:bg-blue-700"
+          on:click={() => gameActions.play({ size: 3 })}>Size 3</button
+        >
+        <button
+          class="ml-4 btn focus:outline-none hover:bg-blue-700"
+          on:click={() => gameActions.play({ size: 5 })}>Size 5</button
         >
       </div>
     </div>

@@ -9,7 +9,8 @@
   let cell: Cell = $board.cells.find(c => c.x === x && c.y === y) as Cell
 
   board.subscribe(b => {
-    cell = b.get_cell_at(x, y)
+    const found = b.get_cell_at(x, y)
+    if (found) cell = found
   })
 </script>
 
