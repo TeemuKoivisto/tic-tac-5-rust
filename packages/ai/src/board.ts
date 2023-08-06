@@ -69,7 +69,11 @@ export class Board {
 
   set_cell_owner(x: number, y: number, player: number) {
     this.cells[x + y * this.size].owner = player
-    this.available -= 1
+    if (player !== 0) {
+      this.available -= 1
+    } else {
+      this.available += 1
+    }
   }
 
   get_next_empty_cell(): Cell | undefined {

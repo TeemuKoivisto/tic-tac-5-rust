@@ -4,7 +4,7 @@ import { Cell, Board } from './board'
 export const board = writable<Board>(new Board())
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
-export const searchDepth = writable(4)
+export const searchDepth = writable(6)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
 
 let iterations = 0
@@ -25,14 +25,15 @@ interface Options {
 
 function minimax(
   selectedCell: Cell,
-  initial: Board,
+  board: Board,
   depth: number,
-  player: number,
   isMaximizing: boolean,
+  alpha: number,
+  beta: number,
+  player: number,
   opts: Options
 ) {
   iterations += 1
-  const board = new Board(undefined, initial)
   board.update_cell_owner(selectedCell.x, selectedCell.y, player)
   if (board.check_win_at(selectedCell.x, selectedCell.y)) {
     return opts.humanPlayer === player ? -100 - depth : 100 + depth
@@ -42,16 +43,25 @@ function minimax(
   let value: number
   if (isMaximizing) {
     value = Number.NEGATIVE_INFINITY
-    board.get_available_moves().forEach(c => {
-      value = Math.max(value, minimax(c, board, depth - 1, player === 1 ? 2 : 1, false, opts))
+    board.get_available_moves().some(c => {
+      value = Math.max(
+        value,
+        minimax(c, board, depth - 1, false, alpha, beta, player === 1 ? 2 : 1, opts)
+      )
+      alpha = Math.max(alpha, value)
+      board.set_cell_owner(c.x, c.y, 0)
+      return beta <= alpha
     })
   } else {
     value = Number.POSITIVE_INFINITY
-    board.get_available_moves().forEach(c => {
+    board.get_available_moves().some(c => {
       value = Math.min(
         value,
-        Math.min(value, minimax(c, board, depth - 1, player === 1 ? 2 : 1, true, opts))
+        Math.min(value, minimax(c, board, depth - 1, true, alpha, beta, player === 1 ? 2 : 1, opts))
       )
+      beta = Math.min(beta, value)
+      board.set_cell_owner(c.x, c.y, 0)
+      return beta <= alpha
     })
   }
   return value
@@ -60,11 +70,14 @@ function minimax(
 export const gameActions = {
   play(opts: PlayOptions) {
     const { symbol, size, maxDepth } = opts
-    board.set(new Board({ gridSize: size, inRow: size === 5 ? 4 : 3 }))
+    const prevSymbol = get(player)
+    const prevSize = get(gridSize)
+    const newSize = size ?? prevSize
+    board.set(new Board({ gridSize: newSize, inRow: newSize === 5 ? 4 : 3 }))
     if (size !== undefined) gridSize.set(size)
     if (symbol !== undefined) player.set(symbol)
     if (maxDepth !== undefined) searchDepth.set(maxDepth)
-    if (get(player) === 'o') {
+    if ((symbol || prevSymbol) === 'o') {
       this.evaluateAiMove()
     }
   },
@@ -101,8 +114,10 @@ export const gameActions = {
       aiPlayer: aiNumber,
     }
     iterations = 0
+    const t0 = performance.now()
     b.get_available_moves().forEach(c => {
-      const value = minimax(c, b, get(searchDepth), aiNumber, false, opts)
+      const value = minimax(c, b, get(searchDepth), false, -Infinity, Infinity, aiNumber, opts)
+      b.set_cell_owner(c.x, c.y, 0)
       if (value > bestValue) {
         aiMove = c
         bestValue = value
@@ -111,6 +126,12 @@ export const gameActions = {
     if (!aiMove) {
       throw Error('no ai move found')
     }
+    const t1 = performance.now()
+    console.log(
+      `took ${Math.round(t1 - t0)} ms ${(Math.round(t1 - t0) / iterations).toPrecision(
+        6
+      )} per iteration`
+    )
     console.log(`best: ${aiMove.x} ${aiMove.y} ${bestValue} at iterations ${iterations} \n`)
     b.update_cell_owner(aiMove.x, aiMove.y, aiNumber)
     if (b.check_win_at(aiMove.x, aiMove.y)) {
