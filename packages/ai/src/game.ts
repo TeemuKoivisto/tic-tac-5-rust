@@ -13,6 +13,7 @@ const debug = false
 
 interface Options {
   maxDepth: number
+  humanPlayer: number
   aiPlayer: number
 }
 
@@ -28,9 +29,9 @@ function minimax(
   const board = new Board(initial.size, initial)
   board.update_cell_owner(selectedCell.x, selectedCell.y, player)
   if (board.check_win_at(selectedCell.x, selectedCell.y)) {
-    return player === 1 ? -100 - depth : 100 + depth
+    return opts.humanPlayer === player ? -100 - depth : 100 + depth
   } else if (board.check_is_full() || depth === 0) {
-    return player === 1 ? -10 - depth : 10 + depth
+    return opts.humanPlayer === player ? -10 - depth : 10 + depth
   }
   let value: number
   if (isMaximizing) {
@@ -51,8 +52,9 @@ function minimax(
 }
 
 export const gameActions = {
-  play(symbol: 'x' | 'o', gridsize = 3, depth = 6) {
-    board.set(new Board(gridsize))
+  play(symbol: 'x' | 'o', size = 3, depth = 6) {
+    board.set(new Board(size))
+    gridSize.set(size)
     player.set(symbol)
     searchDepth.set(depth)
     if (symbol === 'o') {
@@ -66,11 +68,10 @@ export const gameActions = {
       return
     }
     const playerNumber = get(player) === 'x' ? 1 : 2
-    console.log('select ', playerNumber)
     b.update_cell_owner(cell.x, cell.y, playerNumber)
     let ended = true
     if (b.check_win_at(cell.x, cell.y)) {
-      gameStatus.set('x-won')
+      gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
     } else if (b.check_is_full()) {
       gameStatus.set('tie')
     } else {
@@ -86,14 +87,15 @@ export const gameActions = {
     const b = get(board)
     let aiMove: Cell | undefined
     let bestValue = Number.NEGATIVE_INFINITY
+    const aiNumber = get(player) === 'x' ? 2 : 1
     const opts = {
       maxDepth: 10,
-      aiPlayer: 2,
+      humanPlayer: aiNumber === 1 ? 2 : 1,
+      aiPlayer: aiNumber,
     }
     iterations = 0
-    const aiNumber = get(player) === 'x' ? 2 : 1
     b.get_available_moves().forEach(c => {
-      const value = minimax(c, b, 9, aiNumber, false, opts)
+      const value = minimax(c, b, get(searchDepth), aiNumber, false, opts)
       if (value > bestValue) {
         aiMove = c
         bestValue = value
@@ -105,7 +107,7 @@ export const gameActions = {
     console.log(`best: ${aiMove.x} ${aiMove.y} ${bestValue} at iterations ${iterations} \n`)
     b.update_cell_owner(aiMove.x, aiMove.y, aiNumber)
     if (b.check_win_at(aiMove.x, aiMove.y)) {
-      gameStatus.set('o-won')
+      gameStatus.set(aiNumber === 2 ? 'o-won' : 'x-won')
     } else if (b.check_is_full()) {
       gameStatus.set('tie')
     }
