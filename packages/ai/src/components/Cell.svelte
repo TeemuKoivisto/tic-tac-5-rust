@@ -1,7 +1,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition'
 
-  import { Cell, board } from '../game'
+  import { board } from '../game'
+  import type { Cell } from '../board'
 
   export let y: number, x: number, handleCellClick: (x: number, y: number) => void
 
