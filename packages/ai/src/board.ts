@@ -163,6 +163,7 @@ export class Board {
 
   update_cell_owner(x: number, y: number, player: number) {
     this.set_cell_owner(x, y, player)
+    let bestInRow = 0
     for (let i = 0; i < 4; i += 1) {
       const dir = i as Adjacency
       const cells = this.get_adjacent_cells(x, y, player, dir)
@@ -171,7 +172,11 @@ export class Board {
         this.cells[c.x + c.y * this.size].adjacency[dir] = adjacent_count
       }
       this.cells[x + y * this.size].adjacency[dir] = adjacent_count
+      if (adjacent_count > bestInRow) {
+        bestInRow = adjacent_count
+      }
     }
+    return bestInRow === this.inRow
   }
 
   is_full() {

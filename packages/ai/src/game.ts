@@ -34,8 +34,7 @@ function minimax(
   opts: Options
 ) {
   iterations += 1
-  board.update_cell_owner(selectedCell.x, selectedCell.y, player)
-  if (board.check_win_at(selectedCell.x, selectedCell.y)) {
+  if (board.update_cell_owner(selectedCell.x, selectedCell.y, player)) {
     return opts.humanPlayer === player ? -1000 - depth : 1000 + depth
   } else if (board.is_full()) {
     return opts.humanPlayer === player ? -100 - depth : 100 + depth
@@ -90,9 +89,8 @@ export const gameActions = {
       return
     }
     const playerNumber = get(player) === 'x' ? 1 : 2
-    b.update_cell_owner(cell.x, cell.y, playerNumber)
     let ended = true
-    if (b.check_win_at(cell.x, cell.y)) {
+    if (b.update_cell_owner(cell.x, cell.y, playerNumber)) {
       gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
     } else if (b.is_full()) {
       gameStatus.set('tie')
@@ -135,8 +133,7 @@ export const gameActions = {
       )} per iteration`
     )
     console.log(`best: ${aiMove.x} ${aiMove.y} ${bestValue} at iterations ${iterations} \n`)
-    b.update_cell_owner(aiMove.x, aiMove.y, aiNumber)
-    if (b.check_win_at(aiMove.x, aiMove.y)) {
+    if (b.update_cell_owner(aiMove.x, aiMove.y, aiNumber)) {
       gameStatus.set(aiNumber === 2 ? 'o-won' : 'x-won')
     } else if (b.is_full()) {
       gameStatus.set('tie')
