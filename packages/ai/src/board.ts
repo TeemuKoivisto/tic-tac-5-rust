@@ -163,27 +163,18 @@ export class Board {
 
   update_cell_owner(x: number, y: number, player: number) {
     this.set_cell_owner(x, y, player)
-    const adjancies: Adjancies = {
-      [Adjacency.Horizontal]: 0,
-      [Adjacency.Vertical]: 0,
-      [Adjacency.LeftToRightDiagonal]: 0,
-      [Adjacency.RightToLeftDiagonal]: 0,
-    }
-    for (const adj in Adjacency) {
-      const dir: Adjacency = Number(adj)
-      if (!isNaN(dir)) {
-        const cells = this.get_adjacent_cells(x, y, player, dir)
-        const adjacent_count = cells.length + 1
-        for (const c of cells) {
-          this.cells[c.x + c.y * this.size].adjacency[dir] = adjacent_count
-        }
-        adjancies[dir] = adjacent_count
+    for (let i = 0; i < 4; i += 1) {
+      const dir = i as Adjacency
+      const cells = this.get_adjacent_cells(x, y, player, dir)
+      const adjacent_count = cells.length + 1
+      for (const c of cells) {
+        this.cells[c.x + c.y * this.size].adjacency[dir] = adjacent_count
       }
+      this.cells[x + y * this.size].adjacency[dir] = adjacent_count
     }
-    this.cells[x + y * this.size].adjacency = adjancies
   }
 
-  check_is_full() {
+  is_full() {
     return this.available === 0
   }
 

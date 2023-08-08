@@ -4,7 +4,7 @@ import { Cell, Board } from './board'
 export const board = writable<Board>(new Board())
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
-export const searchDepth = writable(6)
+export const searchDepth = writable(7)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
 
 let iterations = 0
@@ -36,9 +36,11 @@ function minimax(
   iterations += 1
   board.update_cell_owner(selectedCell.x, selectedCell.y, player)
   if (board.check_win_at(selectedCell.x, selectedCell.y)) {
+    return opts.humanPlayer === player ? -1000 - depth : 1000 + depth
+  } else if (board.is_full()) {
     return opts.humanPlayer === player ? -100 - depth : 100 + depth
-  } else if (board.check_is_full() || depth === 0) {
-    return opts.humanPlayer === player ? -10 - depth : 10 + depth
+  } else if (depth === 0) {
+    return 0
   }
   let value: number
   if (isMaximizing) {
@@ -92,7 +94,7 @@ export const gameActions = {
     let ended = true
     if (b.check_win_at(cell.x, cell.y)) {
       gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
-    } else if (b.check_is_full()) {
+    } else if (b.is_full()) {
       gameStatus.set('tie')
     } else {
       ended = false
@@ -136,7 +138,7 @@ export const gameActions = {
     b.update_cell_owner(aiMove.x, aiMove.y, aiNumber)
     if (b.check_win_at(aiMove.x, aiMove.y)) {
       gameStatus.set(aiNumber === 2 ? 'o-won' : 'x-won')
-    } else if (b.check_is_full()) {
+    } else if (b.is_full()) {
       gameStatus.set('tie')
     }
     board.set(b)
