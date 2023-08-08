@@ -1,5 +1,5 @@
 import { get, writable } from 'svelte/store'
-import { Cell, Board } from './board'
+import {Cell, Board, cell_from_uint} from './board'
 
 export const board = writable<Board>(new Board())
 export const gridSize = writable(3)
@@ -124,6 +124,8 @@ export const gameActions = {
       }
     })
     if (!aiMove) {
+      console.log([...b.cells_array].map(c=>cell_from_uint(c)))
+      debugger;
       throw Error('no ai move found')
     }
     const t1 = performance.now()

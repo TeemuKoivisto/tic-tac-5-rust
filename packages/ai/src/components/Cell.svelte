@@ -3,10 +3,11 @@
 
   import { board } from '../game'
   import type { Cell } from '../board'
+  import {cell_from_uint} from "../board";
 
   export let y: number, x: number, handleCellClick: (x: number, y: number) => void
 
-  let cell: Cell = $board.cells.find(c => c.x === x && c.y === y) as Cell
+  let cell: Cell = [...$board.cells_array].map(c=>cell_from_uint(c)) .find(c => c.x === x && c.y === y)!
 
   board.subscribe(b => {
     const found = b.get_cell_at(x, y)
