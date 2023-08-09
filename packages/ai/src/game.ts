@@ -1,12 +1,12 @@
 import { get, writable } from 'svelte/store'
-import { Cell } from './cell'
+import { Cell, getCellValue } from './cell'
 // import { Board } from './board'
 import { Board } from './board2'
 
 export const board = writable<Board>(new Board())
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
-export const searchDepth = writable(6)
+export const searchDepth = writable(7)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
 
 let iterations = 0
@@ -26,7 +26,7 @@ interface Options {
 }
 
 function minimax(
-  coords: [number, number],
+  cell: number,
   board: Board,
   depth: number,
   isMaximizing: boolean,
@@ -36,8 +36,7 @@ function minimax(
   opts: Options
 ) {
   iterations += 1
-  // console.log('cell', selectedCell)
-  if (board.update_cell_owner(coords[0], coords[1], player)) {
+  if (board.update_cell_owner(cell, player)) {
     return opts.humanPlayer === player ? -1000 - depth : 1000 + depth
   } else if (board.is_full()) {
     return opts.humanPlayer === player ? -100 - depth : 100 + depth
@@ -47,24 +46,24 @@ function minimax(
   let value: number
   if (isMaximizing) {
     value = Number.NEGATIVE_INFINITY
-    board.available_moves.some(c => {
+    board.get_available_moves().some(c => {
       value = Math.max(
         value,
         minimax(c, board, depth - 1, false, alpha, beta, player === 1 ? 2 : 1, opts)
       )
       alpha = Math.max(alpha, value)
-      board.update_cell_owner(c[0], c[1], 0)
+      board.update_cell_owner(c, 0)
       return beta <= alpha
     })
   } else {
     value = Number.POSITIVE_INFINITY
-    board.available_moves.some(c => {
+    board.get_available_moves().some(c => {
       value = Math.min(
         value,
         Math.min(value, minimax(c, board, depth - 1, true, alpha, beta, player === 1 ? 2 : 1, opts))
       )
       beta = Math.min(beta, value)
-      board.update_cell_owner(c[0], c[1], 0)
+      board.update_cell_owner(c, 0)
       return beta <= alpha
     })
   }
@@ -87,13 +86,14 @@ export const gameActions = {
   },
   playerSelectCell(x: number, y: number) {
     const b = get(board)
+    const c = b.get_cell_at(x, y)
     const cell = b.get_cell_value_at(x, y)
     if (cell.owner !== 0) {
       return
     }
     const playerNumber = get(player) === 'x' ? 1 : 2
     let ended = true
-    if (b.update_cell_owner(cell.x, cell.y, playerNumber)) {
+    if (b.update_cell_owner(c, playerNumber)) {
       gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
     } else if (b.is_full()) {
       gameStatus.set('tie')
@@ -108,7 +108,7 @@ export const gameActions = {
   },
   evaluateAiMove() {
     const b = get(board)
-    let aiMove: [number, number] | undefined
+    let chosenCell: number | undefined
     let bestValue = Number.NEGATIVE_INFINITY
     const aiNumber = get(player) === 'x' ? 2 : 1
     const opts = {
@@ -118,15 +118,15 @@ export const gameActions = {
     }
     iterations = 0
     const t0 = performance.now()
-    b.available_moves.forEach(c => {
+    b.get_available_moves().forEach(c => {
       const value = minimax(c, b, get(searchDepth), false, -Infinity, Infinity, aiNumber, opts)
-      b.update_cell_owner(c[0], c[1], 0)
+      b.update_cell_owner(c, 0)
       if (value > bestValue) {
-        aiMove = c
+        chosenCell = c
         bestValue = value
       }
     })
-    if (!aiMove) {
+    if (!chosenCell) {
       throw Error('no ai move found')
     }
     const t1 = performance.now()
@@ -135,8 +135,9 @@ export const gameActions = {
         6
       )} per iteration`
     )
-    console.log(`best: ${aiMove[0]} ${aiMove[1]} ${bestValue} at iterations ${iterations} \n`)
-    if (b.update_cell_owner(aiMove[0], aiMove[1], aiNumber)) {
+    const aiMove = getCellValue(chosenCell)
+    console.log(`best: ${aiMove.x} ${aiMove.x} ${bestValue} at iterations ${iterations} \n`)
+    if (b.update_cell_owner(chosenCell, aiNumber)) {
       gameStatus.set(aiNumber === 2 ? 'o-won' : 'x-won')
     } else if (b.is_full()) {
       gameStatus.set('tie')
