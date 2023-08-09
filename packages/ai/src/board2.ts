@@ -12,8 +12,6 @@ import {
   setDirAdjacency,
 } from './cell'
 
-export type Option<T> = { data: T } | undefined
-
 interface BoardOptions {
   gridSize?: number
   inRow?: number
@@ -24,6 +22,7 @@ export class Board {
   inRow = 3
   cells: number[] = []
   available = 3 * 3
+  code: string
 
   constructor(opts?: BoardOptions, previous?: Board) {
     this.size = previous?.size ?? opts?.gridSize ?? this.size
@@ -40,6 +39,7 @@ export class Board {
       }
     }
     this.cells = cells
+    this.code = '-'.repeat(this.available)
   }
 
   is_within_board(x: number, y: number) {
@@ -47,7 +47,7 @@ export class Board {
   }
 
   get_cell_idx(c: number) {
-    return 0b111111 & (c + (0b111111 & ((c >> 6) * this.size)))
+    return 0b111111 & (c + (0b111111 & (c >> 6)) * this.size)
   }
 
   get_cell_at(x: number, y: number) {
@@ -66,6 +66,8 @@ export class Board {
     } else {
       this.available += 1
     }
+    const char = player === 0 ? '-' : player === 1 ? 'x' : 'o'
+    this.code = `${this.code.slice(0, idx)}${char}${this.code.slice(idx + 1)}`
   }
 
   get_next_empty_cell(): number | undefined {
@@ -157,8 +159,7 @@ export class Board {
     return adjacent
   }
 
-  update_cell_owner(c: number, player: number) {
-    this.set_cell_owner(c, player)
+  update_cell_adjancies(c: number, player: number) {
     let bestInRow = 0
     let idx = 0
     for (let i = 0; i < 4; i += 1) {
