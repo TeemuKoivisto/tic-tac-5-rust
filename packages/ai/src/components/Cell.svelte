@@ -2,14 +2,14 @@
   import { fade } from 'svelte/transition'
 
   import { board } from '../game'
-  import type { Cell } from '../board'
+  import type { Cell } from '../cell'
 
   export let y: number, x: number, handleCellClick: (x: number, y: number) => void
 
-  let cell: Cell = $board.cells.find(c => c.x === x && c.y === y) as Cell
+  let cell: Cell = $board.get_cell_value_at(x, y)
 
   board.subscribe(b => {
-    const found = b.get_cell_at(x, y)
+    const found = b.get_cell_value_at(x, y)
     if (found) cell = found
   })
 </script>

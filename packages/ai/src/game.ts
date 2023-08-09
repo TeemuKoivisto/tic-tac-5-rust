@@ -1,10 +1,12 @@
 import { get, writable } from 'svelte/store'
-import { Cell, Board } from './board'
+import { Cell } from './cell'
+import { Board } from './board'
+// import { Board } from './board2'
 
 export const board = writable<Board>(new Board())
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
-export const searchDepth = writable(7)
+export const searchDepth = writable(5)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
 
 let iterations = 0
@@ -34,6 +36,7 @@ function minimax(
   opts: Options
 ) {
   iterations += 1
+  // console.log('cell', selectedCell)
   if (board.update_cell_owner(selectedCell.x, selectedCell.y, player)) {
     return opts.humanPlayer === player ? -1000 - depth : 1000 + depth
   } else if (board.is_full()) {
@@ -50,7 +53,7 @@ function minimax(
         minimax(c, board, depth - 1, false, alpha, beta, player === 1 ? 2 : 1, opts)
       )
       alpha = Math.max(alpha, value)
-      board.set_cell_owner(c.x, c.y, 0)
+      board.update_cell_owner(c.x, c.y, 0)
       return beta <= alpha
     })
   } else {
@@ -61,7 +64,7 @@ function minimax(
         Math.min(value, minimax(c, board, depth - 1, true, alpha, beta, player === 1 ? 2 : 1, opts))
       )
       beta = Math.min(beta, value)
-      board.set_cell_owner(c.x, c.y, 0)
+      board.update_cell_owner(c.x, c.y, 0)
       return beta <= alpha
     })
   }
@@ -84,7 +87,7 @@ export const gameActions = {
   },
   playerSelectCell(x: number, y: number) {
     const b = get(board)
-    const cell = b.get_cell_at(x, y)
+    const cell = b.get_cell_value_at(x, y)
     if (cell.owner !== 0) {
       return
     }
@@ -117,7 +120,7 @@ export const gameActions = {
     const t0 = performance.now()
     b.get_available_moves().forEach(c => {
       const value = minimax(c, b, get(searchDepth), false, -Infinity, Infinity, aiNumber, opts)
-      b.set_cell_owner(c.x, c.y, 0)
+      b.update_cell_owner(c.x, c.y, 0)
       if (value > bestValue) {
         aiMove = c
         bestValue = value
@@ -138,6 +141,7 @@ export const gameActions = {
     } else if (b.is_full()) {
       gameStatus.set('tie')
     }
+    console.log('board', b)
     board.set(b)
   },
 }
