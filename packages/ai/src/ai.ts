@@ -1,6 +1,6 @@
-// import { Board } from './board'
-import { Board } from './board2'
-import { getCellValue } from './cell'
+import { Board } from './board'
+// import { Board } from './board2'
+import { Cell, getCellValue } from './cell'
 
 interface Options {
   maxDepth: number
@@ -13,7 +13,7 @@ let iterations = 0
 const cachedComputations = new Map<string, number>()
 
 export function computeAi(b: Board, aiNumber: number, searchDepth: number) {
-  let chosenCell: number | undefined
+  let chosenCell: Cell | undefined
   let bestValue = Number.NEGATIVE_INFINITY
   const opts = {
     maxDepth: 10,
@@ -29,7 +29,7 @@ export function computeAi(b: Board, aiNumber: number, searchDepth: number) {
       value = cached
     } else {
       value = minimax(c, b, searchDepth, false, -Infinity, Infinity, aiNumber, opts)
-      cachedComputations.set(b.code, value)
+      // cachedComputations.set(b.code, value)
       b.set_cell_owner(c, 0)
     }
     if (value > bestValue) {
@@ -46,14 +46,16 @@ export function computeAi(b: Board, aiNumber: number, searchDepth: number) {
       6
     )} per iteration`
   )
-  const aiMove = getCellValue(chosenCell)
+  // const aiMove = getCellValue(chosenCell)
+  const aiMove = chosenCell
   console.log(`best: ${aiMove.x} ${aiMove.x} ${bestValue} at iterations ${iterations} \n`)
   b.set_cell_owner(chosenCell, aiNumber)
   return b.update_cell_adjancies(chosenCell, aiNumber)
 }
 
 export function minimax(
-  cell: number,
+  // cell: number,
+  cell: Cell,
   board: Board,
   depth: number,
   isMaximizing: boolean,
@@ -65,18 +67,24 @@ export function minimax(
   iterations += 1
   board.set_cell_owner(cell, player)
   const cached = cachedComputations.get(board.code)
-  if (cached !== undefined) {
+  if (cached) {
     return cached
   }
   const won = board.update_cell_adjancies(cell, player)
-  let value: number
+  let value = NaN
   if (won) {
     value = opts.humanPlayer === player ? -1000 - depth : 1000 + depth
   } else if (board.is_full()) {
     value = opts.humanPlayer === player ? -100 - depth : 100 + depth
   } else if (depth === 0) {
     value = 0
-  } else if (isMaximizing) {
+  }
+  if (!isNaN(value)) {
+    cachedComputations.set(board.code, value)
+    return value
+  }
+
+  if (isMaximizing) {
     value = Number.NEGATIVE_INFINITY
     board.get_available_moves().some(c => {
       value = Math.max(
@@ -99,6 +107,5 @@ export function minimax(
       return beta <= alpha
     })
   }
-  cachedComputations.set(board.code, value)
   return value
 }

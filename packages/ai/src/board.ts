@@ -69,8 +69,8 @@ export class Board {
     return this.cells[x + y * this.size]
   }
 
-  set_cell_owner(x: number, y: number, player: number) {
-    const idx = x + y * this.size
+  set_cell_owner(c: Cell, player: number) {
+    const idx = c.x + c.y * this.size
     this.cells[idx].owner = player
     if (player !== 0) {
       this.available -= 1
@@ -171,16 +171,16 @@ export class Board {
     return adjacent
   }
 
-  update_cell_adjancies(x: number, y: number, player: number) {
+  update_cell_adjancies(cell: Cell, player: number) {
     let bestInRow = 0
     for (let i = 0; i < 4; i += 1) {
       const dir = i as Adjacency
-      const cells = player !== 0 ? this.get_adjacent_cells(x, y, player, dir) : []
+      const cells = player !== 0 ? this.get_adjacent_cells(cell.x, cell.y, player, dir) : []
       const adjacent_count = player === 0 ? 0 : cells.length + 1
       for (const c of cells) {
         this.cells[c.x + c.y * this.size].adjacency[dir] = adjacent_count
       }
-      this.cells[x + y * this.size].adjacency[dir] = adjacent_count
+      this.cells[cell.x + cell.y * this.size].adjacency[dir] = adjacent_count
       if (adjacent_count > bestInRow) {
         bestInRow = adjacent_count
       }
