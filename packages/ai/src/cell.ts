@@ -49,40 +49,22 @@ export function setDirAdjacency(c: number, dir: Adjacency, val: number) {
     default:
       throw Error(`Unknown direction: ${dir}`)
   }
-  // if (val > 0) {
-  //   console.log(
-  //     `cell ${c} ${dir} ${val} : ${
-  //       (((0xffffffff >>> 1) ^ (0xf << shift)) & c) | ((0xf & val) << shift)
-  //     }`
-  //   )
-  //   console.log(getCellValue((((0xffffffff >>> 1) ^ (0xf << shift)) & c) | ((0xf & val) << shift)))
-  // }
   return (((0xffffffff >>> 1) ^ (0xf << shift)) & c) | ((0xf & val) << shift)
-  // return c ^ ((0xf & val) << shift)
-  // return (c & (0xffffffff >>> 1)) | ((0xf & val) << shift)
 }
 
 export function setAdjacency(c: number, hor: number, ver: number, ldiag: number, rdiag: number) {
-  // console.log(hor)
-  // console.log(ver)
-  // console.log((0xf & hor) << 12)
-  // console.log((0xf & ver) << 16)
-  // console.log(
-  //   ((0xf & hor) << 12) | ((0xf & ver) << 16) | ((0xf & ldiag) << 20) | ((0xf & rdiag) << 24)
-  // )
-  // console.log(
-  //   0b111111111111 |
-  //     ((0xf & hor) << 12) |
-  //     ((0xf & ver) << 16) |
-  //     ((0xf & ldiag) << 20) |
-  //     ((0xf & rdiag) << 24)
-  // )
-  // console.log(c & 0b111111111111)
-  // console.log((c >> 28) << 28)
   return (
     ((c << 16) >> 16) |
     (((0xf & hor) << 12) | ((0xf & ver) << 16) | ((0xf & ldiag) << 20) | ((0xf & rdiag) << 24))
   )
+}
+
+export function getCellCoords(c: number): [number, number] {
+  return [0b111111 & c, 0b111111 & (c >> 6)]
+}
+
+export function getCellCoordsOwner(c: number): [number, number, number] {
+  return [0b111111 & c, 0b111111 & (c >> 6), 0xf & (c >> 28)]
 }
 
 export function getCellValue(c: number): Cell {

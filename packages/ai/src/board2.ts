@@ -4,6 +4,8 @@ import {
   Cell,
   createCell,
   getCellValue,
+  getCellCoords,
+  getCellCoordsOwner,
   setAdjacency,
   getOwner,
   setOwner,
@@ -22,6 +24,7 @@ export class Board {
   inRow = 3
   cells: number[] = []
   available = 3 * 3
+  available_moves: [number, number][] = []
 
   constructor(opts?: BoardOptions, previous?: Board) {
     this.size = previous?.size ?? opts?.gridSize ?? this.size
@@ -38,6 +41,7 @@ export class Board {
       }
     }
     this.cells = cells
+    this.available_moves = cells.filter(c => getOwner(c) === 0).map(c => getCellCoords(c))
   }
 
   is_within_board(x: number, y: number) {
@@ -65,8 +69,10 @@ export class Board {
     this.cells[x + y * this.size] = setOwner(this.cells[x + y * this.size], player)
     if (player !== 0) {
       this.available -= 1
+      this.available_moves = this.available_moves.filter(([xx, yy]) => xx !== x || yy !== y)
     } else {
       this.available += 1
+      this.available_moves.push(getCellCoords(this.cells[x + y * this.size]))
     }
   }
 
@@ -88,7 +94,7 @@ export class Board {
     y: number,
     dir: Adjacency,
     topside: boolean
-  ): Option<number> {
+  ): number | undefined {
     let xx = x
     let yy = y
     switch (dir) {
@@ -126,28 +132,29 @@ export class Board {
         break
     }
     if (this.is_within_board(xx, yy)) {
-      return { data: this.get_cell_at(xx, yy) }
+      return this.cells[xx + yy * this.size]
     }
     return undefined
   }
 
   get_adjacent_cells(x: number, y: number, player: number, dir: Adjacency) {
-    const adjacent: Cell[] = []
+    const adjacent: [number, number, number][] = []
     let topside = true
     let now_x = x
     let now_y = y
     let iters = 0
-    let cell: Option<number>
+    let cell: number | undefined
+    let c: [number, number, number] | undefined
     while (true) {
       cell = this.get_adjacent_in_direction(now_x, now_y, dir, topside)
       if (iters > 20) {
         throw Error('infinite loop')
       }
-      if (cell !== undefined && getOwner(cell.data) === player) {
-        const c = getCellValue(cell.data)
+      c = cell !== undefined ? getCellCoordsOwner(cell) : undefined
+      if (c && c[2] === player) {
         adjacent.push(c)
-        now_x = c.x
-        now_y = c.y
+        now_x = c[0]
+        now_y = c[1]
       } else if (topside) {
         topside = false
         now_x = x
@@ -168,8 +175,8 @@ export class Board {
       const cells = this.get_adjacent_cells(x, y, player, dir)
       const adjacent_count = cells.length + 1
       for (const c of cells) {
-        this.cells[c.x + c.y * this.size] = setDirAdjacency(
-          this.cells[c.x + c.y * this.size],
+        this.cells[c[0] + c[1] * this.size] = setDirAdjacency(
+          this.cells[c[0] + c[1] * this.size],
           dir,
           adjacent_count
         )
@@ -199,7 +206,7 @@ export class Board {
   //   return this.cells.find(c => Object.values(c.adjacency).some(v => v === this.inRow))
   // }
 
-  get_available_moves(): Cell[] {
-    return this.cells.filter(c => getOwner(c) === 0).map(c => getCellValue(c))
-  }
+  // get_available_moves(): Cell[] {
+  //   return this.cells.filter(c => getOwner(c) === 0).map(c => getCellValue(c))
+  // }
 }
