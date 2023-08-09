@@ -24,18 +24,14 @@ export class Board {
   available = 3 * 3
   code: string
 
-  constructor(opts?: BoardOptions, previous?: Board) {
-    this.size = previous?.size ?? opts?.gridSize ?? this.size
-    this.inRow = previous?.inRow ?? opts?.inRow ?? this.inRow
-    this.available = previous?.available ?? this.size * this.size
-    let cells: number[] = []
-    if (previous) {
-      cells = previous.cells.map(c => c)
-    } else {
-      for (let y = 0; y < this.size; y += 1) {
-        for (let x = 0; x < this.size; x += 1) {
-          cells.push(createCell(x, y))
-        }
+  constructor(opts?: BoardOptions) {
+    this.size = opts?.gridSize ?? this.size
+    this.inRow = opts?.inRow ?? this.inRow
+    this.available = this.size * this.size
+    const cells: number[] = []
+    for (let y = 0; y < this.size; y += 1) {
+      for (let x = 0; x < this.size; x += 1) {
+        cells.push(createCell(x, y))
       }
     }
     this.cells = cells

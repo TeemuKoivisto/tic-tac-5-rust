@@ -31,32 +31,30 @@ export class Board {
   inRow = 3
   cells: Cell[] = []
   available = 3 * 3
+  code: string
 
-  constructor(opts?: BoardOptions, previous?: Board) {
-    this.size = previous?.size ?? opts?.gridSize ?? this.size
-    this.inRow = previous?.inRow ?? opts?.inRow ?? this.inRow
-    this.available = previous?.available ?? this.size * this.size
-    let cells: Cell[] = []
-    if (previous) {
-      cells = previous.cells.map(c => Object.assign({}, c))
-    } else {
-      for (let y = 0; y < this.size; y += 1) {
-        for (let x = 0; x < this.size; x += 1) {
-          cells.push({
-            x,
-            y,
-            owner: 0,
-            adjacency: {
-              [Adjacency.Horizontal]: 0,
-              [Adjacency.Vertical]: 0,
-              [Adjacency.LeftToRightDiagonal]: 0,
-              [Adjacency.RightToLeftDiagonal]: 0,
-            },
-          })
-        }
+  constructor(opts?: BoardOptions) {
+    this.size = opts?.gridSize ?? this.size
+    this.inRow = opts?.inRow ?? this.inRow
+    this.available = this.size * this.size
+    const cells: Cell[] = []
+    for (let y = 0; y < this.size; y += 1) {
+      for (let x = 0; x < this.size; x += 1) {
+        cells.push({
+          x,
+          y,
+          owner: 0,
+          adjacency: {
+            [Adjacency.Horizontal]: 0,
+            [Adjacency.Vertical]: 0,
+            [Adjacency.LeftToRightDiagonal]: 0,
+            [Adjacency.RightToLeftDiagonal]: 0,
+          },
+        })
       }
     }
     this.cells = cells
+    this.code = '-'.repeat(this.available)
   }
 
   is_within_board(x: number, y: number) {
@@ -72,12 +70,15 @@ export class Board {
   }
 
   set_cell_owner(x: number, y: number, player: number) {
-    this.cells[x + y * this.size].owner = player
+    const idx = x + y * this.size
+    this.cells[idx].owner = player
     if (player !== 0) {
       this.available -= 1
     } else {
       this.available += 1
     }
+    const char = player === 0 ? '-' : player === 1 ? 'x' : 'o'
+    this.code = `${this.code.slice(0, idx)}${char}${this.code.slice(idx + 1)}`
   }
 
   get_next_empty_cell(): Cell | undefined {
@@ -93,7 +94,12 @@ export class Board {
     return cell
   }
 
-  get_adjacent_in_direction(x: number, y: number, dir: Adjacency, topside: boolean): Option<Cell> {
+  get_adjacent_in_direction(
+    x: number,
+    y: number,
+    dir: Adjacency,
+    topside: boolean
+  ): Cell | undefined {
     let xx = x
     let yy = y
     switch (dir) {
@@ -131,7 +137,7 @@ export class Board {
         break
     }
     if (this.is_within_board(xx, yy)) {
-      return { data: this.get_cell_at(xx, yy) }
+      return this.cells[xx + yy * this.size]
     }
     return undefined
   }
@@ -142,14 +148,11 @@ export class Board {
     let now_x = x
     let now_y = y
     let iters = 0
-    let cell: Option<Cell>
+    let cell: Cell | undefined
     while (true) {
       cell = this.get_adjacent_in_direction(now_x, now_y, dir, topside)
-      if (iters > 20) {
-        throw Error('infinite loop')
-      }
-      if (cell && cell.data.owner === player) {
-        const c = cell.data
+      if (cell !== undefined && cell.owner === player) {
+        const c = cell
         adjacent.push(c)
         now_x = c.x
         now_y = c.y
@@ -160,13 +163,15 @@ export class Board {
       } else {
         break
       }
+      if (iters > 20) {
+        throw Error('infinite loop')
+      }
       iters += 1
     }
     return adjacent
   }
 
-  update_cell_owner(x: number, y: number, player: number) {
-    this.set_cell_owner(x, y, player)
+  update_cell_adjancies(x: number, y: number, player: number) {
     let bestInRow = 0
     for (let i = 0; i < 4; i += 1) {
       const dir = i as Adjacency
@@ -185,15 +190,6 @@ export class Board {
 
   is_full() {
     return this.available === 0
-  }
-
-  check_win_at(x: number, y: number) {
-    const cell = this.get_cell_at(x, y)
-    return Object.values(cell.adjacency).some(v => v === this.inRow)
-  }
-
-  check_win() {
-    return this.cells.find(c => Object.values(c.adjacency).some(v => v === this.inRow))
   }
 
   get_available_moves(): Cell[] {

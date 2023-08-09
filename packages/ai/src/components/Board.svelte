@@ -1,6 +1,6 @@
 <script lang="ts">
   import Cell from './Cell.svelte'
-  import { gridSize, gameActions } from '../game'
+  import { gridSize, gameActions } from '../store'
 
   $: {
     if (typeof document !== undefined) {

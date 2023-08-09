@@ -1,7 +1,7 @@
 <script lang="ts">
   import Board from './Board.svelte'
 
-  import { gameStatus, gameActions } from '../game'
+  import { gameStatus, gameActions } from '../store'
 </script>
 
 <main>
