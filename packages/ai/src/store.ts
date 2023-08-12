@@ -8,10 +8,10 @@ export interface PlayOptions {
   maxDepth?: number
 }
 
-export const board = writable<Board>(create_board(3, 3))
+export const board = writable<Board>(new Board(3, 3))
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
-export const searchDepth = writable(7)
+export const searchDepth = writable(6)
 export const gameStatus = writable<'running' | 'x-won' | 'o-won' | 'tie'>('running')
 
 export const gameActions = {
@@ -20,7 +20,7 @@ export const gameActions = {
     const prevSymbol = get(player)
     const prevSize = get(gridSize)
     const newSize = size ?? prevSize
-    board.set(create_board(newSize, newSize === 5 ? 4 : 3))
+    board.set(new Board(newSize, newSize === 5 ? 4 : 3))
     if (size !== undefined) gridSize.set(size)
     if (symbol !== undefined) player.set(symbol)
     if (maxDepth !== undefined) searchDepth.set(maxDepth)

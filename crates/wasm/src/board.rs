@@ -84,31 +84,6 @@ impl IndexMut<&Adjacency> for Adjancies {
 }
 
 impl Board {
-    pub fn new(size: u32, in_row: u32) -> Self {
-        let mut cells = Vec::new();
-        for y in 0..size {
-            for x in 0..size {
-                cells.push(BoardCell {
-                    x,
-                    y,
-                    owner: 0,
-                    adjacency: Adjancies {
-                        hor: 0,
-                        ver: 0,
-                        left_diag: 0,
-                        right_diag: 0,
-                    },
-                });
-            }
-        }
-        Self {
-            size,
-            available: size * size,
-            in_row,
-            cells,
-        }
-    }
-
     fn is_within_board(&self, x: i32, y: i32) -> bool {
         x >= 0 && y >= 0 && x < self.size as i32 && y < self.size as i32
     }
@@ -120,21 +95,6 @@ impl Board {
     fn set_cell_adjacency(&mut self, x: u32, y: u32, dir: &Adjacency, count: u32) {
         self.cells[(x + y * self.size) as usize].adjacency[dir] = count;
     }
-
-    // pub fn get_next_empty_cell(&self) -> Option<BoardCell> {
-    //     if self.available == 0 {
-    //       return None
-    //     }
-    //     let idx = 0;
-    //     let len = self.cells.len();
-    //     let cell = self.cells[idx];
-
-    //     while cell.owner != 0 || len == idx {
-    //       idx += 1;
-    //       cell = self.cells[idx]
-    //     }
-    //     return cell
-    //   }
 
     fn get_adjacent_in_direction(
         &self,
@@ -198,10 +158,8 @@ impl Board {
                 adjacent.push(c);
                 now_x = c.x;
                 now_y = c.y;
-                // log(&format!("cell: {:?}", c));
             } else if topside {
                 cell = Some(&self.cells[(x + y * self.size) as usize]);
-                // cell = Some(self.get_cell_at(x, y));
                 topside = false;
                 now_x = x;
                 now_y = y;
@@ -209,7 +167,7 @@ impl Board {
                 break;
             }
             if iters > 20 {
-                alert(&format!(
+                log(&format!(
                     "Cell {:?} dir {:?} iters {iters} player {player} topside {topside} adj.len {}",
                     cell,
                     dir,
@@ -229,8 +187,8 @@ impl Board {
         player: u32,
         dir: &Adjacency,
     ) -> Vec<BoardCell> {
-        let ar = self.get_adjacent_cells(x, y, player, dir);
-        ar.into_iter()
+        self.get_adjacent_cells(x, y, player, dir)
+            .into_iter()
             .map(|c| {
                 return BoardCell {
                     x: c.x,
@@ -245,6 +203,32 @@ impl Board {
 
 #[wasm_bindgen]
 impl Board {
+    #[wasm_bindgen(constructor)]
+    pub fn new(size: u32, in_row: u32) -> Self {
+        let mut cells = Vec::new();
+        for y in 0..size {
+            for x in 0..size {
+                cells.push(BoardCell {
+                    x,
+                    y,
+                    owner: 0,
+                    adjacency: Adjancies {
+                        hor: 0,
+                        ver: 0,
+                        left_diag: 0,
+                        right_diag: 0,
+                    },
+                });
+            }
+        }
+        Self {
+            size,
+            available: size * size,
+            in_row,
+            cells,
+        }
+    }
+
     pub fn is_full(&self) -> bool {
         self.available == 0
     }
@@ -285,9 +269,4 @@ impl Board {
         }
         self.in_row == best_in_row
     }
-}
-
-#[wasm_bindgen]
-pub fn create_board(size: u32, in_row: u32) -> Board {
-    Board::new(size, in_row)
 }
