@@ -68,6 +68,9 @@ importers:
       uuid:
         specifier: ^9.0.0
         version: 9.0.0
+      wasm:
+        specifier: workspace:*
+        version: link:../wasm
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^2.0.2
@@ -102,6 +105,9 @@ importers:
       vite:
         specifier: ^4.0.4
         version: 4.0.4(sass@1.57.1)
+      vite-plugin-wasm:
+        specifier: ^3.2.2
+        version: 3.2.2(vite@4.0.4)
 
   packages/client:
     dependencies:
@@ -237,6 +243,8 @@ importers:
       rollup-plugin-typescript2:
         specifier: ^0.34.1
         version: 0.34.1(rollup@3.10.0)(typescript@4.9.4)
+
+  packages/wasm: {}
 
 packages:
 
@@ -3221,6 +3229,14 @@ packages:
     resolution: {integrity: sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==}
     hasBin: true
     dev: false
+
+  /vite-plugin-wasm@3.2.2(vite@4.0.4):
+    resolution: {integrity: sha512-cdbBUNR850AEoMd5nvLmnyeq63CSfoP1ctD/L2vLk/5+wsgAPlAVAzUK5nGKWO/jtehNlrSSHLteN+gFQw7VOA==}
+    peerDependencies:
+      vite: ^2 || ^3 || ^4
+    dependencies:
+      vite: 4.0.4(sass@1.57.1)
+    dev: true
 
   /vite@4.0.4(sass@1.57.1):
     resolution: {integrity: sha512-xevPU7M8FU0i/80DMR+YhgrzR5KS2ORy1B4xcX/cXLsvnUWvfHuqMmVU6N0YiJ4JWGRJJsLCgjEzKjG9/GKoSw==}

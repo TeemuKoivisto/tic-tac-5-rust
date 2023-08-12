@@ -31,6 +31,10 @@ if [ -n "$1" ]; then
   protos)
     protos
     ;;
+  wasm)
+    # RUSTFLAGS="-C target-feature=+simd128" cargo build -p wasm
+    RUSTFLAGS="-C target-feature=+simd128" wasm-pack build ./crates/wasm --out-dir ../../packages/wasm
+    ;;
   docker:build)
     docker build -t tic-tac-5 -f ./crates/server/Dockerfile .
     ;;

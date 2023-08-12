@@ -22,7 +22,7 @@ export class Board {
   inRow = 3
   cells: number[] = []
   available = 3 * 3
-  code: string
+  code: string[] = []
 
   constructor(opts?: BoardOptions) {
     this.size = opts?.gridSize ?? this.size
@@ -35,7 +35,7 @@ export class Board {
       }
     }
     this.cells = cells
-    this.code = '-'.repeat(this.available)
+    // this.code = cells.map(_ => '-')
   }
 
   is_within_board(x: number, y: number) {
@@ -62,8 +62,9 @@ export class Board {
     } else {
       this.available += 1
     }
-    const char = player === 0 ? '-' : player === 1 ? 'x' : 'o'
-    this.code = `${this.code.slice(0, idx)}${char}${this.code.slice(idx + 1)}`
+    // const char = player === 0 ? '-' : player === 1 ? 'x' : 'o'
+    // this.code[idx] = char
+    // this.code = `${this.code.slice(0, idx)}${char}${this.code.slice(idx + 1)}`
   }
 
   get_next_empty_cell(): number | undefined {

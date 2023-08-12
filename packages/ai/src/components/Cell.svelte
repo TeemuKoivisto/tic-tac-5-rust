@@ -1,15 +1,15 @@
 <script lang="ts">
   import { fade } from 'svelte/transition'
+  import { BoardCell } from 'wasm'
 
   import { board } from '../store'
-  import type { Cell } from '../cell'
 
   export let y: number, x: number, handleCellClick: (x: number, y: number) => void
 
-  let cell: Cell = $board.get_cell_value_at(x, y)
+  let cell: BoardCell = $board.get_cell_at(x, y)
 
   board.subscribe(b => {
-    const found = b.get_cell_value_at(x, y)
+    const found = b.get_cell_at(x, y)
     if (found) cell = found
   })
 </script>

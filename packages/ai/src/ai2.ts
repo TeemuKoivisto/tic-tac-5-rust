@@ -1,6 +1,4 @@
-// import { Board } from './board'
-import { Board } from './board2'
-import { Cell, getCellValue } from './cell'
+import { Board, BoardCell } from 'wasm'
 
 interface Options {
   maxDepth: number
@@ -10,11 +8,8 @@ interface Options {
 
 let iterations = 0
 
-const cachedComputations = new Map<string, number>()
-
 export function computeAi(b: Board, aiNumber: number, searchDepth: number) {
-  let chosenCell: number | undefined
-  // let chosenCell: Cell | undefined
+  let chosenCell: BoardCell | undefined
   let bestValue = Number.NEGATIVE_INFINITY
   const opts = {
     maxDepth: 10,
@@ -25,7 +20,7 @@ export function computeAi(b: Board, aiNumber: number, searchDepth: number) {
   const t0 = performance.now()
   b.get_available_moves().forEach(c => {
     const value = minimax(c, b, searchDepth, false, -Infinity, Infinity, aiNumber, opts)
-    b.set_cell_owner(c, 0)
+    b.set_cell_owner(c.x, c.y, 0)
     if (value > bestValue) {
       chosenCell = c
       bestValue = value
@@ -40,16 +35,14 @@ export function computeAi(b: Board, aiNumber: number, searchDepth: number) {
       6
     )} per iteration`
   )
-  const aiMove = getCellValue(chosenCell)
-  // const aiMove = chosenCell
+  const aiMove = chosenCell
   console.log(`best: ${aiMove.x} ${aiMove.x} ${bestValue} at iterations ${iterations} \n`)
-  b.set_cell_owner(chosenCell, aiNumber)
-  return b.update_cell_adjancies(chosenCell, aiNumber)
+  b.set_cell_owner(chosenCell.x, chosenCell.y, aiNumber)
+  return b.update_cell_adjancies(chosenCell.x, chosenCell.y, aiNumber)
 }
 
 export function minimax(
-  cell: number,
-  // cell: Cell,
+  cell: BoardCell,
   board: Board,
   depth: number,
   isMaximizing: boolean,
@@ -59,9 +52,9 @@ export function minimax(
   opts: Options
 ) {
   iterations += 1
-  board.set_cell_owner(cell, player)
+  board.set_cell_owner(cell.x, cell.y, player)
 
-  const won = board.update_cell_adjancies(cell, player)
+  const won = board.update_cell_adjancies(cell.x, cell.y, player)
   let value = NaN
   if (won) {
     value = opts.humanPlayer === player ? -1000 - depth : 1000 + depth
@@ -71,7 +64,6 @@ export function minimax(
     value = 0
   }
   if (!isNaN(value)) {
-    // cachedComputations.set(board.code, value)
     return value
   }
 
@@ -83,7 +75,7 @@ export function minimax(
         minimax(c, board, depth - 1, false, alpha, beta, player === 1 ? 2 : 1, opts)
       )
       alpha = Math.max(alpha, value)
-      board.set_cell_owner(c, 0)
+      board.set_cell_owner(c.x, c.y, 0)
       return beta <= alpha
     })
   } else {
@@ -94,7 +86,7 @@ export function minimax(
         Math.min(value, minimax(c, board, depth - 1, true, alpha, beta, player === 1 ? 2 : 1, opts))
       )
       beta = Math.min(beta, value)
-      board.set_cell_owner(c, 0)
+      board.set_cell_owner(c.x, c.y, 0)
       return beta <= alpha
     })
   }

@@ -77,8 +77,8 @@ export class Board {
     } else {
       this.available += 1
     }
-    const char = player === 0 ? '-' : player === 1 ? 'x' : 'o'
-    this.code = `${this.code.slice(0, idx)}${char}${this.code.slice(idx + 1)}`
+    // const char = player === 0 ? '-' : player === 1 ? 'x' : 'o'
+    // this.code = `${this.code.slice(0, idx)}${char}${this.code.slice(idx + 1)}`
   }
 
   get_next_empty_cell(): Cell | undefined {

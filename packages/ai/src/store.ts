@@ -1,7 +1,6 @@
 import { get, writable } from 'svelte/store'
-import { Board } from './board'
-// import { Board } from './board2'
-import { computeAi } from './ai'
+import { create_board, Board } from 'wasm'
+import { computeAi } from './ai2'
 
 export interface PlayOptions {
   symbol?: 'x' | 'o'
@@ -9,7 +8,7 @@ export interface PlayOptions {
   maxDepth?: number
 }
 
-export const board = writable<Board>(new Board())
+export const board = writable<Board>(create_board(3, 3))
 export const gridSize = writable(3)
 export const player = writable<'x' | 'o'>('x')
 export const searchDepth = writable(7)
@@ -21,7 +20,7 @@ export const gameActions = {
     const prevSymbol = get(player)
     const prevSize = get(gridSize)
     const newSize = size ?? prevSize
-    board.set(new Board({ gridSize: newSize, inRow: newSize === 5 ? 4 : 3 }))
+    board.set(create_board(newSize, newSize === 5 ? 4 : 3))
     if (size !== undefined) gridSize.set(size)
     if (symbol !== undefined) player.set(symbol)
     if (maxDepth !== undefined) searchDepth.set(maxDepth)
@@ -29,28 +28,6 @@ export const gameActions = {
       this.evaluateAiMove()
     }
   },
-  // playerSelectCell(x: number, y: number) {
-  //   const b = get(board)
-  //   const c = b.get_cell_at(x, y)
-  //   const cell = b.get_cell_value_at(x, y)
-  //   if (cell.owner !== 0) {
-  //     return
-  //   }
-  //   const playerNumber = get(player) === 'x' ? 1 : 2
-  //   let ended = true
-  //   b.set_cell_owner(c, playerNumber)
-  //   if (b.update_cell_adjancies(c, playerNumber)) {
-  //     gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
-  //   } else if (b.is_full()) {
-  //     gameStatus.set('tie')
-  //   } else {
-  //     ended = false
-  //   }
-  //   board.set(b)
-  //   if (!ended) {
-  //     this.evaluateAiMove()
-  //   }
-  // },
   playerSelectCell(x: number, y: number) {
     const b = get(board)
     const cell = b.get_cell_at(x, y)
@@ -59,8 +36,8 @@ export const gameActions = {
     }
     const playerNumber = get(player) === 'x' ? 1 : 2
     let ended = true
-    b.set_cell_owner(cell, playerNumber)
-    if (b.update_cell_adjancies(cell, playerNumber)) {
+    b.set_cell_owner(cell.x, cell.y, playerNumber)
+    if (b.update_cell_adjancies(cell.x, cell.y, playerNumber)) {
       gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
     } else if (b.is_full()) {
       gameStatus.set('tie')
