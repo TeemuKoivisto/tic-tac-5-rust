@@ -1,6 +1,6 @@
 import { get, writable } from 'svelte/store'
-import { create_board, Board } from 'wasm'
-import { computeAi } from './ai2'
+import { compute_ai, Board } from 'wasm'
+// import { computeAi } from './ai2'
 
 export interface PlayOptions {
   symbol?: 'x' | 'o'
@@ -52,7 +52,7 @@ export const gameActions = {
   evaluateAiMove() {
     const b = get(board)
     const aiNumber = get(player) === 'x' ? 2 : 1
-    const aiWon = computeAi(b, aiNumber, get(searchDepth))
+    const aiWon = compute_ai(b, aiNumber, get(searchDepth))
     if (aiWon) {
       gameStatus.set(aiNumber === 2 ? 'o-won' : 'x-won')
     } else if (b.is_full()) {

@@ -96,6 +96,14 @@ impl Board {
         self.cells[(x + y * self.size) as usize].adjacency[dir] = count;
     }
 
+    pub fn available_moves(&self) -> Vec<(u32, u32, u32)> {
+        self.cells
+            .iter()
+            .filter(|c| c.owner == 0)
+            .map(|c| (c.x, c.y, c.owner))
+            .collect()
+    }
+
     fn get_adjacent_in_direction(
         &self,
         x: u32,
