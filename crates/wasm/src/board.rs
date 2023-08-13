@@ -150,7 +150,7 @@ impl Board {
         if !self.is_within_board(xx, yy) {
             return None;
         }
-        Some(&self.cells[(xx as usize + yy as usize * self.size as usize)])
+        Some(&self.cells[xx as usize + yy as usize * self.size as usize])
     }
 
     fn get_adjacent_cells(&self, x: u32, y: u32, player: u32, dir: &Adjacency) -> Vec<&BoardCell> {

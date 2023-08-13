@@ -18,7 +18,9 @@ pub fn compute_ai(board: &mut Board, ai_number: u32, search_depth: i32) -> bool 
     let mut y = 0;
     let mut best_value = -10000000;
     let human_player = if ai_number == 1 { 2 } else { 1 };
+    let perf = web_sys::window().unwrap().performance().unwrap();
 
+    let t0 = perf.now();
     for (cx, cy, cowner) in board.available_moves() {
         let value = minimax(
             cx,
@@ -40,6 +42,8 @@ pub fn compute_ai(board: &mut Board, ai_number: u32, search_depth: i32) -> bool 
             best_value = value;
         }
     }
+    let t1 = perf.now();
+    log(&format!("ai took: {} ms", (t1 - t0).floor()));
     if !chosen {
         panic!("no ai move found");
     }
@@ -51,7 +55,7 @@ pub fn compute_ai(board: &mut Board, ai_number: u32, search_depth: i32) -> bool 
 pub fn minimax(
     x: u32,
     y: u32,
-    owner: u32,
+    _owner: u32,
     board: &mut Board,
     depth: i32,
     is_maximizing: bool,
