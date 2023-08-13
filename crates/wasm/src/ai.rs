@@ -1,7 +1,7 @@
 use std::cmp::{max, min};
 use wasm_bindgen::prelude::*;
 
-use crate::board::{Board, BoardCell};
+use crate::board::Board;
 
 #[wasm_bindgen]
 extern "C" {
@@ -21,25 +21,26 @@ pub fn compute_ai(board: &mut Board, ai_number: u32, search_depth: i32) -> bool 
     let perf = web_sys::window().unwrap().performance().unwrap();
 
     let t0 = perf.now();
-    for c in board.get_cells() {
-        if c.owner == 0 {
-            let value = minimax(
-                c,
-                board,
-                search_depth,
-                false,
-                -10000000,
-                10000000,
-                ai_number,
-                human_player,
-            );
-            board.set_cell_owner(c.x, c.y, 0);
-            if value > best_value {
-                chosen = true;
-                x = c.x;
-                y = c.y;
-                best_value = value;
-            }
+    let empty = board.get_empty_indices();
+    for (cx, cy) in empty.clone() {
+        let value = minimax(
+            cx,
+            cy,
+            board,
+            empty.clone(),
+            search_depth,
+            false,
+            -10000000,
+            10000000,
+            ai_number,
+            human_player,
+        );
+        board.set_cell_owner(&cx, &cy, 0);
+        if value > best_value {
+            chosen = true;
+            x = cx;
+            y = cy;
+            best_value = value;
         }
     }
     let t1 = perf.now();
@@ -48,13 +49,15 @@ pub fn compute_ai(board: &mut Board, ai_number: u32, search_depth: i32) -> bool 
         panic!("no ai move found");
     }
     log(&format!("best: {} {} {}", x, y, best_value));
-    board.set_cell_owner(x, y, ai_number);
+    board.set_cell_owner(&x, &y, ai_number);
     board.update_cell_adjancies(x, y, ai_number)
 }
 
 pub fn minimax(
-    c: BoardCell,
+    x: u32,
+    y: u32,
     board: &mut Board,
+    empty_cells: Vec<(u32, u32)>,
     depth: i32,
     is_maximizing: bool,
     alpha: i32,
@@ -62,8 +65,8 @@ pub fn minimax(
     player: u32,
     human_player: u32,
 ) -> i32 {
-    board.set_cell_owner(c.x, c.y, player);
-    let won = board.update_cell_adjancies(c.x, c.y, player);
+    board.set_cell_owner(&x, &y, player);
+    let won = board.update_cell_adjancies(x, y, player);
     let mut value: i32 = 0;
     let mut ended = true;
     if won {
@@ -90,34 +93,60 @@ pub fn minimax(
         value = -10000000;
         let mut alph = alpha;
         let pl = if player == 2 { 1 } else { 2 };
-        for c in board.get_cells() {
-            if c.owner == 0 {
-                value = max(
-                    value,
-                    minimax(c, board, depth - 1, false, alph, beta, pl, human_player),
-                );
-                alph = max(alph, value);
-                board.set_cell_owner(c.x, c.y, 0);
-                if beta <= alpha {
-                    break;
-                }
+        let empty: Vec<(u32, u32)> = empty_cells
+            .into_iter()
+            .filter(|(cx, cy)| cx != &x || cy != &y)
+            .collect();
+        for (cx, cy) in &empty {
+            value = max(
+                value,
+                minimax(
+                    *cx,
+                    *cy,
+                    board,
+                    empty.clone(),
+                    depth - 1,
+                    false,
+                    alph,
+                    beta,
+                    pl,
+                    human_player,
+                ),
+            );
+            alph = max(alph, value);
+            board.set_cell_owner(cx, cy, 0);
+            if beta <= alpha {
+                break;
             }
         }
     } else {
         value = 10000000;
         let mut bet = beta;
         let pl = if player == 2 { 1 } else { 2 };
-        for c in board.get_cells() {
-            if c.owner == 0 {
-                value = min(
-                    value,
-                    minimax(c, board, depth - 1, true, alpha, bet, pl, human_player),
-                );
-                bet = min(bet, value);
-                board.set_cell_owner(c.x, c.y, 0);
-                if beta <= alpha {
-                    break;
-                }
+        let empty: Vec<(u32, u32)> = empty_cells
+            .into_iter()
+            .filter(|(cx, cy)| cx != &x || cy != &y)
+            .collect();
+        for (cx, cy) in &empty {
+            value = min(
+                value,
+                minimax(
+                    *cx,
+                    *cy,
+                    board,
+                    empty.clone(),
+                    depth - 1,
+                    true,
+                    alpha,
+                    bet,
+                    pl,
+                    human_player,
+                ),
+            );
+            bet = min(bet, value);
+            board.set_cell_owner(cx, cy, 0);
+            if beta <= alpha {
+                break;
             }
         }
     }

@@ -84,7 +84,16 @@ impl IndexMut<&Adjacency> for Adjancies {
 }
 
 impl Board {
-    pub fn get_cells(&self) -> Vec<BoardCell> {
+    pub fn get_empty_indices(&self) -> Vec<(u32, u32)> {
+        self.cells
+            .iter()
+            .enumerate()
+            .filter(|(_idx, c)| c.owner == 0)
+            .map(|(_idx, c)| (c.x, c.y))
+            .collect()
+    }
+
+    pub fn clone_cells(&self) -> Vec<BoardCell> {
         self.cells.clone()
     }
 
@@ -211,6 +220,15 @@ impl Board {
             })
             .collect::<Vec<BoardCell>>()
     }
+
+    pub fn set_cell_owner(&mut self, x: &u32, y: &u32, player: u32) {
+        self.cells[(x + y * self.size) as usize].owner = player;
+        if player != 0 {
+            self.available -= 1;
+        } else {
+            self.available += 1;
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -257,15 +275,6 @@ impl Board {
         self.cells[(x + y * self.size) as usize].clone()
     }
 
-    pub fn set_cell_owner(&mut self, x: u32, y: u32, player: u32) {
-        self.cells[(x + y * self.size) as usize].owner = player;
-        if player != 0 {
-            self.available -= 1;
-        } else {
-            self.available += 1;
-        }
-    }
-
     pub fn update_cell_adjancies(&mut self, x: u32, y: u32, player: u32) -> bool {
         let mut best_in_row = 0;
         for dir in Adjacency::iterator() {
@@ -280,5 +289,10 @@ impl Board {
             self.cells[(x + y * self.size) as usize].adjacency[dir] = adjacent_count;
         }
         self.in_row == best_in_row
+    }
+
+    pub fn select_cell(&mut self, x: u32, y: u32, player: u32) -> bool {
+        self.set_cell_owner(&x, &y, player);
+        self.update_cell_adjancies(x, y, player)
     }
 }

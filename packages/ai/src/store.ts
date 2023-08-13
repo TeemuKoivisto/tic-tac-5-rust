@@ -36,8 +36,7 @@ export const gameActions = {
     }
     const playerNumber = get(player) === 'x' ? 1 : 2
     let ended = true
-    b.set_cell_owner(cell.x, cell.y, playerNumber)
-    if (b.update_cell_adjancies(cell.x, cell.y, playerNumber)) {
+    if (b.select_cell(cell.x, cell.y, playerNumber)) {
       gameStatus.set(playerNumber === 1 ? 'x-won' : 'o-won')
     } else if (b.is_full()) {
       gameStatus.set('tie')
