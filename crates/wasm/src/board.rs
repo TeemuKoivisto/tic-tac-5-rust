@@ -84,6 +84,10 @@ impl IndexMut<&Adjacency> for Adjancies {
 }
 
 impl Board {
+    pub fn get_cells(&self) -> Vec<BoardCell> {
+        self.cells.clone()
+    }
+
     fn is_within_board(&self, x: i32, y: i32) -> bool {
         x >= 0 && y >= 0 && x < self.size as i32 && y < self.size as i32
     }
