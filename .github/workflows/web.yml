@@ -35,4 +35,4 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           projectName: tic-tac-5
-          directory: ./packages/client/build
+          directory: ./packages/client/dist
