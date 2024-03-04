@@ -28,6 +28,7 @@ jobs:
         run: pnpm --filter client build
         env:
           VITE_WS_URL: wss://tic-tac-5-api.fly.dev/
+          VITE_API_URL: https://api.teemukoivisto.xyz/tic-tac-5
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
