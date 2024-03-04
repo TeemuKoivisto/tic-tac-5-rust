@@ -27,6 +27,7 @@ interface BoardOptions {}
 export class Board {
   size = 8
   cells: Square[] = []
+  castleable: [boolean, boolean] = [true, true]
 
   constructor(opts?: BoardOptions) {
     const cells: Square[] = []

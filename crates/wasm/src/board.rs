@@ -1,4 +1,5 @@
 use js_sys::Array;
+use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use wasm_bindgen::prelude::*;
@@ -48,6 +49,8 @@ pub struct Board {
     available: u32,
     in_row: u32,
     cells: Vec<BoardCell>,
+    empty_cells: Vec<u8>,
+    code: String,
 }
 
 #[wasm_bindgen]
@@ -91,6 +94,16 @@ impl Board {
             .filter(|(_idx, c)| c.owner == 0)
             .map(|(_idx, c)| (c.x, c.y))
             .collect()
+    }
+
+    pub fn get_empty_cells(&self) -> HashMap<u32, (u32, u32)> {
+        let mut map = HashMap::new();
+        for c in self.cells.iter() {
+            if c.owner == 0 {
+                map.insert(c.x + c.y * self.size, (c.x, c.y));
+            }
+        }
+        map
     }
 
     pub fn clone_cells(&self) -> Vec<BoardCell> {
@@ -222,12 +235,16 @@ impl Board {
     }
 
     pub fn set_cell_owner(&mut self, x: &u32, y: &u32, player: u32) {
-        self.cells[(x + y * self.size) as usize].owner = player;
+        let idx = (x + y * self.size) as usize;
+        self.cells[idx].owner = player;
         if player != 0 {
             self.available -= 1;
+            self.empty_cells[idx] = 1;
         } else {
             self.available += 1;
+            self.empty_cells[idx] = 0;
         }
+        // self.code = std::str::from_utf8(&self.empty_cells).unwrap().to_string()
     }
 }
 
@@ -236,6 +253,7 @@ impl Board {
     #[wasm_bindgen(constructor)]
     pub fn new(size: u32, in_row: u32) -> Self {
         let mut cells = Vec::new();
+        let mut empty_cells = Vec::new();
         for y in 0..size {
             for x in 0..size {
                 cells.push(BoardCell {
@@ -249,13 +267,17 @@ impl Board {
                         right_diag: 0,
                     },
                 });
+                empty_cells.push(0)
             }
         }
+        let code = std::str::from_utf8(&empty_cells).unwrap().to_string();
         Self {
             size,
             available: size * size,
             in_row,
             cells,
+            empty_cells,
+            code,
         }
     }
 
