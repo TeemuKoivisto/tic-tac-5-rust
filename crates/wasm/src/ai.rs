@@ -1,7 +1,4 @@
-use std::{
-    cmp::{max, min},
-    collections::HashMap,
-};
+use std::cmp::{max, min};
 use wasm_bindgen::prelude::*;
 
 use crate::board::Board;
@@ -24,8 +21,8 @@ pub fn compute_ai(board: &mut Board, ai_number: u32, search_depth: i32) -> bool 
     let perf = web_sys::window().unwrap().performance().unwrap();
 
     let t0 = perf.now();
-    let empty = board.get_empty_cells();
-    for (_, (cx, cy)) in empty.clone().into_iter() {
+    let empty = board.get_empty_indices();
+    for (cx, cy) in empty.clone() {
         let value = minimax(
             cx,
             cy,
@@ -60,7 +57,7 @@ pub fn minimax(
     x: u32,
     y: u32,
     board: &mut Board,
-    mut empty_cells: &HashMap<u32, (u32, u32)>,
+    empty_cells: Vec<(u32, u32)>,
     depth: i32,
     is_maximizing: bool,
     alpha: i32,
@@ -69,7 +66,6 @@ pub fn minimax(
     human_player: u32,
 ) -> i32 {
     board.set_cell_owner(&x, &y, player);
-    empty_cells.remove(&(&x + &y * 5));
     let won = board.update_cell_adjancies(x, y, player);
     let mut value: i32 = 0;
     let mut ended = true;
@@ -97,17 +93,16 @@ pub fn minimax(
         value = -10000000;
         let mut alph = alpha;
         let pl = if player == 2 { 1 } else { 2 };
-        // let empty: Vec<(u32, u32)> = empty_cells
-        //     .into_iter()
-        //     .filter(|(cx, cy)| cx != &x || cy != &y)
-        //     .collect();
-        let empty = empty_cells.clone();
-        for (_, (cx, cy)) in empty_cells.into_iter() {
+        let empty: Vec<(u32, u32)> = empty_cells
+            .into_iter()
+            .filter(|(cx, cy)| cx != &x || cy != &y)
+            .collect();
+        for (cx, cy) in &empty {
             value = max(
                 value,
                 minimax(
-                    cx,
-                    cy,
+                    *cx,
+                    *cy,
                     board,
                     empty.clone(),
                     depth - 1,
@@ -119,7 +114,7 @@ pub fn minimax(
                 ),
             );
             alph = max(alph, value);
-            board.set_cell_owner(&cx, &cy, 0);
+            board.set_cell_owner(cx, cy, 0);
             if beta <= alpha {
                 break;
             }
@@ -128,13 +123,16 @@ pub fn minimax(
         value = 10000000;
         let mut bet = beta;
         let pl = if player == 2 { 1 } else { 2 };
-        let empty = empty_cells.clone();
-        for (_, (cx, cy)) in empty_cells.into_iter() {
+        let empty: Vec<(u32, u32)> = empty_cells
+            .into_iter()
+            .filter(|(cx, cy)| cx != &x || cy != &y)
+            .collect();
+        for (cx, cy) in &empty {
             value = min(
                 value,
                 minimax(
-                    cx,
-                    cy,
+                    *cx,
+                    *cy,
                     board,
                     empty.clone(),
                     depth - 1,
@@ -146,7 +144,7 @@ pub fn minimax(
                 ),
             );
             bet = min(bet, value);
-            board.set_cell_owner(&cx, &cy, 0);
+            board.set_cell_owner(cx, cy, 0);
             if beta <= alpha {
                 break;
             }
